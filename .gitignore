@@ -1,0 +1,39 @@
+# ==========================================
+# IDE & System Files (Bỏ qua file hệ thống)
+# ==========================================
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+bin/
+Thumbs.db
+.DS_Store
+
+# ==========================================
+# Frontend Vue 3 (Bỏ qua file build JS)
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ==========================================
+# Backend Spring Boot (Bỏ qua file build Java)
+# ==========================================
+backend/target/
+backend/out/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+backend/*.jar
+backend/*.war
+backend/*.zip
+backend/*.tar.gz
+backend/HELP.md
