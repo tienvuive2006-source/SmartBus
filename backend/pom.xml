@@ -47,6 +47,14 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Spring Boot DevTools (Tự động khởi động lại backend khi bạn bấm Lưu code - Ctrl+S) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+
 		<!-- Lombok to reduce boilerplate (Getter, Setter, Builder) -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>

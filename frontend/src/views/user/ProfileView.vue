@@ -1,142 +1,219 @@
 <template>
-  <div class="pb-8">
-    <main class="max-w-2xl mx-auto space-y-6">
-      <!-- Profile Header Section -->
-      <section class="bg-surface-container-lowest p-6 rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] flex items-center gap-6">
-        <div class="relative">
-          <img alt="Profile Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-surface-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmchl0XYvd2BF96f3Jgx_T08BYD2BQOvpIgw9RrKHEW4Xi57atHQhL_Sht9AO17KZ0qn44pyiQtwb1KkIFfsPXDlLmU-Nfav-DJa8YRngKX8zvfZMhRD7ivoqI9mlwD8PDOZ3W__CiqzcCbzzqjzGbnhunAvD51fDnPEHzU5LVdBzWWTcG_0ExMHDymfEAwdG1wpjj4C0d0XfONntfwXgiWKRpFCLOcx193XTguLiU-g7FI9kNCxyQGgxPyiiEPZQ2T2EYzpXvQTbZ"/>
-          <button class="absolute bottom-0 right-0 bg-primary p-1.5 rounded-full text-white shadow-lg active:scale-90 duration-100">
-            <span class="material-symbols-outlined text-sm">edit</span>
+  <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-800">
+    <nav class="bg-[#075955] text-white border-b border-[#05403d] sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer" @click="$router.push('/')">
+          <span class="material-symbols-outlined text-white text-4xl">directions_bus</span>
+          <div class="flex flex-col">
+            <span class="text-xl font-bold leading-none tracking-tight">Trung - Nam</span>
+            <span class="text-[9px] uppercase tracking-wider font-semibold">Nhà xe chuyên tuyến Miền Trung - Nam</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-6">
+          <button @click="$router.push('/')" class="text-sm font-semibold hover:text-yellow-300 transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-xl">home</span>
+            Trang chủ
           </button>
         </div>
-        <div class="flex-1">
-          <h2 class="font-headline-md text-headline-md text-on-surface">Nguyễn Minh Tâm</h2>
-          <p class="font-body-md text-on-surface-variant flex items-center gap-1 mt-1">
-            <span class="material-symbols-outlined text-[18px]">call</span>
-            +84 908 123 456
-          </p>
-          <div class="mt-3 flex gap-2">
-            <span class="bg-primary-fixed text-on-primary-fixed font-label-md text-label-md px-3 py-1 rounded-full">Hạng Vàng</span>
-            <span class="bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md px-3 py-1 rounded-full">1,250 Điểm</span>
+      </div>
+    </nav>
+    
+    <div class="pb-12 px-4 animate-fade-in bg-[#f2f5f8]">
+    
+    <!-- Loading State -->
+    <div v-if="loading" class="min-h-[70vh] flex flex-col items-center justify-center gap-3">
+      <div class="w-10 h-10 border-4 border-[#075955] border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-sm font-bold text-slate-500 animate-pulse">Đang tải thông tin cá nhân...</p>
+    </div>
+
+    <!-- Main Profile View -->
+    <main v-else-if="user" class="max-w-2xl mx-auto space-y-6 py-6">
+      
+      <!-- Banner Welcome -->
+      <div class="bg-gradient-to-r from-[#075955] to-[#05403d] p-8 rounded-[32px] shadow-lg border border-[#05403d] text-white relative overflow-hidden">
+        <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="relative z-10 flex flex-col md:flex-row items-center gap-6">
+          <div class="relative">
+            <img 
+              alt="Profile Avatar" 
+              class="w-24 h-24 rounded-3xl object-cover border-4 border-white/20 shadow-xl" 
+              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=ffffff&color=075955&bold=true&size=128`"
+            />
+            <div class="absolute -bottom-2 -right-2 bg-yellow-400 border-2 border-white w-6 h-6 rounded-full flex items-center justify-center shadow-md">
+              <span class="material-symbols-outlined text-[14px] text-[#075955] font-black">verified</span>
+            </div>
+          </div>
+          <div class="text-center md:text-left">
+            <div class="flex items-center justify-center md:justify-start gap-2 mb-1">
+              <h1 class="text-2xl font-black">{{ user.fullName }}</h1>
+              <span class="bg-white/20 backdrop-blur-sm text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-white/10">
+                {{ user.role === 'ADMIN' ? 'Quản trị viên' : 'Hạng VIP' }}
+              </span>
+            </div>
+            <p class="text-white/70 font-bold flex items-center justify-center md:justify-start gap-1">
+              <span class="material-symbols-outlined text-[18px]">call</span>
+              {{ user.phone }}
+            </p>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Wallet & Quick Actions -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Linked Wallet Card -->
-        <section class="bg-primary-container text-on-primary-container p-6 rounded-xl shadow-lg relative overflow-hidden">
+      <!-- Wallet & Loyalty -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Wallet Card -->
+        <section class="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden group">
           <div class="relative z-10">
             <div class="flex justify-between items-start mb-4">
-              <p class="font-label-md text-label-md opacity-90">Ví điện tử liên kết</p>
-              <span class="material-symbols-outlined">account_balance_wallet</span>
+              <div class="w-12 h-12 bg-[#075955]/10 rounded-2xl flex items-center justify-center text-[#075955]">
+                <span class="material-symbols-outlined text-2xl font-black">account_balance_wallet</span>
+              </div>
+              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ví Trung - Nam</p>
             </div>
-            <h3 class="font-headline-md text-headline-md font-bold mb-1">2,450,000 đ</h3>
-            <p class="font-label-md text-label-md opacity-80">Liên kết với MoMo</p>
-            <button class="mt-4 bg-white/20 hover:bg-white/30 text-white font-label-md text-label-md px-4 py-2 rounded-lg transition-colors active:scale-95 duration-100">
-              Nạp tiền ngay
-            </button>
+            <p class="text-sm font-bold text-slate-500 mb-1">Số dư hiện tại</p>
+            <h3 class="text-3xl font-black text-[#075955] tracking-tight">
+              {{ user.walletBalance ? user.walletBalance.toLocaleString('vi-VN') : '0' }}<span class="text-sm ml-1 underline">đ</span>
+            </h3>
           </div>
-          <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <button class="mt-6 w-full bg-[#075955] hover:bg-[#05403d] text-white text-xs font-black py-3.5 rounded-2xl transition-all duration-200 active:scale-95 shadow-md">
+            + NẠP THÊM TIỀN
+          </button>
         </section>
 
-        <!-- My Offers Chip Grid -->
-        <section class="bg-surface-container-lowest p-6 rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] flex flex-col justify-between">
+        <!-- Points Card -->
+        <section class="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden">
           <div>
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="font-headline-sm text-headline-sm text-on-surface">Ưu đãi của tôi</h3>
-              <span class="text-primary font-label-md text-label-md font-bold cursor-pointer">Xem tất cả</span>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <div class="flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed px-3 py-2 rounded-lg">
-                <span class="material-symbols-outlined text-[18px]">sell</span>
-                <span class="font-label-md text-label-md">-20% Vé xe</span>
+            <div class="flex justify-between items-start mb-4">
+              <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
+                <span class="material-symbols-outlined text-2xl font-black">stars</span>
               </div>
-              <div class="flex items-center gap-2 bg-secondary-fixed text-on-secondary-fixed px-3 py-2 rounded-lg">
-                <span class="material-symbols-outlined text-[18px]">local_activity</span>
-                <span class="font-label-md text-label-md">Tặng 50k</span>
-              </div>
+              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Điểm thưởng</p>
             </div>
+            <p class="text-sm font-bold text-slate-500 mb-1">Loyalty Points</p>
+            <h3 class="text-3xl font-black text-amber-500 tracking-tight">
+              1,250<span class="text-sm ml-1">pts</span>
+            </h3>
           </div>
-          <p class="font-body-md text-on-surface-variant mt-4 italic">3 mã sẽ hết hạn trong 2 ngày</p>
+          <div class="mt-6 flex items-center gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+            <span class="material-symbols-outlined text-emerald-500 text-sm">confirmation_number</span>
+            <p class="text-[10px] font-bold text-slate-600">Bạn có 2 mã giảm giá chưa dùng</p>
+          </div>
         </section>
       </div>
 
-      <!-- Settings List -->
-      <section class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden">
-        <div class="p-4 border-b border-surface-variant">
-          <h3 class="font-headline-sm text-headline-sm text-on-surface">Cài đặt & Hỗ trợ</h3>
+      <!-- Settings Menu -->
+      <section class="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-50 bg-slate-50/50">
+          <h3 class="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Cài đặt tài khoản</h3>
         </div>
         
-        <div @click="$router.push('/notifications')" class="flex items-center justify-between p-4 hover:bg-surface-container transition-colors cursor-pointer group">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
-              <span class="material-symbols-outlined">notifications</span>
+        <div class="divide-y divide-slate-50">
+          <div @click="$router.push('/history')" class="flex items-center justify-between p-6 hover:bg-slate-50 transition-all cursor-pointer group">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-[#075955]/10 group-hover:text-[#075955] transition-all duration-300">
+                <span class="material-symbols-outlined text-xl font-black">receipt_long</span>
+              </div>
+              <div>
+                <p class="text-sm font-black text-slate-800">Lịch sử đặt vé</p>
+                <p class="text-[11px] font-bold text-slate-400">Xem lại tất cả chuyến đi đã mua</p>
+              </div>
             </div>
-            <div>
-              <p class="font-body-lg text-body-lg text-on-surface">Cài đặt thông báo</p>
-              <p class="font-body-md text-body-md text-on-surface-variant">Quản lý các thông báo từ ứng dụng</p>
-            </div>
+            <span class="material-symbols-outlined text-slate-300 group-hover:text-[#075955] group-hover:translate-x-1 transition-transform">chevron_right</span>
           </div>
-          <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </div>
 
-        <div @click="$router.push('/ai-assistant')" class="flex items-center justify-between p-4 hover:bg-surface-container transition-colors cursor-pointer group">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
-              <span class="material-symbols-outlined">help</span>
+          <div @click="$router.push('/ai-assistant')" class="flex items-center justify-between p-6 hover:bg-slate-50 transition-all cursor-pointer group">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-[#075955]/10 group-hover:text-[#075955] transition-all duration-300">
+                <span class="material-symbols-outlined text-xl font-black">robot_2</span>
+              </div>
+              <div>
+                <p class="text-sm font-black text-slate-800">Trợ lý ảo AI</p>
+                <p class="text-[11px] font-bold text-slate-400">Hỏi đáp về hành trình & chính sách</p>
+              </div>
             </div>
-            <div>
-              <p class="font-body-lg text-body-lg text-on-surface">Trung tâm hỗ trợ</p>
-              <p class="font-body-md text-body-md text-on-surface-variant">Câu hỏi thường gặp & Chat hỗ trợ</p>
-            </div>
+            <span class="material-symbols-outlined text-slate-300 group-hover:text-[#075955] group-hover:translate-x-1 transition-transform">chevron_right</span>
           </div>
-          <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </div>
 
-        <div class="flex items-center justify-between p-4 hover:bg-surface-container transition-colors cursor-pointer group">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-primary group-hover:bg-primary-container group-hover:text-white transition-colors">
-              <span class="material-symbols-outlined">verified_user</span>
-            </div>
-            <div>
-              <p class="font-body-lg text-body-lg text-on-surface">Chính sách bảo mật</p>
-              <p class="font-body-md text-body-md text-on-surface-variant">Cách chúng tôi bảo vệ dữ liệu của bạn</p>
-            </div>
-          </div>
-          <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-        </div>
-
-        <div @click="$router.push('/')" class="flex items-center justify-between p-4 hover:bg-error-container/30 transition-colors cursor-pointer group">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-error">
-              <span class="material-symbols-outlined">logout</span>
-            </div>
-            <div>
-              <p class="font-body-lg text-body-lg text-error">Đăng xuất</p>
+          <div @click="handleLogout" class="flex items-center justify-between p-6 hover:bg-red-50 transition-all cursor-pointer group">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-500 group-hover:text-white transition-all duration-300">
+                <span class="material-symbols-outlined text-xl font-black">logout</span>
+              </div>
+              <div>
+                <p class="text-sm font-black text-red-600">Đăng xuất</p>
+                <p class="text-[11px] font-bold text-red-400">Thoát khỏi phiên làm việc hiện tại</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Secondary CTA -->
-      <section class="bg-surface-variant/50 p-6 rounded-xl border border-dashed border-outline-variant flex flex-col items-center text-center">
-        <span class="material-symbols-outlined text-4xl text-primary mb-2">support_agent</span>
-        <h4 class="font-headline-sm text-headline-sm text-on-surface">Bạn cần hỗ trợ gấp?</h4>
-        <p class="font-body-md text-body-md text-on-surface-variant mb-4">Tổng đài hỗ trợ hành khách luôn trực tuyến 24/7 để giúp bạn có chuyến đi suôn sẻ nhất.</p>
-        <button class="bg-primary text-on-primary font-body-lg text-body-lg px-8 py-3 rounded-full flex items-center gap-2 active:scale-95 transition-all">
-          <span class="material-symbols-outlined">call</span>
-          1900 6868
-        </button>
-      </section>
-
-      <!-- Version Footer -->
-      <footer class="pb-8 text-center">
-        <p class="font-label-md text-label-md text-on-surface-variant opacity-50">TransLink Pro Version 2.4.0 • Made with ❤️ in Vietnam</p>
+      <!-- Footer Info -->
+      <footer class="py-8 text-center">
+        <p class="text-[9px] font-black tracking-[0.3em] uppercase text-slate-300">Trung - Nam Enterprise v3.2.0 • Secure Session</p>
       </footer>
     </main>
+    </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+
+const router = useRouter();
+const user = ref(null);
+const loading = ref(true);
+
+const checkAuth = async () => {
+  const storedUser = localStorage.getItem('currentUser');
+  if (!storedUser) {
+    // 🚨 BÁO ĐỘNG: Chưa đăng nhập! Bắt buộc ra màn hình Login!
+    router.push('/auth/login');
+    loading.value = false;
+    return;
+  }
+
+  try {
+    const tempUser = JSON.parse(storedUser);
+    
+    // 📡 ĐỒNG BỘ THỜI GIAN THỰC: Hỏi trực tiếp SQL Server để lấy Số dư MỚI NHẤT
+    const response = await axios.get(`http://localhost:8080/api/users/${tempUser.id}`);
+    user.value = response.data;
+    
+    // Cập nhật ngược lại Cache của trình duyệt để mọi nơi đều được hưởng đồng bộ
+    localStorage.setItem('currentUser', JSON.stringify(user.value));
+  } catch (err) {
+    console.error("Lỗi kết nối SQL Server, dùng tạm dữ liệu Cache:", err);
+    // Nếu server tạm mất kết nối, dự phòng nạp cache cũ để không hỏng giao diện
+    try {
+      user.value = JSON.parse(storedUser);
+    } catch (e) {
+      router.push('/auth/login');
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleLogout = () => {
+  if (confirm("Bạn thực sự muốn đăng xuất khỏi hệ thống SkyBus?")) {
+    localStorage.removeItem('currentUser');
+    router.push('/auth/login');
+  }
+};
+
+onMounted(() => {
+  checkAuth();
+});
 </script>
+
+<style scoped>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+</style>

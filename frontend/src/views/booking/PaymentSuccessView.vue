@@ -1,109 +1,97 @@
 <template>
-  <div class="flex flex-col items-center pb-8 -mx-container-margin px-container-margin -mt-stack-space pt-stack-space">
-    <main class="w-full max-w-md flex flex-col items-center">
-      <!-- Header Success Animation/Illustration -->
-      <div class="flex flex-col items-center mb-8">
-        <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-          <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-lg">
-            <span class="material-symbols-outlined text-on-primary text-[40px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+  <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-900 pb-20">
+    <nav class="bg-[#075955] text-white border-b border-[#05403d] sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer" @click="$router.push('/')">
+          <span class="material-symbols-outlined text-white text-4xl">directions_bus</span>
+          <div class="flex flex-col">
+            <span class="text-xl font-bold leading-none tracking-tight">Trung - Nam</span>
+            <span class="text-[9px] uppercase tracking-wider font-semibold opacity-70">Nhà xe chuyên tuyến Miền Trung - Nam</span>
           </div>
         </div>
-        <h1 class="text-headline-lg font-headline-lg text-on-background text-center">Thanh toán thành công!</h1>
-        <p class="text-body-md font-body-md text-on-surface-variant text-center mt-3 px-4">
-          Cảm ơn bạn đã tin tưởng TransLink Pro. Vé của bạn đã được xác nhận và gửi về email.
-        </p>
+        <div class="flex items-center gap-6">
+          <button @click="$router.push('/')" class="text-sm font-semibold hover:text-yellow-300 transition-colors">
+            Xong
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="flex flex-col items-center pt-12">
+    <main class="w-full max-w-md px-4">
+      <div class="text-center mb-10">
+        <div class="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-100 shadow-sm">
+           <span class="material-symbols-outlined text-4xl font-bold">check</span>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight">Thanh toán thành công</h1>
+        <p class="text-xs font-bold text-gray-500 uppercase mt-2">Cảm ơn bạn đã sử dụng dịch vụ Trung - Nam</p>
       </div>
 
-      <!-- E-Ticket Card -->
-      <div class="w-full bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col relative border border-outline-variant/30">
-        <!-- Ticket Top Content -->
-        <div class="p-6">
-          <div class="flex justify-between items-start mb-6">
-            <div>
-              <p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Booking ID</p>
-              <p class="text-ticket-number font-ticket-number text-primary">TLP-8829104</p>
-            </div>
-            <div class="bg-primary/5 px-3 py-1 rounded-full border border-primary/10">
-              <span class="text-label-md font-label-md text-primary">Đã xác nhận</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between gap-4 mb-6">
-            <div class="flex-1">
-              <p class="text-label-md font-label-md text-on-surface-variant">Khởi hành</p>
-              <p class="text-headline-sm font-headline-sm text-on-surface">Hà Nội</p>
-            </div>
-            <div class="flex flex-col items-center justify-center px-2">
-              <span class="material-symbols-outlined text-primary">directions_bus</span>
-              <div class="w-12 h-[1px] bg-outline-variant my-1"></div>
-            </div>
-            <div class="flex-1 text-right">
-              <p class="text-label-md font-label-md text-on-surface-variant">Điểm đến</p>
-              <p class="text-headline-sm font-headline-sm text-on-surface">Sapa</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-y-4 pt-2">
-            <div>
-              <p class="text-label-md font-label-md text-on-surface-variant">Thời gian</p>
-              <p class="text-body-lg font-body-lg font-semibold text-on-surface">22:00, Hôm nay</p>
-            </div>
-            <div class="text-right">
-              <p class="text-label-md font-label-md text-on-surface-variant">Số ghế</p>
-              <p class="text-body-lg font-body-lg font-semibold text-on-surface">A12</p>
-            </div>
-          </div>
+      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+           <span class="text-[10px] font-bold text-gray-500 uppercase">Mã vé: <span class="text-gray-900">{{ bookingId }}</span></span>
+           <span class="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2 py-1 rounded">Đã xác nhận</span>
+        </div>
+        
+        <div class="p-6 space-y-6">
+           <div class="flex items-center justify-between">
+              <div>
+                 <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Khởi hành</p>
+                 <p class="font-bold text-gray-900">{{ fromCity }}</p>
+              </div>
+              <span class="material-symbols-outlined text-gray-300">arrow_forward</span>
+              <div class="text-right">
+                 <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Điểm đến</p>
+                 <p class="font-bold text-gray-900">{{ toCity }}</p>
+              </div>
+           </div>
+
+           <div class="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+              <div>
+                 <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Thời gian</p>
+                 <p class="text-sm font-bold text-gray-900">{{ depTime }}</p>
+              </div>
+              <div class="text-right">
+                 <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Số ghế</p>
+                 <p class="text-sm font-bold text-[#f03a17]">{{ seatsSelected }}</p>
+              </div>
+           </div>
         </div>
 
-        <!-- Perforation Line -->
-        <div class="relative h-6 flex items-center">
-          <div class="absolute left-[-12px] w-6 h-6 rounded-full bg-background border-r border-outline-variant/30"></div>
-          <div class="w-full border-t border-dashed border-outline-variant mx-4"></div>
-          <div class="absolute right-[-12px] w-6 h-6 rounded-full bg-background border-l border-outline-variant/30"></div>
-        </div>
-
-        <!-- Ticket Bottom Content (QR) -->
-        <div class="p-6 pt-2 flex flex-col items-center">
-          <div class="bg-white p-4 rounded-lg border border-outline-variant/30 mb-4">
-            <img alt="Booking QR Code" class="w-32 h-32" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvcSTc-yopzyL5kkWPAShhLSi6m-QVFQovMoFBbwu81zXCFdA7HI_7MW908ZrnD009iDAcPIHb5--mudKXVHS90QeG9NoFIA1SMLvNTmLoqfRaZjGn-a0Ems4yKj9q3gtVy4sANSpRbqhQ2Rt5x0o_R7m98GV18TQijQPm7F6Su8voMJ2UT9wVoLo-_0DO2r9ZBsnckyAt0KUm_XrD9V15bg1_iKdbjMgSUZt2HuPim9WW9PW3Wlp9W-oqnEfy-HJrFGAFS9FqLiap"/>
-          </div>
-          <p class="text-label-md font-label-md text-on-surface-variant text-center">Quét mã này khi lên xe</p>
+        <div class="p-8 bg-gray-50 border-t border-gray-100 flex flex-col items-center">
+           <div class="bg-white p-3 border border-gray-200 rounded-lg mb-4 shadow-sm">
+              <img :src="qrCodeUrl" class="w-32 h-32" />
+           </div>
+           <p class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Đưa mã này khi lên xe</p>
         </div>
       </div>
 
-      <!-- Payment Summary Card -->
-      <div class="w-full mt-6 bg-surface-container-high rounded-xl p-5 flex flex-col gap-3">
-        <div class="flex justify-between items-center">
-          <span class="text-body-md font-body-md text-on-surface-variant">Tổng tiền thanh toán</span>
-          <span class="text-body-lg font-body-lg font-bold text-secondary">300.000đ</span>
-        </div>
-        <div class="w-full h-[1px] bg-outline-variant/20"></div>
-        <div class="flex justify-between items-center">
-          <span class="text-body-md font-body-md text-on-surface-variant">Phương thức thanh toán</span>
-          <div class="flex items-center gap-2">
-            <span class="text-body-md font-body-md font-semibold text-on-surface">Ví MoMo</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="w-full mt-10 flex flex-col gap-3">
-        <button @click="$router.push('/history')" class="w-full h-touch-target-min bg-primary text-on-primary rounded-xl font-semibold shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2">
-          <span class="material-symbols-outlined text-[20px]">confirmation_number</span>
-          Xem vé của tôi
-        </button>
-        <button @click="$router.push('/')" class="w-full h-touch-target-min border border-primary text-primary rounded-xl font-semibold active:scale-95 transition-transform flex items-center justify-center gap-2">
-          <span class="material-symbols-outlined text-[20px]">home</span>
-          Về trang chủ
-        </button>
-      </div>
-
-      <!-- Security/Trust Footer -->
-      <div class="mt-8 flex items-center gap-2 opacity-60">
-        <span class="material-symbols-outlined text-[16px]">verified_user</span>
-        <p class="text-label-md font-label-md">Giao dịch an toàn & bảo mật bởi TransLink Pro</p>
+      <div class="mt-8 space-y-3">
+        <button @click="$router.push('/')" class="w-full bg-[#f03a17] hover:bg-[#d63314] text-white py-4 rounded-md font-bold text-sm uppercase tracking-widest transition-all shadow-md">Trang chủ</button>
+        <button @click="windowPrint" class="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-4 rounded-md font-bold text-sm uppercase tracking-widest transition-all">In vé</button>
       </div>
     </main>
+    </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+// Đổi tiền tố mặc định thành SAO-
+const bookingId = computed(() => route.query.bookingId || 'TN-' + Math.floor(100000 + Math.random() * 900000));
+const fromCity = computed(() => route.query.from || 'Hành trình');
+const toCity = computed(() => route.query.to || 'Điểm đến');
+const depTime = computed(() => route.query.time || 'Hôm nay');
+const seatsSelected = computed(() => route.query.seats || '---');
+
+const qrCodeUrl = computed(() => {
+  const data = `BOOKING:${bookingId.value}|SEATS:${seatsSelected.value}`;
+  // Đổi màu mã QR sang màu xanh ngọc của Trung - Nam (075955)
+  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=075955&bgcolor=ffffff`;
+});
+
+const windowPrint = () => { window.print(); };
 </script>

@@ -1,19 +1,19 @@
 <template>
-  <div class="bg-background text-on-background min-h-screen pb-20">
-    <TopAppBar v-if="!route.meta.hideHeader" :title="route.meta.title" :showBack="route.meta.showBack" />
-    
-    <main class="max-w-7xl mx-auto px-container-margin py-stack-space space-y-stack-space">
-      <RouterView />
+  <div class="min-h-screen bg-gray-50 flex flex-col">
+    <TopAppBar v-if="!$route.meta.hideHeader" />
+
+    <main class="flex-grow">
+      <router-view />
     </main>
 
-    <BottomNavBar v-if="!route.meta.hideFooter" />
+    <AppFooter />
+
+    <BottomNavBar class="md:hidden" />
   </div>
 </template>
 
 <script setup>
-import { useRoute } from 'vue-router';
-import TopAppBar from '../components/TopAppBar.vue';
-import BottomNavBar from '../components/BottomNavBar.vue';
-
-const route = useRoute();
+import TopAppBar from '../components/TopAppBar.vue'
+import BottomNavBar from '../components/BottomNavBar.vue'
+import AppFooter from '../components/AppFooter.vue' // Import component vừa tạo
 </script>

@@ -7,23 +7,83 @@
       <span class="material-symbols-outlined">menu</span>
     </button>
     
-    <div class="text-headline-md font-headline-md font-bold text-primary">{{ title }}</div>
+    <!-- Dynamic Title -->
+    <div 
+      @click="$router.push('/')" 
+      class="text-headline-md font-headline-md font-black text-primary cursor-pointer tracking-tight hover:opacity-80 transition-opacity flex items-center gap-1"
+    >
+      <span class="material-symbols-outlined text-primary text-2xl font-black">directions_bus</span>
+      {{ title }}
+    </div>
     
-    <button @click="$router.push('/profile')" aria-label="User profile photo" class="rounded-full overflow-hidden w-8 h-8 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer transition-transform active:scale-90">
-      <img alt="User profile photo" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBevtWWa4mh9YcJIdsooADz8ktlDAgErvvIrDBpc1saMPPzR1XPTDp_QeTD3zHw_h1zBnT4TGJEangkTHy7iLiXRp3jQT-s0-cCt6gvyLiK1eEk86xnY6Y3Jp4c0Pf2ruH7rkN0NS_H9OQxjaIGQS7Sg_dhWHBBhVUmo_BoIwYgCBKnfmI9flUYytsXjRivK25Vto-gHraIz1Fbjh-g4xrY2cJQW23TTB2JJJFOr6KvHu49ouQhkovUzx_0A_5QyXd_C80X_mI4rhy2"/>
-    </button>
+    <!-- 🔑 KHU VỰC AUTH THÔNG MINH -->
+    <div class="flex items-center gap-2">
+      <!-- Nút Admin (Chỉ hiện nếu là ADMIN) -->
+      <button 
+        v-if="currentUser && currentUser.role === 'ADMIN'" 
+        @click="$router.push('/admin')" 
+        class="flex items-center gap-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl hover:bg-primary transition-all shadow-sm"
+      >
+        <span class="material-symbols-outlined text-sm">dashboard</span>
+        Quản trị
+      </button>
+
+      <!-- 1. Nếu ĐÃ ĐĂNG NHẬP: Hiện Avatar viết tắt Tên cực Pro -->
+      <button 
+        v-if="currentUser" 
+        @click="$router.push('/profile')" 
+        aria-label="Trang cá nhân" 
+        class="rounded-xl overflow-hidden w-9 h-9 focus:outline-none ring-2 ring-primary/20 shadow-md cursor-pointer transition-all active:scale-90 hover:scale-105 border-2 border-white shrink-0"
+      >
+        <img 
+          alt="User avatar" 
+          class="w-full h-full object-cover" 
+          :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.fullName)}&background=6366f1&color=fff&bold=true&size=64`"
+        />
+      </button>
+
+      <!-- 2. Nếu CHƯA ĐĂNG NHẬP: Nút dẫn trực diện vô màn Login -->
+      <button 
+        v-else 
+        @click="$router.push('/auth/login')" 
+        class="bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl border border-primary/15 hover:bg-primary hover:text-white hover:shadow-md transition-all duration-200 active:scale-95 cursor-pointer shadow-sm"
+      >
+        Đăng nhập
+      </button>
+    </div>
   </header>
 </template>
 
 <script setup>
-defineProps({
+import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+
+const props = defineProps({
   title: {
     type: String,
-    default: 'TransLink Pro'
+    default: 'SkyBus'
   },
   showBack: {
     type: Boolean,
     default: false
   }
+});
+
+const route = useRoute();
+const currentUser = ref(null);
+
+// 🔍 Bộ quét quét dò tìm trạng thái đăng nhập
+const checkUserStatus = () => {
+  const stored = localStorage.getItem('currentUser');
+  currentUser.value = stored ? JSON.parse(stored) : null;
+};
+
+// Lắng nghe biến chuyển URL để tự động render lại Avatar khi đổi trang
+watch(() => route.path, () => {
+  checkUserStatus();
+});
+
+onMounted(() => {
+  checkUserStatus();
 });
 </script>

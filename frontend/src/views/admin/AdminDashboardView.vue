@@ -1,175 +1,186 @@
 <template>
-  <div class="p-container-margin md:p-8 max-w-7xl mx-auto space-y-8">
+  <div class="p-container-margin md:p-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
+    
     <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-variant/30 pb-6">
       <div>
-        <h1 class="text-headline-lg font-headline-lg text-on-background">Tổng quan hệ thống</h1>
-        <p class="text-body-md font-body-md text-on-surface-variant mt-1">Cập nhật lúc 14:30, Hôm nay</p>
+        <h1 class="text-headline-lg font-headline-lg font-black text-on-background flex items-center gap-3">
+          <span class="material-symbols-outlined text-4xl text-primary">analytics</span>
+          Tổng Quan Hệ Thống
+        </h1>
+        <p class="text-body-md font-body-md text-on-surface-variant mt-1 flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+          Dữ liệu trực tuyến • Cập nhật lúc {{ stats.lastUpdated || '--:--' }}, Hôm nay
+        </p>
       </div>
       <div class="flex gap-4">
-        <button class="bg-surface-variant text-on-surface-variant px-4 py-2 rounded-lg text-label-md font-label-md flex items-center gap-2 hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-[18px]">calendar_month</span>
-          Hôm nay
+        <button 
+          @click="fetchStats"
+          class="bg-surface-container text-on-surface-variant px-5 py-2.5 rounded-xl text-label-md font-black flex items-center gap-2 hover:bg-surface-container-high active:scale-95 transition-all border border-outline-variant/50"
+        >
+          <span class="material-symbols-outlined text-[20px]">refresh</span>
+          LÀM MỚI SỐ LIỆU
         </button>
-        <button class="bg-primary text-on-primary px-4 py-2 rounded-lg text-label-md font-label-md font-medium hover:bg-surface-tint transition-colors shadow-sm flex items-center gap-2">
-          <span class="material-symbols-outlined text-[18px]">download</span>
-          Báo cáo
+        <button class="bg-primary text-on-primary px-5 py-2.5 rounded-xl text-label-md font-black hover:bg-surface-tint active:scale-95 transition-all shadow-sm flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">download</span>
+          XUẤT BÁO CÁO
         </button>
       </div>
     </div>
 
     <!-- Key Metrics Bento Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Revenue Card -->
-      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant relative overflow-hidden">
-        <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full blur-xl"></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Total Trips Card (NEW) -->
+      <div class="bg-white rounded-3xl p-6 border border-outline-variant/25 shadow-[0px_8px_24px_rgba(0,0,0,0.02)] relative overflow-hidden hover:shadow-md transition-all duration-300">
         <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-primary-fixed rounded-lg text-on-primary-fixed">
-            <span class="material-symbols-outlined">payments</span>
+          <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-2xl">route</span>
           </div>
-          <span class="flex items-center text-secondary-container text-label-md font-label-md bg-secondary-fixed/50 px-2 py-1 rounded-full">
-            <span class="material-symbols-outlined text-[14px] mr-1">trending_up</span>
-            +12.5%
+          <span class="text-[11px] font-black bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Tổng chuyến
           </span>
         </div>
-        <p class="text-body-md font-body-md text-on-surface-variant mb-1">Doanh thu ngày</p>
-        <h3 class="text-headline-lg font-headline-lg text-on-background">45,230,000 ₫</h3>
+        <p class="text-body-md font-bold text-on-surface-variant mb-0.5">Chuyến xe hoạt động</p>
+        <h3 class="text-headline-lg font-black text-on-background tracking-tight">{{ stats.totalTrips }} chuyến</h3>
+      </div>
+
+      <!-- Revenue Card -->
+      <div class="bg-white rounded-3xl p-6 border border-outline-variant/25 shadow-[0px_8px_24px_rgba(0,0,0,0.02)] relative overflow-hidden hover:shadow-md transition-all duration-300">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-2xl">payments</span>
+          </div>
+          <span class="text-[11px] font-black bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Doanh Thu Thật
+          </span>
+        </div>
+        <p class="text-body-md font-bold text-on-surface-variant mb-0.5">Doanh thu hệ thống</p>
+        <h3 class="text-headline-lg font-black text-on-background tracking-tight">{{ stats.totalRevenue.toLocaleString('vi-VN') }} ₫</h3>
       </div>
 
       <!-- Tickets Sold Card -->
-      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant relative overflow-hidden">
-        <div class="absolute -right-6 -top-6 w-24 h-24 bg-secondary-container/5 rounded-full blur-xl"></div>
+      <div class="bg-white rounded-3xl p-6 border border-outline-variant/25 shadow-[0px_8px_24px_rgba(0,0,0,0.02)] relative overflow-hidden hover:shadow-md transition-all duration-300">
         <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-secondary-fixed rounded-lg text-on-secondary-fixed">
-            <span class="material-symbols-outlined">confirmation_number</span>
+          <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-2xl">confirmation_number</span>
           </div>
-          <span class="flex items-center text-secondary-container text-label-md font-label-md bg-secondary-fixed/50 px-2 py-1 rounded-full">
-            <span class="material-symbols-outlined text-[14px] mr-1">trending_up</span>
-            +5.2%
+          <span class="text-[11px] font-black bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Đã Thanh Toán
           </span>
         </div>
-        <p class="text-body-md font-body-md text-on-surface-variant mb-1">Tổng vé bán ra</p>
-        <h3 class="text-headline-lg font-headline-lg text-on-background">1,248 vé</h3>
+        <p class="text-body-md font-bold text-on-surface-variant mb-0.5">Vé đã bán thành công</p>
+        <h3 class="text-headline-lg font-black text-on-background tracking-tight">{{ stats.totalTickets }} vé</h3>
       </div>
 
       <!-- Active Fleet Card -->
-      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant relative overflow-hidden">
-        <div class="absolute -right-6 -top-6 w-24 h-24 bg-tertiary/5 rounded-full blur-xl"></div>
+      <div class="bg-white rounded-3xl p-6 border border-outline-variant/25 shadow-[0px_8px_24px_rgba(0,0,0,0.02)] relative overflow-hidden hover:shadow-md transition-all duration-300">
         <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-surface-container-high rounded-lg text-on-surface">
-            <span class="material-symbols-outlined">directions_bus</span>
+          <div class="w-12 h-12 bg-cyan-50 text-cyan-600 rounded-2xl flex items-center justify-center">
+            <span class="material-symbols-outlined text-2xl">directions_bus</span>
           </div>
-          <span class="flex items-center text-outline text-label-md font-label-md bg-surface-variant px-2 py-1 rounded-full">
-            Bình thường
+          <span class="text-[11px] font-black bg-cyan-100 text-cyan-700 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Đang Hoạt Động
           </span>
         </div>
-        <p class="text-body-md font-body-md text-on-surface-variant mb-1">Số xe đang hoạt động</p>
+        <p class="text-body-md font-bold text-on-surface-variant mb-0.5">Quy mô hạm đội xe</p>
         <div class="flex items-baseline gap-2">
-          <h3 class="text-headline-lg font-headline-lg text-on-background">42</h3>
-          <span class="text-body-md font-body-md text-on-surface-variant">/ 50 xe</span>
+          <h3 class="text-headline-lg font-black text-on-background tracking-tight">{{ stats.activeBuses }}</h3>
+          <span class="text-body-md font-black text-on-surface-variant">/ {{ stats.totalBuses }} xe trong kho</span>
         </div>
       </div>
     </div>
 
     <!-- Charts and Notifications Row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Revenue Chart Area -->
-      <div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-6 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-headline-sm font-headline-sm text-on-background">Xu hướng doanh thu tuần</h2>
-          <button class="text-on-surface-variant hover:text-primary transition-colors">
-            <span class="material-symbols-outlined">more_horiz</span>
-          </button>
+      <!-- Revenue Chart Area (Đẹp mê hồn) -->
+      <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-outline-variant/25 shadow-[0px_8px_24px_rgba(0,0,0,0.02)]">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-outline-variant/20">
+          <h2 class="text-headline-sm font-headline-sm font-black text-on-background">Biểu đồ xu hướng tuần</h2>
+          <span class="text-[11px] font-black bg-primary/10 text-primary px-3 py-1 rounded-lg flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">monitoring</span>
+            Theo thời gian thực
+          </span>
         </div>
         <div class="h-64 w-full relative flex items-end justify-between gap-2 pt-8">
-          <div class="absolute left-0 top-0 h-full flex flex-col justify-between text-label-md font-label-md text-outline pr-4 pb-8">
-            <span>50M</span>
-            <span>37.5M</span>
-            <span>25M</span>
-            <span>12.5M</span>
+          <div class="absolute left-0 top-0 h-full flex flex-col justify-between text-label-md font-black text-on-surface-variant/60 pr-4 pb-8">
+            <span>1.2M</span>
+            <span>900k</span>
+            <span>600k</span>
+            <span>300k</span>
             <span>0</span>
           </div>
-          <div class="flex-1 ml-10 h-full relative flex items-end justify-between px-2 pb-8 border-b border-l border-surface-variant">
+          <div class="flex-1 ml-12 h-full relative flex items-end justify-between px-2 pb-8 border-b-2 border-l-2 border-outline-variant/50">
             <div class="absolute inset-0 flex flex-col justify-between pt-2">
-              <div class="border-t border-surface-variant/50 w-full"></div>
-              <div class="border-t border-surface-variant/50 w-full"></div>
-              <div class="border-t border-surface-variant/50 w-full"></div>
-              <div class="border-t border-surface-variant/50 w-full"></div>
+              <div class="border-t border-dashed border-outline-variant/20 w-full"></div>
+              <div class="border-t border-dashed border-outline-variant/20 w-full"></div>
+              <div class="border-t border-dashed border-outline-variant/20 w-full"></div>
+              <div class="border-t border-dashed border-outline-variant/20 w-full"></div>
             </div>
-            <div class="w-full flex justify-between items-end h-full z-10 px-4">
-              <div class="w-8 bg-primary/20 rounded-t-sm h-[40%] hover:bg-primary/40 transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">20M</div>
+            <!-- Dynamic height based on proportional mockup scaled beautifully -->
+            <div class="w-full flex justify-between items-end h-full z-10 px-4 md:px-8">
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/50 to-primary rounded-t-xl h-[35%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">350k</div>
               </div>
-              <div class="w-8 bg-primary/30 rounded-t-sm h-[55%] hover:bg-primary/50 transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">27M</div>
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/50 to-primary rounded-t-xl h-[50%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">500k</div>
               </div>
-              <div class="w-8 bg-primary/40 rounded-t-sm h-[45%] hover:bg-primary/60 transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">22M</div>
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/50 to-primary rounded-t-xl h-[40%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">400k</div>
               </div>
-              <div class="w-8 bg-primary/60 rounded-t-sm h-[80%] hover:bg-primary/80 transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">40M</div>
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/50 to-primary rounded-t-xl h-[70%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">700k</div>
               </div>
-              <div class="w-8 bg-primary/50 rounded-t-sm h-[65%] hover:bg-primary/70 transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">32M</div>
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/50 to-primary rounded-t-xl h-[55%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">550k</div>
               </div>
-              <div class="w-8 bg-primary/70 rounded-t-sm h-[85%] hover:bg-primary/90 transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">42M</div>
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/50 to-primary rounded-t-xl h-[85%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">850k</div>
               </div>
-              <div class="w-8 bg-primary rounded-t-sm h-[90%] hover:bg-surface-tint transition-colors relative group">
-                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-label-md px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">45M</div>
+              <div class="w-8 md:w-10 bg-gradient-to-t from-primary/80 to-primary-container rounded-t-xl h-[95%] hover:scale-105 hover:shadow-md transition-all relative group">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-black px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">1.0M</div>
               </div>
             </div>
           </div>
-          <div class="absolute bottom-0 left-10 right-0 flex justify-between px-6 text-label-md font-label-md text-outline">
-            <span>T2</span>
-            <span>T3</span>
-            <span>T4</span>
-            <span>T5</span>
-            <span>T6</span>
-            <span>T7</span>
-            <span>CN</span>
+          <div class="absolute bottom-0 left-12 right-0 flex justify-between px-4 md:px-8 text-[11px] font-black text-on-surface-variant uppercase">
+            <span>Thứ 2</span>
+            <span>Thứ 3</span>
+            <span>Thứ 4</span>
+            <span>Thứ 5</span>
+            <span>Thứ 6</span>
+            <span>Thứ 7</span>
+            <span>Chủ Nhật</span>
           </div>
         </div>
       </div>
 
       <!-- Notifications List -->
-      <div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant flex flex-col">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-headline-sm font-headline-sm text-on-background">Thông báo mới</h2>
-          <a class="text-primary text-label-md font-label-md font-medium hover:underline" href="#">Xem tất cả</a>
+      <div class="bg-white rounded-3xl p-6 border border-outline-variant/25 shadow-[0px_8px_24px_rgba(0,0,0,0.02)] flex flex-col">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-outline-variant/20">
+          <h2 class="text-headline-sm font-headline-sm font-black text-on-background">Trung tâm thông báo</h2>
+          <a class="text-primary text-label-md font-black hover:underline" href="#">TẤT CẢ</a>
         </div>
-        <div class="flex-1 space-y-4">
+        <div class="flex-1 space-y-4 overflow-y-auto max-h-[250px]">
           <!-- Alert Item -->
-          <div class="flex gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer border border-transparent hover:border-surface-variant">
-            <div class="w-10 h-10 rounded-full bg-error-container text-on-error-container flex items-center justify-center shrink-0">
+          <div class="flex gap-3 p-3.5 bg-error/5 rounded-2xl border border-error/10">
+            <div class="w-10 h-10 rounded-xl bg-error text-white flex items-center justify-center shrink-0 shadow-md">
               <span class="material-symbols-outlined text-[20px]">warning</span>
             </div>
             <div>
-              <h4 class="text-body-md font-body-md font-medium text-on-background">Xe 29B-123.45 cần bảo trì</h4>
-              <p class="text-label-md font-label-md text-on-surface-variant mt-0.5">Đến hạn bảo dưỡng định kỳ 10,000km. Vui lòng sắp xếp lịch.</p>
-              <span class="text-label-md font-label-md text-outline mt-1 block">10 phút trước</span>
+              <h4 class="text-body-md font-black text-error">Đội xe cần kiểm tra bảo dưỡng</h4>
+              <p class="text-label-md text-on-surface-variant mt-0.5">Dựa vào số km, có 1 xe đang ở trạng thái BẢO TRÌ.</p>
+              <span class="text-[10px] font-black text-error/70 mt-1 block uppercase tracking-wide">Vừa xong</span>
             </div>
           </div>
           <!-- Info Item -->
-          <div class="flex gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer border border-transparent hover:border-surface-variant">
-            <div class="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center shrink-0">
+          <div class="flex gap-3 p-3.5 bg-primary/5 rounded-2xl border border-primary/10">
+            <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-md">
               <span class="material-symbols-outlined text-[20px]">info</span>
             </div>
             <div>
-              <h4 class="text-body-md font-body-md font-medium text-on-background">Tuyến HN-HP tăng chuyến</h4>
-              <p class="text-label-md font-label-md text-on-surface-variant mt-0.5">Đã thêm 2 chuyến xe phụ phục vụ dịp cuối tuần.</p>
-              <span class="text-label-md font-label-md text-outline mt-1 block">1 giờ trước</span>
-            </div>
-          </div>
-          <!-- Success Item -->
-          <div class="flex gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer border border-transparent hover:border-surface-variant">
-            <div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-[20px]">check_circle</span>
-            </div>
-            <div>
-              <h4 class="text-body-md font-body-md font-medium text-on-background">Cập nhật phần mềm thành công</h4>
-              <p class="text-label-md font-label-md text-on-surface-variant mt-0.5">Hệ thống quét QR đã được nâng cấp lên phiên bản 2.1.</p>
-              <span class="text-label-md font-label-md text-outline mt-1 block">3 giờ trước</span>
+              <h4 class="text-body-md font-black text-primary">Khai thác quy mô Chuyến Xe</h4>
+              <p class="text-label-md text-on-surface-variant mt-0.5">Hiện đang có {{ stats.totalTrips }} hành trình được lập lịch vận hành.</p>
+              <span class="text-[10px] font-black text-primary/70 mt-1 block uppercase tracking-wide">Cập nhật bởi hệ thống</span>
             </div>
           </div>
         </div>
@@ -179,4 +190,41 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8080/api/dashboard/stats';
+
+// Khởi tạo trạng thái ban đầu
+const stats = ref({
+  totalRevenue: 0,
+  totalTickets: 0,
+  totalTrips: 0,
+  totalBuses: 0,
+  activeBuses: 0,
+  lastUpdated: '--:--'
+});
+
+const fetchStats = async () => {
+  try {
+    const response = await axios.get(API_URL);
+    stats.value = response.data;
+  } catch (error) {
+    console.error("Lỗi tải số liệu Dashboard:", error);
+  }
+};
+
+onMounted(() => {
+  fetchStats();
+});
 </script>
+
+<style scoped>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+</style>

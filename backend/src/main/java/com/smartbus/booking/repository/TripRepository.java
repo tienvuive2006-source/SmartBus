@@ -10,6 +10,7 @@ import java.util.List;
 public interface TripRepository extends JpaRepository<Trip, Long> {
     
     // Hỗ trợ tìm kiếm linh hoạt theo điểm đi và điểm đến
-    List<Trip> findByDeparturePointContainingIgnoreCaseAndArrivalPointContainingIgnoreCase(
-            String departurePoint, String arrivalPoint);
+    // Hỗ trợ tìm kiếm linh hoạt theo điểm đi, điểm đến và ngày đi
+    List<Trip> findByDeparturePointContainingIgnoreCaseAndArrivalPointContainingIgnoreCaseAndDepartureDateContaining(
+            String departurePoint, String arrivalPoint, String departureDate);
 }

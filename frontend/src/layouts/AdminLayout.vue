@@ -1,75 +1,129 @@
 <template>
-  <div class="bg-background text-on-background font-body-lg flex min-h-screen">
-    <!-- Navigation Drawer -->
-    <aside class="hidden md:flex h-full w-80 rounded-r-xl bg-surface-container-low dark:bg-surface-container-lowest shadow-xl fixed inset-y-0 left-0 z-[60] flex-col py-6 gap-2 border-r border-surface-container dark:border-surface-container-highest">
-      <div class="px-6 mb-6">
-        <div class="flex items-center gap-4">
-          <img alt="Staff Member Avatar" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKe_uRBC52VlAm6N6_Q5NhZA-QoKjo6KVjiT8ROVAWlAKy-BytkenQVWoscOxech4J7xPoqaagYyvIoAsEVYCuSbt6SFrSlAZ3y9hXQJtJK0_6U-OaHF_RBIDykHc6EKD9B1DiCDcVeSv-frwcdWv-AOurv3n3Cp-dZNI8J3bcezrI4kuBJhWtQalZlPN7c1aQYZkW6IHY1ZcwO5hP1jg_UREEQ28vT1uxbO-HNHXs3Ee_7GJAt0VJTXf-eF6Ab8cUJfXBSeZLkvvJ"/>
-          <div>
-            <h2 class="text-headline-sm font-headline-sm font-bold text-primary dark:text-primary-fixed">Staff Portal</h2>
-            <p class="text-body-md font-body-md text-on-surface-variant">Route ID: BUS-402</p>
-            <span class="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary text-label-md font-label-md rounded-full">Active Duty</span>
-          </div>
-        </div>
+  <div class="flex h-screen w-screen bg-slate-50 font-sans overflow-hidden fixed inset-0">
+    <aside
+      :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+      class="fixed inset-y-0 left-0 z-50 w-64 bg-[#075955] text-white transition-transform duration-300 ease-in-out md:translate-x-0 shadow-2xl flex flex-col h-full"
+    >
+      <div class="flex items-center justify-center h-20 border-b border-[#0a7a75] px-4 shrink-0">
+        <span class="material-symbols-outlined text-3xl mr-3 text-yellow-400">directions_bus</span>
+        <h1 class="text-xl font-bold tracking-wider uppercase">Admin Panel</h1>
       </div>
 
-      <nav class="flex-1 flex flex-col gap-2">
-        <RouterLink to="/admin" :class="[
-          'flex items-center gap-4 rounded-lg px-4 py-3 mx-2 transition-all duration-200 ease-in-out',
-          $route.path === '/admin' ? 'bg-secondary-container text-on-secondary-container font-medium' : 'text-on-surface-variant hover:bg-surface-variant'
-        ]">
-          <span class="material-symbols-outlined" :style="$route.path === '/admin' ? 'font-variation-settings: \'FILL\' 1;' : ''">dashboard</span>
-          <span class="text-body-md font-body-md">Dashboard</span>
-        </RouterLink>
+      <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <p class="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-4 ml-2">Quản lý hệ thống</p>
         
-        <RouterLink to="/admin/trip-manager" :class="[
-          'flex items-center gap-4 rounded-lg px-4 py-3 mx-2 transition-all duration-200 ease-in-out',
-          $route.path === '/admin/trip-manager' ? 'bg-secondary-container text-on-secondary-container font-medium' : 'text-on-surface-variant hover:bg-surface-variant'
-        ]">
-          <span class="material-symbols-outlined" :style="$route.path === '/admin/trip-manager' ? 'font-variation-settings: \'FILL\' 1;' : ''">route</span>
-          <span class="text-body-md font-body-md">Trip Manager</span>
-        </RouterLink>
-        
-        <a href="#" class="flex items-center gap-4 text-on-surface-variant hover:bg-surface-variant rounded-lg px-4 py-3 mx-2 transition-all duration-200 ease-in-out">
-          <span class="material-symbols-outlined">qr_code_scanner</span>
-          <span class="text-body-md font-body-md">QR Scanner</span>
-        </a>
-        
-        <a href="#" class="flex items-center gap-4 text-on-surface-variant hover:bg-surface-variant rounded-lg px-4 py-3 mx-2 transition-all duration-200 ease-in-out">
-          <span class="material-symbols-outlined">groups</span>
-          <span class="text-body-md font-body-md">Passenger Logs</span>
-        </a>
-        
-        <RouterLink to="/admin/fleet-status" :class="[
-          'flex items-center gap-4 rounded-lg px-4 py-3 mx-2 transition-all duration-200 ease-in-out',
-          $route.path === '/admin/fleet-status' ? 'bg-secondary-container text-on-secondary-container font-medium' : 'text-on-surface-variant hover:bg-surface-variant'
-        ]">
-          <span class="material-symbols-outlined" :style="$route.path === '/admin/fleet-status' ? 'font-variation-settings: \'FILL\' 1;' : ''">directions_bus</span>
-          <span class="text-body-md font-body-md">Fleet Status</span>
-        </RouterLink>
-        
-        <a href="#" class="flex items-center gap-4 text-on-surface-variant hover:bg-surface-variant rounded-lg px-4 py-3 mx-2 transition-all duration-200 ease-in-out">
-          <span class="material-symbols-outlined">settings</span>
-          <span class="text-body-md font-body-md">Settings</span>
-        </a>
+        <router-link
+          v-for="item in menuItems"
+          :key="item.name"
+          :to="item.path"
+          class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-[#0a7a75]"
+          active-class="bg-[#0a7a75] border-l-4 border-yellow-400 shadow-md font-semibold"
+        >
+          <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
+          <span class="text-sm">{{ item.name }}</span>
+        </router-link>
       </nav>
+
+      <div class="p-4 border-t border-[#0a7a75] shrink-0">
+        <button class="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-red-200 hover:bg-red-500 hover:text-white transition-colors duration-200">
+          <span class="material-symbols-outlined text-[20px]">logout</span>
+          <span class="text-sm font-semibold">Đăng xuất</span>
+        </button>
+      </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 md:ml-80 min-h-screen pb-24 md:pb-0">
-      <!-- TopAppBar (Mobile Only) -->
-      <header class="bg-surface dark:bg-surface-dim shadow-sm flex items-center justify-between px-container-margin h-touch-target-min w-full max-w-7xl mx-auto md:hidden sticky top-0 z-50">
-        <button class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant transition-colors duration-200 p-2 rounded-full">
-          <span class="material-symbols-outlined">menu</span>
-        </button>
-        <h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed">TransLink Pro</h1>
-        <img alt="User profile photo" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxgOUExc-xCEuCmVWbL68vLdQITc_Y0wv8U7XGef5KpT-aqdrR5fbNy4N0V7mNL6ft5hutTvSBDGjAAdPqVCaQeqJBoSe6TXOxNy1E5Hg5qzEimd2_BV76X7jygNfQe7wU9_whKbmyq67c-915xWoEj4ytKrQCQdV_sGazpI0FO_xxqhUgzSiNjFpOG_ZswDJpS-kJjepr9ZbSoQ5N2picJIQAz58JcIXXgLg9JiVzRVkt8Pe0heGRuavgG2-UEcd2KNRlNhuNC0uz"/>
+    <div
+      v-if="isSidebarOpen"
+      @click="isSidebarOpen = false"
+      class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden transition-opacity"
+    ></div>
+
+    <div class="flex-1 flex flex-col min-w-0 md:ml-64">
+      <header class="bg-white shadow-sm border-b border-gray-200 h-20 flex items-center justify-between px-6 lg:px-10 z-10 shrink-0">
+        <div class="flex items-center gap-4">
+          <button
+            @click="isSidebarOpen = !isSidebarOpen"
+            class="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none transition-colors"
+          >
+            <span class="material-symbols-outlined text-2xl">menu</span>
+          </button>
+          
+          <h2 class="text-xl font-bold text-gray-800 hidden sm:block">Dashboard</h2>
+        </div>
+
+        <div class="flex items-center gap-6">
+          <button class="relative p-2 text-gray-500 hover:text-[#075955] transition-colors rounded-full hover:bg-gray-100">
+            <span class="material-symbols-outlined">notifications</span>
+            <span class="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+          </button>
+          
+          <div class="flex items-center gap-3 border-l pl-6 border-gray-200 cursor-pointer group">
+            <div class="w-10 h-10 rounded-full bg-[#075955] text-white flex items-center justify-center font-bold shadow-md group-hover:scale-105 transition-transform">
+              T
+            </div>
+            <div class="hidden md:block text-sm">
+              <p class="font-bold text-gray-800">Quản trị viên</p>
+              <p class="text-gray-500 text-xs">admin@saomaifly.com</p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <RouterView />
-    </main>
+      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-6 lg:p-8 min-h-0">
+        <div class="max-w-7xl mx-auto">
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :key="$route.path" :is="Component" />
+            </transition>
+          </router-view>
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
+const isSidebarOpen = ref(false)
+
+// Danh sách menu được map dựa trên các file View admin mà bạn đang có
+const menuItems = [
+  { name: 'Tổng quan', path: '/admin', icon: 'pie_chart' },
+  { name: 'Quản lý Đặt vé', path: '/admin/booking-manager', icon: 'receipt_long' },
+  { name: 'Quản lý Chuyến xe', path: '/admin/trip-manager', icon: 'route' },
+  { name: 'Quản lý Loại xe', path: '/admin/bus-type', icon: 'directions_bus_filled' },
+  { name: 'Trạng thái Đội xe', path: '/admin/fleet-status', icon: 'local_shipping' },
+  { name: 'Quản lý Người dùng', path: '/admin/users', icon: 'manage_accounts' },
+]
 </script>
+
+<style scoped>
+/* Hiệu ứng chuyển cảnh mượt mà khi đổi trang trong Admin */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* Tùy chỉnh thanh cuộn cho đẹp mắt hơn */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1; 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8; 
+}
+</style>

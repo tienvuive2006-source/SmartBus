@@ -19,7 +19,7 @@ public class HealthCheckController {
         status.put("message", "Hệ thống Backend Spring Boot đang hoạt động ổn định!");
         status.put("timestamp", LocalDateTime.now());
         status.put("environment", "Development");
-        status.put("project", "TransLink Pro - Graduation Project");
+        status.put("project", "SkyBus - Graduation Project");
         return status;
     }
 }

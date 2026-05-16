@@ -1,136 +1,216 @@
 <template>
-  <div class="pb-32 -mx-container-margin px-container-margin -mt-stack-space pt-stack-space">
-    <!-- Header -->
-    <header class="bg-surface sticky top-0 z-40 h-touch-target-min flex items-center justify-between shadow-sm left-0 right-0 px-container-margin max-w-7xl mx-auto -mx-container-margin">
-      <button @click="$router.back()" class="text-on-surface-variant hover:bg-surface-variant rounded-full w-10 h-10 flex items-center justify-center transition-colors">
-        <span class="material-symbols-outlined">arrow_back</span>
-      </button>
-      <h1 class="text-headline-md font-headline-md text-on-surface flex-1 text-center pr-10">Thanh toán</h1>
-    </header>
+  <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-800 pb-20">
+    <nav class="bg-[#075955] text-white border-b border-[#05403d] sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button @click="$router.back()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-all border border-white/20">
+            <span class="material-symbols-outlined text-sm font-black text-white">arrow_back</span>
+          </button>
+          <div class="flex flex-col">
+            <span class="text-lg font-bold leading-none tracking-tight">Thanh toán</span>
+            <span class="text-[9px] uppercase tracking-wider font-semibold opacity-70">Nhà xe Trung - Nam</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-emerald-400">
+           <span class="material-symbols-outlined text-xl">shield_with_heart</span>
+           <span class="text-[10px] font-black uppercase tracking-widest">Bảo mật 256-bit</span>
+        </div>
+      </div>
+    </nav>
 
-    <main class="max-w-md mx-auto py-stack-space space-y-stack-space">
-      <!-- Progress Stepper -->
-      <div class="flex items-center justify-center gap-2 mb-6">
-        <div class="h-1 w-8 bg-surface-variant rounded-full"></div>
-        <div class="h-1 w-8 bg-surface-variant rounded-full"></div>
-        <div class="h-1 w-8 bg-surface-variant rounded-full"></div>
-        <div class="h-1 w-8 bg-secondary-container rounded-full"></div>
+    <div class="max-w-3xl mx-auto px-4 py-10">
+      <div v-if="loading" class="flex justify-center py-20">
+        <div class="w-8 h-8 border-2 border-gray-200 border-t-[#075955] rounded-full animate-spin"></div>
       </div>
 
-      <!-- Trip Summary Card -->
-      <section class="bg-surface-container-lowest rounded-xl p-4 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant">
-        <h2 class="text-headline-sm font-headline-sm mb-4">Tóm tắt chuyến đi</h2>
-        <div class="flex items-center gap-4 mb-4">
-          <div class="w-12 h-12 bg-primary-container/10 rounded-lg flex items-center justify-center text-primary-container">
-            <span class="material-symbols-outlined">directions_bus</span>
-          </div>
-          <div>
-            <p class="text-body-md font-body-md font-semibold">Sao Việt Express</p>
-            <p class="text-label-md font-label-md text-on-surface-variant">Xe giường nằm 34 chỗ</p>
-          </div>
-        </div>
-        <div class="relative pl-6 py-2 border-l-2 border-dashed border-outline-variant ml-3 mb-4 space-y-6">
-          <div class="relative">
-            <div class="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-primary-container border-2 border-surface-container-lowest"></div>
-            <p class="text-body-md font-body-md font-semibold">Hà Nội</p>
-            <p class="text-label-md font-label-md text-on-surface-variant">22:00 • Bến xe Mỹ Đình</p>
-          </div>
-          <div class="relative">
-            <div class="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-secondary-container border-2 border-surface-container-lowest"></div>
-            <p class="text-body-md font-body-md font-semibold">Sapa</p>
-            <p class="text-label-md font-label-md text-on-surface-variant">04:30 (Hôm sau) • VP Sapa</p>
-          </div>
-        </div>
-        <div class="bg-surface-container-low rounded-lg p-3 flex justify-between items-center mt-4">
-          <div>
-            <p class="text-label-md font-label-md text-on-surface-variant">Số ghế</p>
-            <p class="text-ticket-number font-ticket-number text-primary">A12</p>
-          </div>
-          <div class="text-right">
-            <p class="text-label-md font-label-md text-on-surface-variant">Hành khách</p>
-            <p class="text-body-md font-body-md font-semibold">1 Người lớn</p>
-          </div>
-        </div>
-      </section>
+      <div v-else-if="trip" class="space-y-6">
+        <section class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+           <h2 class="font-bold text-gray-900 mb-6 uppercase text-xs tracking-widest pb-2 border-b border-gray-100">Chi tiết hành trình</h2>
+           <div class="flex items-center gap-4 mb-6">
+              <div class="w-12 h-12 bg-[#075955]/10 rounded-lg flex items-center justify-center border border-[#075955]/20">
+                 <span class="material-symbols-outlined text-[#075955]">directions_bus</span>
+              </div>
+              <div>
+                 <p class="font-bold text-gray-900">{{ trip.companyName }}</p>
+                 <p class="text-xs text-gray-500 font-medium">{{ trip.busType }}</p>
+              </div>
+           </div>
+           <div class="grid grid-cols-2 gap-8 text-sm">
+              <div>
+                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Khởi hành</p>
+                 <p class="font-bold text-gray-900">{{ trip.departureTime }} - {{ trip.departurePoint }}</p>
+              </div>
+              <div class="text-right">
+                 <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Ghế ngồi</p>
+                 <p class="font-bold text-[#f03a17] uppercase tracking-widest">{{ seatNames }}</p>
+              </div>
+           </div>
+        </section>
 
-      <!-- Price Details Card -->
-      <section class="bg-surface-container-lowest rounded-xl p-4 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant">
-        <h2 class="text-headline-sm font-headline-sm mb-4">Chi tiết giá</h2>
-        <div class="space-y-3 mb-4">
-          <div class="flex justify-between items-center text-body-md font-body-md text-on-surface-variant">
-            <span>Giá vé gốc (1 vé)</span>
-            <span>350.000đ</span>
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <h2 class="text-sm font-bold text-gray-900 uppercase tracking-widest mb-4">Thông tin hành khách</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Họ và tên</label>
+              <input v-model="customerName" type="text" placeholder="Nhập tên người đi" class="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm font-semibold focus:outline-[#075955] text-gray-800"/>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Số điện thoại</label>
+              <input v-model="customerPhone" type="tel" placeholder="Số điện thoại nhận vé" class="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-sm font-semibold focus:outline-[#075955] text-gray-800"/>
+            </div>
           </div>
-          <div class="flex justify-between items-center text-body-md font-body-md text-secondary-container">
-            <span>Mã giảm giá (NEWUSER)</span>
-            <span>-50.000đ</span>
-          </div>
         </div>
-        <hr class="border-dashed border-outline-variant my-3"/>
-        <div class="flex justify-between items-center">
-          <span class="text-body-lg font-body-lg font-semibold">Tổng thanh toán</span>
-          <span class="text-headline-md font-headline-md text-primary">300.000đ</span>
-        </div>
-      </section>
 
-      <!-- Payment Methods Card -->
-      <section class="bg-surface-container-lowest rounded-xl p-4 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-surface-variant">
-        <h2 class="text-headline-sm font-headline-sm mb-4">Phương thức thanh toán</h2>
-        <div class="space-y-3">
-          <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-primary bg-primary-fixed/20 cursor-pointer transition-colors">
-            <input checked class="text-primary focus:ring-primary w-5 h-5 border-outline" name="payment_method" type="radio"/>
-            <div class="w-8 h-8 rounded bg-[#A50064] flex items-center justify-center text-white font-bold text-xs">
-              MoMo
-            </div>
-            <div class="flex-1">
-              <p class="text-body-md font-body-md font-medium text-on-surface">Ví điện tử MoMo</p>
-            </div>
-          </label>
-          <label class="flex items-center gap-3 p-3 rounded-lg border border-surface-variant hover:bg-surface-container-low cursor-pointer transition-colors">
-            <input class="text-primary focus:ring-primary w-5 h-5 border-outline" name="payment_method" type="radio"/>
-            <div class="w-8 h-8 rounded bg-[#0068FF] flex items-center justify-center text-white font-bold text-xs">
-              Zalo
-            </div>
-            <div class="flex-1">
-              <p class="text-body-md font-body-md font-medium text-on-surface">ZaloPay</p>
-            </div>
-          </label>
-          <label class="flex items-center gap-3 p-3 rounded-lg border border-surface-variant hover:bg-surface-container-low cursor-pointer transition-colors">
-            <input class="text-primary focus:ring-primary w-5 h-5 border-outline" name="payment_method" type="radio"/>
-            <div class="w-8 h-8 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant">
-              <span class="material-symbols-outlined text-[20px]">account_balance</span>
-            </div>
-            <div class="flex-1">
-              <p class="text-body-md font-body-md font-medium text-on-surface">Thẻ ATM / Internet Banking</p>
-            </div>
-          </label>
-          <label class="flex items-center gap-3 p-3 rounded-lg border border-surface-variant hover:bg-surface-container-low cursor-pointer transition-colors">
-            <input class="text-primary focus:ring-primary w-5 h-5 border-outline" name="payment_method" type="radio"/>
-            <div class="w-8 h-8 rounded bg-surface-variant flex items-center justify-center text-on-surface-variant">
-              <span class="material-symbols-outlined text-[20px]">credit_card</span>
-            </div>
-            <div class="flex-1">
-              <p class="text-body-md font-body-md font-medium text-on-surface">Thẻ tín dụng (Visa/Mastercard)</p>
-            </div>
-          </label>
-        </div>
-      </section>
-    </main>
+        <section class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+           <h2 class="font-bold text-gray-900 mb-6 uppercase text-xs tracking-widest pb-2 border-b border-gray-100">Phương thức thanh toán</h2>
+            <div class="space-y-3">
+              <div 
+                v-for="method in paymentMethods" :key="method.id"
+                @click="selectedMethod = method.id"
+                :class="['p-4 rounded-lg border-2 transition-all cursor-pointer flex items-center justify-between', selectedMethod === method.id ? 'border-[#075955] bg-[#075955]/5' : 'border-gray-100 hover:border-gray-200']"
+              >
+                <div class="flex items-center gap-4">
+                   <div :class="['p-2 rounded-lg', selectedMethod === method.id ? 'bg-[#075955] text-white' : 'bg-gray-100 text-gray-400']">
+                      <span class="material-symbols-outlined text-lg">{{ method.icon }}</span>
+                   </div>
+                   <div>
+                      <span class="text-sm font-black text-gray-900 uppercase tracking-widest">{{ method.name }}</span>
+                      <p v-if="method.id === 'WALLET' && currentUser" class="text-[10px] font-bold text-emerald-600 mt-0.5">
+                        Số dư hiện tại: {{ currentUser.walletBalance?.toLocaleString() }}đ
+                      </p>
+                   </div>
+                </div>
+                <div :class="['w-5 h-5 rounded-full border-2 flex items-center justify-center', selectedMethod === method.id ? 'border-[#075955] bg-[#075955]' : 'border-gray-200']">
+                   <div v-if="selectedMethod === method.id" class="w-2 h-2 bg-white rounded-full"></div>
+                </div>
+              </div>
+           </div>
+        </section>
 
-    <!-- Bottom Action Bar -->
-    <div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest p-4 shadow-[0px_-4px_12px_rgba(0,0,0,0.05)] border-t border-surface-variant z-50">
-      <div class="max-w-md mx-auto flex items-center gap-4">
-        <div class="flex-1">
-          <p class="text-label-md font-label-md text-on-surface-variant">Tổng tiền</p>
-          <p class="text-headline-sm font-headline-sm text-primary font-bold">300.000đ</p>
-        </div>
-        <button @click="$router.push('/booking/payment-success')" class="bg-secondary-container text-on-secondary-container px-8 py-3 rounded-full text-body-md font-body-md font-semibold shadow-md hover:bg-secondary-container/90 transition-colors active:scale-95">
-          Thanh toán ngay
-        </button>
+        <section class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+           <div>
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tổng tiền thanh toán</p>
+              <p class="text-3xl font-bold text-[#075955] tracking-tighter">{{ totalAmount.toLocaleString() }}đ</p>
+           </div>
+           <button 
+             @click="processPayment" :disabled="isProcessing"
+             class="w-full md:w-64 bg-[#f03a17] hover:bg-[#d63314] text-white py-5 rounded-md font-bold text-sm uppercase tracking-widest transition-all shadow-md active:scale-95 disabled:bg-gray-300 disabled:text-gray-500"
+           >
+             {{ isProcessing ? 'Đang xử lý...' : 'Thanh toán ngay' }}
+           </button>
+        </section>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
+
+const route = useRoute();
+const router = useRouter();
+const tripId = route.query.tripId;
+const selectedSeatsStr = route.query.seats;
+const seatsArray = computed(() => selectedSeatsStr ? selectedSeatsStr.split(',') : []);
+const seatNames = computed(() => seatsArray.value.join(', '));
+const totalAmount = computed(() => parseInt(route.query.total) || 0);
+
+const trip = ref(null);
+const loading = ref(true);
+const isProcessing = ref(false);
+const currentUser = ref(null);
+const selectedMethod = ref('ATM');
+const customerName = ref('');
+const customerPhone = ref('');
+
+const paymentMethods = computed(() => {
+  const methods = [
+    { id: 'ATM', name: 'Thẻ Nội Địa / ATM', icon: 'credit_card' },
+    { id: 'MOMO', name: 'Ví MoMo', icon: 'wallet' },
+    { id: 'VNPAY', name: 'VNPAY-QR', icon: 'qr_code_2' }
+  ];
+  if (currentUser.value) {
+    // Đã đổi tên thành Ví Saomaifly
+    methods.unshift({ id: 'WALLET', name: 'Ví Trung - Nam (Khuyên dùng)', icon: 'account_balance_wallet' });
+  }
+  return methods;
+});
+
+const fetchTrip = async () => {
+  try {
+    const res = await axios.get(`http://localhost:8080/api/trips/${tripId}`);
+    trip.value = res.data;
+  } catch (err) { console.error(err); }
+  finally { loading.value = false; }
+};
+
+const processPayment = async () => {
+  if (!customerName.value || !customerPhone.value) return alert('Vui lòng nhập đầy đủ thông tin hành khách!');
+  
+  // 🛡️ KIỂM TRA SỐ DƯ VÍ (NẾU CHỌN THANH TOÁN BẰNG VÍ)
+  if (selectedMethod.value === 'WALLET') {
+    const balance = currentUser.value?.walletBalance || 0;
+    if (balance < totalAmount.value) {
+      return alert(`Số dư Ví Trung - Nam không đủ! Bạn cần thêm ${(totalAmount.value - balance).toLocaleString()}đ nữa để đặt vé này.`);
+    }
+  }
+
+  isProcessing.value = true;
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const bookingData = {
+      customerName: customerName.value,
+      customerPhone: customerPhone.value,
+      customerEmail: currentUser.email || 'customer@trungnam.com', // Đổi email mặc định
+      seatNumbers: seatsArray.value,
+      totalPrice: totalAmount.value,
+      paymentMethod: selectedMethod.value,
+      status: 'SUCCESS',
+      trip: { id: parseInt(tripId) },
+      user: currentUser.id ? { id: currentUser.id } : null
+    };
+
+    const res = await axios.post('http://localhost:8080/api/admin/bookings/create', bookingData);
+    if (res.status === 200 || res.status === 201) {
+      if (res.data.user) {
+        localStorage.setItem('currentUser', JSON.stringify(res.data.user));
+      }
+
+      // 💾 LƯU VÀO LỊCH SỬ LOCAL (Để hiện bên trang HistoryView)
+      const newTicket = {
+        id: res.data.id,
+        from: trip.value.departurePoint,
+        to: trip.value.arrivalPoint,
+        time: trip.value.departureTime,
+        date: trip.value.departureDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+        seats: seatNames.value,
+        total: totalAmount.value,
+        method: selectedMethod.value,
+        busType: trip.value.busType
+      };
+      
+      const history = JSON.parse(localStorage.getItem('trungnam_history') || '[]');
+      history.unshift(newTicket); // Thêm vào đầu danh sách
+      localStorage.setItem('trungnam_history', JSON.stringify(history));
+
+      router.push({ path: '/booking/payment-success', query: { bookingId: res.data.id, from: trip.value.departurePoint, to: trip.value.arrivalPoint, time: trip.value.departureTime, seats: seatNames.value, total: totalAmount.value, method: selectedMethod.value } });
+    }
+  } catch (err) { alert('Thanh toán thất bại: ' + (err.response?.data?.error || err.message)); }
+  finally { isProcessing.value = false; }
+};
+
+onMounted(() => {
+  const userStr = localStorage.getItem('currentUser');
+  if (userStr) {
+    currentUser.value = JSON.parse(userStr);
+    customerName.value = currentUser.value.fullName || '';
+    customerPhone.value = currentUser.value.phone || '';
+    selectedMethod.value = 'WALLET'; 
+  } else {
+    selectedMethod.value = 'ATM';
+  }
+  fetchTrip();
+});
 </script>

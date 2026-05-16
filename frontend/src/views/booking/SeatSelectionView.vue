@@ -1,181 +1,225 @@
 <template>
-  <div class="pb-32 -mx-container-margin px-container-margin -mt-stack-space pt-stack-space">
-    <!-- Top App Bar -->
-    <header class="fixed top-0 w-full z-50 bg-surface shadow-sm flex items-center justify-between px-container-margin h-touch-target-min left-0 right-0 max-w-7xl mx-auto">
-      <div class="flex items-center gap-4">
-        <button @click="$router.back()" class="active:scale-95 duration-100 p-2 rounded-full hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-primary">arrow_back</span>
-        </button>
-        <h1 class="font-headline-sm text-headline-sm font-bold text-primary">Chi tiết chuyến xe</h1>
+  <div class="min-h-screen bg-[#f2f5f8] font-sans text-gray-800 pb-20">
+    <header class="bg-[#075955] border-b border-[#05403d] sticky top-0 z-50 shadow-md">
+      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <button @click="$router.back()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-all border border-white/20">
+            <span class="material-symbols-outlined text-sm font-black text-white">arrow_back</span>
+          </button>
+          <div>
+            <h1 class="text-base font-black text-white uppercase tracking-wider">Chọn ghế chuyến xe</h1>
+            <div v-if="trip" class="flex items-center gap-2">
+               <span class="text-[10px] font-bold text-yellow-300 uppercase">{{ trip.departurePoint }}</span>
+               <span class="material-symbols-outlined text-[10px] text-white/70">east</span>
+               <span class="text-[10px] font-bold text-yellow-300 uppercase">{{ trip.arrivalPoint }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="trip" class="hidden md:flex items-center gap-6">
+           <div class="text-right">
+              <p class="text-[9px] font-black text-white/70 uppercase tracking-widest">Khởi hành</p>
+              <p class="text-xs font-black text-white">{{ trip.departureTime }} • {{ trip.departureDate }}</p>
+           </div>
+        </div>
       </div>
-      <button class="active:scale-95 duration-100 p-2 rounded-full hover:bg-surface-container-high transition-colors">
-        <span class="material-symbols-outlined text-primary">share</span>
-      </button>
     </header>
 
-    <main class="mt-8 space-y-6">
-      <!-- Progress Stepper -->
-      <div class="py-4 flex items-center justify-center">
-        <div class="flex items-center w-full max-w-md">
-          <div class="flex flex-col items-center flex-1">
-            <div class="w-8 h-8 rounded-full bg-secondary-container text-white flex items-center justify-center font-bold text-sm">1</div>
-            <span class="text-label-md font-label-md mt-1 text-secondary">Chọn ghế</span>
+    <main class="max-w-6xl mx-auto px-4 py-6 flex flex-col xl:flex-row gap-6">
+      
+      <div class="flex-1 space-y-4">
+        
+        <div class="bg-white p-3 border border-gray-200 rounded-lg flex items-center justify-around shadow-sm">
+             <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded border border-gray-300 bg-white"></div>
+                <span class="text-[10px] font-black text-gray-500 uppercase">Trống</span>
+             </div>
+             <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded border border-[#075955] bg-[#075955] shadow-sm"></div>
+                <span class="text-[10px] font-black text-[#075955] uppercase">Đang chọn</span>
+             </div>
+             <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded border border-gray-300 bg-gray-300 flex items-center justify-center">
+                   <span class="material-symbols-outlined text-[10px] text-white font-black">lock</span>
+                </div>
+                <span class="text-[10px] font-black text-gray-500 uppercase">Đã bán</span>
+             </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white border border-gray-200 rounded-xl p-6 relative shadow-sm">
+            <div class="absolute top-3 left-3 bg-gray-100 px-2 py-0.5 rounded text-[9px] font-black text-gray-600 uppercase border border-gray-200">Tầng Dưới</div>
+            
+            <div class="max-w-[240px] mx-auto mt-4 border-x-2 border-t-8 border-gray-300 rounded-t-[40px] p-4 pb-8 bg-gray-50/50">
+               <div class="flex justify-between items-center mb-6 opacity-40 px-2">
+                  <div class="w-8 h-8 border-2 border-gray-400 rounded-lg flex items-center justify-center">
+                     <span class="material-symbols-outlined text-sm text-gray-600">steering_wheel</span>
+                  </div>
+                  <div class="w-6 h-10 bg-gray-300 rounded-sm"></div>
+               </div>
+
+               <div class="grid grid-cols-3 gap-y-2 gap-x-3">
+                 <div v-for="seat in floor1Seats" :key="seat.id" class="flex justify-center">
+                    <button 
+                      @click="toggleSeat(seat)"
+                      :disabled="seat.isBooked"
+                      :class="['w-10 h-11 border rounded flex flex-col items-center justify-center transition-all font-black relative',
+                        seat.isBooked ? 'bg-gray-300 border-gray-400 text-white cursor-not-allowed opacity-80' : 
+                        selectedSeats.includes(seat.seatNumber) ? 'bg-[#075955] border-[#05403d] text-white shadow-md scale-105 z-10' : 
+                        'bg-white border-gray-300 hover:border-[#075955] text-gray-600 hover:text-[#075955]']"
+                    >
+                      <span v-if="seat.isBooked" class="material-symbols-outlined text-[12px]">lock</span>
+                      <span v-else class="text-[10px]">{{ seat.seatNumber }}</span>
+                      <div :class="['w-6 h-1 rounded-full mt-0.5', selectedSeats.includes(seat.seatNumber) ? 'bg-white/50' : seat.isBooked ? 'bg-white/30' : 'bg-gray-200']"></div>
+                    </button>
+                 </div>
+               </div>
+               
+               <div class="mt-4 text-center">
+                  <span class="text-[8px] font-black text-gray-400 uppercase tracking-[0.3em]">Hành lang xe</span>
+               </div>
+            </div>
           </div>
-          <div class="h-0.5 flex-1 bg-outline-variant"></div>
-          <div class="flex flex-col items-center flex-1">
-            <div class="w-8 h-8 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-bold text-sm">2</div>
-            <span class="text-label-md font-label-md mt-1 text-on-surface-variant">Thông tin</span>
-          </div>
-          <div class="h-0.5 flex-1 bg-outline-variant"></div>
-          <div class="flex flex-col items-center flex-1">
-            <div class="w-8 h-8 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-bold text-sm">3</div>
-            <span class="text-label-md font-label-md mt-1 text-on-surface-variant">Thanh toán</span>
+
+          <div class="bg-white border border-gray-200 rounded-xl p-6 relative shadow-sm">
+            <div class="absolute top-3 left-3 bg-gray-100 px-2 py-0.5 rounded text-[9px] font-black text-gray-600 uppercase border border-gray-200">Tầng Trên</div>
+            
+            <div class="max-w-[240px] mx-auto mt-4 border-x-2 border-t-8 border-gray-300 rounded-t-[40px] p-4 pb-8 bg-gray-50/50">
+               <div class="flex justify-between items-center mb-6 opacity-30 px-2 text-gray-600">
+                  <span class="material-symbols-outlined text-lg">deck</span>
+                  <span class="material-symbols-outlined text-xl">air</span>
+               </div>
+
+               <div class="grid grid-cols-3 gap-y-2 gap-x-3">
+                 <div v-for="seat in floor2Seats" :key="seat.id" class="flex justify-center">
+                    <button 
+                      @click="toggleSeat(seat)"
+                      :disabled="seat.isBooked"
+                      :class="['w-10 h-11 border rounded flex flex-col items-center justify-center transition-all font-black relative',
+                        seat.isBooked ? 'bg-gray-300 border-gray-400 text-white cursor-not-allowed opacity-80' : 
+                        selectedSeats.includes(seat.seatNumber) ? 'bg-[#075955] border-[#05403d] text-white shadow-md scale-105 z-10' : 
+                        'bg-white border-gray-300 hover:border-[#075955] text-gray-600 hover:text-[#075955]']"
+                    >
+                      <span v-if="seat.isBooked" class="material-symbols-outlined text-[12px]">lock</span>
+                      <span v-else class="text-[10px]">{{ seat.seatNumber }}</span>
+                      <div :class="['w-6 h-1 rounded-full mt-0.5', selectedSeats.includes(seat.seatNumber) ? 'bg-white/50' : seat.isBooked ? 'bg-white/30' : 'bg-gray-200']"></div>
+                    </button>
+                 </div>
+               </div>
+               
+               <div class="mt-4 text-center">
+                  <span class="text-[8px] font-black text-gray-400 uppercase tracking-[0.3em]">Hành lang xe</span>
+               </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Trip Summary Card -->
-      <section class="bg-white rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden border border-outline-variant/20">
-        <div class="p-4 bg-primary-container text-white">
-          <div class="flex justify-between items-start">
-            <div>
-              <p class="font-label-md text-label-md opacity-80">Hải Phòng → Hà Nội</p>
-              <h2 class="font-headline-sm text-headline-sm">Xe Limousine 9 Chỗ</h2>
-            </div>
-            <div class="text-right">
-              <p class="font-label-md text-label-md opacity-80">Khởi hành</p>
-              <p class="font-headline-sm text-headline-sm">08:30</p>
-            </div>
-          </div>
+      <div class="w-full xl:w-[320px]">
+        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg sticky top-24">
+           <div class="bg-[#075955] p-4 text-white">
+              <h3 class="text-[10px] font-black uppercase tracking-widest text-yellow-300">Đặt chỗ trực tuyến</h3>
+              <p class="text-base font-black truncate mt-0.5">{{ trip?.companyName }}</p>
+           </div>
+           
+           <div class="p-5 space-y-5">
+              <div class="space-y-4">
+                 <div>
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-2">Vị trí ghế</p>
+                    <div class="flex flex-wrap gap-1.5">
+                       <span v-for="s in selectedSeats" :key="s" class="bg-[#075955]/10 text-[#075955] px-2 py-0.5 rounded text-[10px] font-black border border-[#075955]/20">
+                          {{ s }}
+                       </span>
+                       <span v-if="selectedSeats.length === 0" class="text-xs font-bold text-gray-400 italic">Chọn ít nhất 1 ghế</span>
+                    </div>
+                 </div>
+                 
+                 <div class="pt-4 border-t border-gray-200 space-y-2">
+                    <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase">
+                       <span>Giá mỗi ghế</span>
+                       <span class="text-gray-800">{{ trip?.price.toLocaleString() }}đ</span>
+                    </div>
+                    <div class="flex justify-between items-end pt-2">
+                       <span class="text-xs font-black text-gray-800 uppercase tracking-wider">Tổng cộng</span>
+                       <span class="text-2xl font-black text-[#075955] tracking-tighter">{{ totalPrice.toLocaleString() }}đ</span>
+                    </div>
+                 </div>
+              </div>
+
+              <button 
+                @click="goToPayment"
+                :disabled="selectedSeats.length === 0"
+                class="w-full bg-[#f03a17] hover:bg-[#d63314] disabled:bg-gray-300 disabled:text-gray-500 text-white py-4 rounded-md font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] shadow-md"
+              >
+                Tiếp tục
+              </button>
+           </div>
         </div>
-        <div class="p-4 grid grid-cols-3 gap-2">
-          <div class="flex flex-col items-center p-2 rounded-lg bg-surface-container-low">
-            <span class="material-symbols-outlined text-primary mb-1">wifi</span>
-            <span class="text-[10px] font-medium uppercase text-on-surface-variant">Wifi Free</span>
-          </div>
-          <div class="flex flex-col items-center p-2 rounded-lg bg-surface-container-low">
-            <span class="material-symbols-outlined text-primary mb-1">ac_unit</span>
-            <span class="text-[10px] font-medium uppercase text-on-surface-variant">Điều hòa</span>
-          </div>
-          <div class="flex flex-col items-center p-2 rounded-lg bg-surface-container-low">
-            <span class="material-symbols-outlined text-primary mb-1">local_drink</span>
-            <span class="text-[10px] font-medium uppercase text-on-surface-variant">Nước lọc</span>
-          </div>
-        </div>
-      </section>
 
-      <!-- Main Layout: Bento Style -->
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <!-- Seat Selector -->
-        <section class="md:col-span-7 bg-white p-6 rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/20">
-          <div class="flex justify-between items-center mb-6">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface">Chọn chỗ ngồi</h3>
-            <div class="flex gap-4">
-              <div class="flex items-center gap-1">
-                <div class="w-3 h-3 rounded-sm border border-outline-variant"></div>
-                <span class="text-label-md font-label-md text-on-surface-variant">Trống</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <div class="w-3 h-3 rounded-sm bg-primary-container"></div>
-                <span class="text-label-md font-label-md text-on-surface-variant">Đang chọn</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <div class="w-3 h-3 rounded-sm bg-surface-dim"></div>
-                <span class="text-label-md font-label-md text-on-surface-variant">Đã đặt</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Vehicle Map View -->
-          <div class="relative bg-surface-container-lowest border-2 border-dashed border-outline-variant/30 rounded-2xl p-8 flex flex-col items-center">
-            <div class="w-full flex justify-end mb-12 px-12">
-              <div class="flex flex-col items-center opacity-40">
-                <span class="material-symbols-outlined text-3xl">directions_run</span>
-                <span class="text-[10px] font-bold">TÀI XẾ</span>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-[1fr_1fr_24px_1fr_1fr] gap-3">
-              <button class="w-12 h-12 rounded-lg border-2 border-primary-container bg-primary-container text-white flex items-center justify-center font-bold">A1</button>
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">A2</button>
-              <div class="w-6"></div> <!-- Aisle -->
-              <button class="w-12 h-12 rounded-lg bg-surface-dim text-on-surface-variant flex items-center justify-center font-bold cursor-not-allowed">A3</button>
-              <button class="w-12 h-12 rounded-lg bg-surface-dim text-on-surface-variant flex items-center justify-center font-bold cursor-not-allowed">A4</button>
-              
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">B1</button>
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">B2</button>
-              <div class="w-6"></div> <!-- Aisle -->
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">B3</button>
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">B4</button>
-              
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">C1</button>
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">C2</button>
-              <div class="w-6"></div> <!-- Aisle -->
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">C3</button>
-              <button class="w-12 h-12 rounded-lg border-2 border-outline-variant text-on-surface-variant flex items-center justify-center font-bold">C4</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- Route Details -->
-        <div class="md:col-span-5 space-y-6">
-          <section class="bg-white p-6 rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant/20">
-            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Điểm đón & trả</h3>
-            <div class="space-y-6 relative">
-              <div class="absolute left-3 top-2 bottom-2 w-0.5 bg-outline-variant/30"></div>
-              <div class="relative pl-10">
-                <div class="absolute left-0 top-0 w-6 h-6 rounded-full bg-primary-container flex items-center justify-center border-4 border-white shadow-sm z-10">
-                  <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
-                </div>
-                <p class="font-ticket-number text-ticket-number text-primary">08:30 • 15 Tháng 5</p>
-                <h4 class="font-body-lg text-body-lg font-bold">Bến xe Niệm Nghĩa</h4>
-                <p class="text-body-md font-body-md text-on-surface-variant">273 Trần Nguyên Hãn, Lê Chân, Hải Phòng</p>
-              </div>
-              <div class="relative pl-10">
-                <div class="absolute left-0 top-0 w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center border-4 border-white shadow-sm z-10">
-                  <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
-                </div>
-                <p class="font-ticket-number text-ticket-number text-secondary">10:30 • 15 Tháng 5</p>
-                <h4 class="font-body-lg text-body-lg font-bold">Bến xe Mỹ Đình</h4>
-                <p class="text-body-md font-body-md text-on-surface-variant">Số 20 Phạm Hùng, Mỹ Đình, Từ Liêm, Hà Nội</p>
-              </div>
-            </div>
-          </section>
-
-          <section class="rounded-xl overflow-hidden h-40 relative group">
-            <img alt="Bản đồ lộ trình" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWmpb5KuW7_iI3VfpdA3KTbi9mL-0uus0IjBIXg3QjrZNDrQJMJwLVt6XOirrsmMJuLfYcNrnrUVUfyMJ7KMVvG44LKPM-ksDuzcJ6ESTXD_-VFvH61Ul4MUHU5ZVnIkOmrMSIisB6FX6KiXrh6Y3FoibnyURiJpnzHezfusvt6gA0geSu91SSRYgX78BELus9PSCosg4d8JIs5j5UQ8leaWjLhcT7H_gY6qj7Q8v2vgzDvDe7CX6n3S7tHU9kJZGPzvWVeiSf2tzP"/>
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-              <span class="text-white font-label-md text-label-md flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">map</span>
-                Xem lộ trình chi tiết
-              </span>
-            </div>
-          </section>
+        <div class="mt-4 bg-emerald-50 border border-emerald-100 p-4 rounded-xl">
+           <div class="flex items-start gap-3">
+              <span class="material-symbols-outlined text-emerald-600 text-sm">shield</span>
+              <p class="text-[9px] font-bold text-emerald-800 leading-relaxed uppercase">Hệ thống bảo mật Trung - Nam. Thông tin vé sẽ được gửi qua SMS/Email sau khi hoàn tất thanh toán.</p>
+           </div>
         </div>
       </div>
     </main>
-
-    <!-- Bottom Navigation Payment Bar -->
-    <footer class="fixed bottom-0 left-0 w-full z-50 bg-surface shadow-[0px_-4px_12px_rgba(0,0,0,0.05)] px-container-margin py-4">
-      <div class="max-w-4xl mx-auto flex items-center justify-between">
-        <div class="flex flex-col">
-          <div class="flex items-center gap-2">
-            <span class="text-on-surface-variant font-label-md text-label-md">Ghế đã chọn:</span>
-            <span class="px-2 py-0.5 bg-primary-container text-white rounded font-bold text-xs">A1</span>
-          </div>
-          <div class="flex items-baseline gap-1 mt-1">
-            <span class="text-on-surface font-headline-md text-headline-md">250.000</span>
-            <span class="text-on-surface-variant font-label-md text-label-md">VNĐ</span>
-          </div>
-        </div>
-        <button @click="$router.push('/booking/payment')" class="bg-secondary-container hover:bg-secondary transition-all active:scale-90 duration-200 text-on-primary-container px-8 py-3 rounded-xl font-headline-sm text-headline-sm flex items-center gap-2 shadow-lg shadow-secondary-container/20">
-          Tiếp tục
-          <span class="material-symbols-outlined">arrow_forward</span>
-        </button>
-      </div>
-    </footer>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
+
+const route = useRoute();
+const router = useRouter();
+const tripId = route.query.tripId;
+
+const trip = ref(null);
+const seats = ref([]);
+const selectedSeats = ref([]);
+
+const fetchTripData = async () => {
+  try {
+    const [tripRes, seatsRes] = await Promise.all([
+      axios.get(`http://localhost:8080/api/trips/${tripId}`),
+      axios.get(`http://localhost:8080/api/trips/${tripId}/seats`)
+    ]);
+    trip.value = tripRes.data;
+    seats.value = seatsRes.data;
+  } catch (err) {
+    console.error("Lỗi tải dữ liệu:", err);
+  }
+};
+
+const floor1Seats = computed(() => seats.value.filter(s => s.seatFloor === 1));
+const floor2Seats = computed(() => seats.value.filter(s => s.seatFloor === 2));
+
+const totalPrice = computed(() => selectedSeats.value.length * (trip.value?.price || 0));
+
+const toggleSeat = (seat) => {
+  const index = selectedSeats.value.indexOf(seat.seatNumber);
+  if (index > -1) {
+    selectedSeats.value.splice(index, 1);
+  } else {
+    if (selectedSeats.value.length >= 5) {
+      alert('Bạn chỉ có thể chọn tối đa 5 ghế!');
+      return;
+    }
+    selectedSeats.value.push(seat.seatNumber);
+  }
+};
+
+const goToPayment = () => {
+  router.push({
+    path: '/booking/payment',
+    query: {
+      tripId,
+      seats: selectedSeats.value.join(','),
+      total: totalPrice.value
+    }
+  });
+};
+
+onMounted(fetchTripData);
 </script>
