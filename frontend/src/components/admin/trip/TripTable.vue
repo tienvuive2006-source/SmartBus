@@ -51,8 +51,8 @@
                     <span class="font-bold text-slate-500 text-sm leading-none">{{ simplifyLocation(trip.arrivalPoint) }}</span>
                   </div>
                 </div>
-                <div class="ml-auto">
-                   <span class="text-[9px] font-black text-[#075955] bg-[#075955]/5 px-2 py-0.5 rounded border border-[#075955]/10 uppercase tracking-tighter">{{ trip.companyName }}</span>
+                <div class="ml-auto shrink-0">
+                   <span class="text-[9px] font-black text-[#075955] bg-[#075955]/5 px-2.5 py-1 rounded border border-[#075955]/10 uppercase tracking-tighter whitespace-nowrap">{{ trip.companyName }}</span>
                 </div>
               </div>
             </td>

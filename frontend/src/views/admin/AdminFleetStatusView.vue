@@ -56,14 +56,13 @@
 
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
-import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 import FleetStats from '../../components/admin/fleet/FleetStats.vue';
 import FleetTable from '../../components/admin/fleet/FleetTable.vue';
 import FleetMap from '../../components/admin/fleet/FleetMap.vue';
 import FleetModal from '../../components/admin/fleet/FleetModal.vue';
 
-const API_BASE = 'http://localhost:8080/api/buses';
-
+const api = useApi();
 const buses = ref([]);
 const busTypes = ref([]); 
 const loading = ref(true);
@@ -71,7 +70,7 @@ const mapLoading = ref(true);
 
 const fetchBusTypes = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/bus-types');
+    const response = await api.get('/bus-types');
     busTypes.value = response.data;
     if (busTypes.value.length > 0 && !form.value.busType) {
       form.value.busType = busTypes.value[0].name;
@@ -100,7 +99,7 @@ let mapMarkers = [];
 const fetchBuses = async () => {
   loading.value = true;
   try {
-    const response = await axios.get(API_BASE);
+    const response = await api.get('/buses');
     buses.value = response.data;
   } catch (error) { console.error(error); }
   finally { loading.value = false; }
@@ -182,15 +181,15 @@ const closeModal = () => { isModalOpen.value = false; };
 const handleFormSubmit = async () => {
   if (!form.value.licensePlate || !form.value.driverName) return alert("Vui lòng nhập đầy đủ!");
   try {
-    if (isEditMode.value) await axios.put(`${API_BASE}/${form.value.id}`, form.value);
-    else await axios.post(API_BASE, form.value);
+    if (isEditMode.value) await api.put(`/buses/${form.value.id}`, form.value);
+    else await api.post('/buses', form.value);
     closeModal(); await fetchBuses(); updateMapMarkers();
   } catch (error) { alert("Lỗi lưu dữ liệu!"); }
 };
 
 const handleDeleteBus = async (bus) => {
   if (confirm(`Xóa xe [${bus.licensePlate}]?`)) {
-    try { await axios.delete(`${API_BASE}/${bus.id}`); await fetchBuses(); updateMapMarkers(); }
+    try { await api.delete(`/buses/${bus.id}`); await fetchBuses(); updateMapMarkers(); }
     catch (error) { alert("Không thể xóa!"); }
   }
 };

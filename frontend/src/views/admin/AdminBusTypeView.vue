@@ -243,8 +243,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 
-const API_URL = 'http://localhost:8080/api/bus-types';
+const api = useApi();
 const fileInput = ref(null);
 const uploading = ref(false);
 
@@ -264,7 +265,7 @@ const form = ref({
 const fetchBusTypes = async () => {
   loading.value = true;
   try {
-    const response = await axios.get(API_URL);
+    const response = await api.get('/bus-types');
     busTypes.value = response.data;
   } catch (error) {
     console.error("Lỗi fetch danh mục dòng xe:", error);
@@ -297,9 +298,9 @@ const handleSubmit = async () => {
 
   try {
     if (isEditMode.value) {
-      await axios.put(`${API_URL}/${form.value.id}`, form.value);
+      await api.put(`/bus-types/${form.value.id}`, form.value);
     } else {
-      await axios.post(API_URL, form.value);
+      await api.post('/bus-types', form.value);
     }
     closeModal();
     fetchBusTypes();
@@ -332,7 +333,7 @@ const handleImageUpload = async (e) => {
 const handleDelete = async (item) => {
   if (confirm(`Bạn có thực sự muốn XÓA dòng xe [${item.name}] khỏi catalog vĩnh viễn không?`)) {
     try {
-      await axios.delete(`${API_URL}/${item.id}`);
+      await api.delete(`/bus-types/${item.id}`);
       fetchBusTypes();
     } catch (error) {
       console.error("Lỗi xóa dòng xe:", error);

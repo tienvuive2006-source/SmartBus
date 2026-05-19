@@ -41,10 +41,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 import BookingStats from '../../components/admin/booking/BookingStats.vue';
 import BookingTable from '../../components/admin/booking/BookingTable.vue';
 
+const api = useApi();
 const bookings = ref([]);
 const searchQuery = ref('');
 const statusFilter = ref('ALL');
@@ -63,13 +64,20 @@ const statusStyles = {
 
 const fetchBookings = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/api/admin/bookings');
-    bookings.value = response.data.map(b => ({
-      ...b,
-      route: b.trip ? `${b.trip.departurePoint} ➔ ${b.trip.arrivalPoint}` : 'N/A',
-      departureTime: b.trip ? `${b.trip.departureTime} - ${b.trip.departureDate ? b.trip.departureDate.split('-').reverse().join('/') : ''}` : '',
-      seats: b.seatNumbers || []
-    })).sort((a, b) => b.id - a.id);
+    const response = await api.get('/admin/bookings');
+    bookings.value = response.data.map(b => {
+      let mappedStatus = b.status ? b.status.toUpperCase() : 'PENDING';
+      if (mappedStatus === 'SUCCESS') {
+        mappedStatus = 'PAID';
+      }
+      return {
+        ...b,
+        status: mappedStatus,
+        route: b.trip ? `${b.trip.departurePoint} ➔ ${b.trip.arrivalPoint}` : 'N/A',
+        departureTime: b.trip ? `${b.trip.departureTime} - ${b.trip.departureDate ? b.trip.departureDate.split('-').reverse().join('/') : ''}` : '',
+        seats: b.seatNumbers || []
+      };
+    }).sort((a, b) => b.id - a.id);
   } catch (error) {
     console.error('Lỗi khi tải danh sách vé:', error);
   }
@@ -95,7 +103,7 @@ const cancelledCount = computed(() => bookings.value.filter(b => b.status === 'C
 const updateStatus = async (id, newStatus) => {
   if (!confirm(`Xác nhận thay đổi trạng thái đơn #${id}?`)) return;
   try {
-    await axios.post(`http://localhost:8080/api/admin/bookings/${id}/status`, { status: newStatus });
+    await api.post(`/admin/bookings/${id}/status`, { status: newStatus });
     fetchBookings();
     alert('Cập nhật thành công!');
   } catch (error) { alert('Lỗi hệ thống!'); }

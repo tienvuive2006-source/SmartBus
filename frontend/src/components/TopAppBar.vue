@@ -20,7 +20,7 @@
     <div class="flex items-center gap-2">
       <!-- Nút Admin (Chỉ hiện nếu là ADMIN) -->
       <button 
-        v-if="currentUser && currentUser.role === 'ADMIN'" 
+        v-if="authStore.isAdmin" 
         @click="$router.push('/admin')" 
         class="flex items-center gap-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl hover:bg-primary transition-all shadow-sm"
       >
@@ -30,7 +30,7 @@
 
       <!-- 1. Nếu ĐÃ ĐĂNG NHẬP: Hiện Avatar viết tắt Tên cực Pro -->
       <button 
-        v-if="currentUser" 
+        v-if="authStore.isLoggedIn" 
         @click="$router.push('/profile')" 
         aria-label="Trang cá nhân" 
         class="rounded-xl overflow-hidden w-9 h-9 focus:outline-none ring-2 ring-primary/20 shadow-md cursor-pointer transition-all active:scale-90 hover:scale-105 border-2 border-white shrink-0"
@@ -38,7 +38,7 @@
         <img 
           alt="User avatar" 
           class="w-full h-full object-cover" 
-          :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.fullName)}&background=6366f1&color=fff&bold=true&size=64`"
+          :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.currentUser?.fullName || 'U')}&background=6366f1&color=fff&bold=true&size=64`"
         />
       </button>
 
@@ -55,8 +55,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps({
   title: {
@@ -70,20 +70,8 @@ const props = defineProps({
 });
 
 const route = useRoute();
-const currentUser = ref(null);
+const authStore = useAuthStore();
 
-// 🔍 Bộ quét quét dò tìm trạng thái đăng nhập
-const checkUserStatus = () => {
-  const stored = localStorage.getItem('currentUser');
-  currentUser.value = stored ? JSON.parse(stored) : null;
-};
-
-// Lắng nghe biến chuyển URL để tự động render lại Avatar khi đổi trang
-watch(() => route.path, () => {
-  checkUserStatus();
-});
-
-onMounted(() => {
-  checkUserStatus();
-});
+// computed reactive: tự cập nhật khi user login/logout
+const currentUser = authStore.currentUser;
 </script>

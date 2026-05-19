@@ -7,7 +7,7 @@
             <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-lg">
               <span class="material-symbols-outlined text-[#075955] text-2xl">directions_bus</span>
             </div>
-            <span class="text-2xl font-black tracking-tighter">Saomaifly</span>
+            <span class="text-2xl font-black tracking-tighter">Nhà xe Trung - Nam</span>
           </div>
           <p class="text-sm text-gray-300 leading-relaxed font-medium">
             Nền tảng đặt vé xe khách hàng đầu Việt Nam. Chúng tôi cung cấp giải pháp đặt vé trực tuyến an toàn, nhanh chóng và tiện lợi nhất cho mọi hành trình của bạn.
@@ -22,7 +22,7 @@
         <div>
           <h4 class="font-bold text-white mb-6 uppercase text-xs tracking-[0.2em]">Khám phá</h4>
           <ul class="space-y-4 text-sm text-gray-300 font-medium">
-            <li><a href="#" class="hover:text-white transition-colors flex items-center gap-2"><span class="w-1 h-1 bg-white/30 rounded-full"></span> Về Saomaifly</a></li>
+            <li><a href="#" class="hover:text-white transition-colors flex items-center gap-2"><span class="w-1 h-1 bg-white/30 rounded-full"></span> Về Trung - Nam</a></li>
             <li><a href="#" class="hover:text-white transition-colors flex items-center gap-2"><span class="w-1 h-1 bg-white/30 rounded-full"></span> Tin tức & Sự kiện</a></li>
             <li><a href="#" class="hover:text-white transition-colors flex items-center gap-2"><span class="w-1 h-1 bg-white/30 rounded-full"></span> Tuyển dụng</a></li>
             <li><a href="#" class="hover:text-white transition-colors flex items-center gap-2"><span class="w-1 h-1 bg-white/30 rounded-full"></span> Liên hệ hợp tác</a></li>
@@ -52,7 +52,7 @@
             </li>
             <li class="flex items-center gap-3">
               <span class="material-symbols-outlined text-xl text-white/60">mail</span>
-              <span class="hover:text-white transition-colors cursor-pointer">support@saomaifly.com</span>
+              <span class="hover:text-white transition-colors cursor-pointer">support@trungnam.vn</span>
             </li>
           </ul>
         </div>
@@ -79,7 +79,7 @@
       </div>
       
       <div class="text-center mt-6 text-xs text-gray-400">
-        © 2026 Saomaifly. All rights reserved. Nền tảng đặt vé xe uy tín nhất.
+        © 2026 Nhà xe Trung - Nam. All rights reserved. Nền tảng đặt vé xe uy tín nhất.
       </div>
     </div>
   </footer>

@@ -27,11 +27,11 @@
         
         <div class="flex items-center gap-4">
            <!-- 🔑 AUTH LOGIC -->
-           <div v-if="currentUser" @click="$router.push('/profile')" class="flex items-center gap-2 cursor-pointer group">
+           <div v-if="authStore.isLoggedIn" @click="$router.push('/profile')" class="flex items-center gap-2 cursor-pointer group">
               <div class="w-8 h-8 rounded-full bg-[#075955]/10 flex items-center justify-center border border-[#075955]/20 overflow-hidden">
-                <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.fullName)}&background=075955&color=fff`" class="w-full h-full object-cover" />
+                <img :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(authStore.currentUser?.fullName || 'U')}&background=075955&color=fff`" class="w-full h-full object-cover" />
               </div>
-              <span class="text-sm font-semibold text-gray-700 group-hover:text-[#075955] transition-colors">{{ currentUser.fullName }}</span>
+              <span class="text-sm font-semibold text-gray-700 group-hover:text-[#075955] transition-colors">{{ authStore.currentUser?.fullName }}</span>
            </div>
            <button v-else @click="$router.push('/auth/login')" class="text-sm font-semibold text-[#075955] border border-[#075955] px-4 py-1.5 rounded hover:bg-[#075955]/10 transition-colors">Đăng nhập</button>
         </div>
@@ -44,7 +44,7 @@
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
              <h3 class="text-sm font-bold text-gray-800">Sắp xếp</h3>
-             <button class="text-[11px] font-semibold text-[#075955] uppercase">Xóa lọc</button>
+             <button @click="clearFilters" class="text-[11px] font-bold text-[#075955] hover:text-[#0a7a75] active:scale-95 transition-all uppercase cursor-pointer">Xóa lọc</button>
           </div>
           <div class="p-4 space-y-3">
              <label v-for="sort in sortOptions" :key="sort.id" class="flex items-center gap-3 cursor-pointer group">
@@ -245,23 +245,20 @@
 // Giữ nguyên toàn bộ phần <script setup> của bạn
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 import { removeAccents } from '../../composables/useLocationSearch';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const router = useRouter();
+const api = useApi();
+const authStore = useAuthStore();
 const allTrips = ref([]);
 const loading = ref(true);
 const currentSort = ref('default');
 const selectedTimeSlots = ref([]);
 
-const formatDate = (d) => {
-  if (!d) return '';
-  const datePart = d.split('T')[0];
-  const [year, month, day] = datePart.split('-');
-  return `${day}/${month}/${year}`;
-};
-const currentUser = ref(null);
+// ─── MAP MODAL STATE ─────────────────────────────────────────────────────────
 const isMapModalOpen = ref(false);
 const selectedTripForMap = ref(null);
 const mapLoading = ref(true);
@@ -284,14 +281,13 @@ const cityCoordinates = {
   'Vung Tau': [10.345995, 107.084052]
 };
 
-const userStr = localStorage.getItem('currentUser');
-if (userStr) {
-  try {
-    currentUser.value = JSON.parse(userStr);
-  } catch (e) {
-    console.error("Error parsing user from localStorage", e);
-  }
-}
+const formatDate = (d) => {
+  if (!d) return '';
+  const datePart = d.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}/${year}`;
+};
+
 
 const sortOptions = [
   { id: 'default', name: 'Mặc định' },
@@ -322,11 +318,17 @@ const filteredTrips = computed(() => {
   const from = route.query.from || '';
   const to = route.query.to || '';
   const date = route.query.date || '';
+  const company = route.query.company || '';
   
   const cFrom = normalize(from);
   const cTo = normalize(to);
 
   let results = allTrips.value.filter(t => {
+    // 0. Lọc theo hãng xe (nếu được truyền)
+    if (company && company !== 'all') {
+      if (t.companyName !== company) return false;
+    }
+
     // 1. Lọc theo ngày
     if (date && t.departureDate) {
       if (t.departureDate.split('T')[0] !== date) return false;
@@ -368,7 +370,7 @@ const fetchTrips = async () => {
   try {
     const { from, to, date } = route.query;
     // 🚀 CHUẨN ĐỒ ÁN: Gọi API Search tại Backend thay vì lấy hết về
-    const res = await axios.get('http://localhost:8080/api/trips/search', {
+    const res = await api.get('/trips/search', {
       params: { from, to, date }
     });
     allTrips.value = res.data;
@@ -578,6 +580,11 @@ const closeMapModal = () => {
     leafletMap.remove();
     leafletMap = null;
   }
+};
+
+const clearFilters = () => {
+  currentSort.value = 'default';
+  selectedTimeSlots.value = [];
 };
 </script>
 

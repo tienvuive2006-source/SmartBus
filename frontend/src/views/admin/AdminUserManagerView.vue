@@ -217,8 +217,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 
+const api = useApi();
 const users = ref([]);
 const loading = ref(true);
 const searchQuery = ref('');
@@ -237,7 +238,7 @@ const editForm = ref({
 const fetchUsers = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('http://localhost:8080/api/users');
+    const response = await api.get('/users');
     users.value = response.data;
   } catch (error) {
     console.error("Lỗi lấy danh sách người dùng:", error);
@@ -267,7 +268,7 @@ const closeModal = () => {
 const submitEdit = async () => {
   submitting.value = true;
   try {
-    await axios.put(`http://localhost:8080/api/users/${editForm.value.id}`, editForm.value);
+    await api.put(`/users/${editForm.value.id}`, editForm.value);
     await fetchUsers(); // Reload danh sách mới
     closeModal();
   } catch (error) {
@@ -281,7 +282,7 @@ const submitEdit = async () => {
 const handleDelete = async (id) => {
   if (confirm("⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA NGƯỜI DÙNG NÀY KHÔNG?\nHành động này không thể khôi phục!")) {
     try {
-      await axios.delete(`http://localhost:8080/api/users/${id}`);
+      await api.delete(`/users/${id}`);
       await fetchUsers();
     } catch (error) {
       console.error("Lỗi xoá người dùng:", error);

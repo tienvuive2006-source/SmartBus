@@ -101,9 +101,11 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
+
 const fullName = ref('');
 const phone = ref('');
 const password = ref('');
@@ -115,21 +117,16 @@ const handleRegister = async () => {
   loading.value = true;
   
   try {
-    const response = await axios.post('http://localhost:8080/api/auth/register', {
-      fullName: fullName.value,
-      phone: phone.value,
-      password: password.value
-    });
+    await authStore.register(fullName.value, phone.value, password.value);
     
-    // 🚀 TỰ ĐỘNG ĐĂNG NHẬP NGAY LẬP TỨC SAU KHI TẠO ĐỂ CÓ UX TỐT NHẤT
-    localStorage.setItem('currentUser', JSON.stringify(response.data));
-    
-    // Điều hướng về profile hưởng 500k nóng hổi!
+    // 🚀 Tự động đăng nhập ngay sau khi đăng ký -> về profile hưởng 500k
     router.push('/profile');
   } catch (error) {
     console.error("Đăng ký thất bại:", error);
-    if (error.response && error.response.data) {
-      errorMsg.value = typeof error.response.data === 'string' ? error.response.data : "Số điện thoại đã tồn tại!";
+    if (error.response?.data) {
+      errorMsg.value = typeof error.response.data === 'string'
+        ? error.response.data
+        : "Số điện thoại đã tồn tại!";
     } else {
       errorMsg.value = "Máy chủ đang bận! Vui lòng thử lại sau.";
     }
@@ -138,6 +135,7 @@ const handleRegister = async () => {
   }
 };
 </script>
+
 
 <style scoped>
 @keyframes fadeIn {

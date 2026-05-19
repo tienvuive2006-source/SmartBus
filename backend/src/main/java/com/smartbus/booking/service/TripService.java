@@ -19,15 +19,38 @@ public class TripService {
         return tripRepository.findAll();
     }
 
+    public static String stripAccents(String s) {
+        if (s == null) return "";
+        String normalized = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD);
+        return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .replaceAll("đ", "d")
+                .replaceAll("Đ", "D")
+                .toLowerCase()
+                .trim();
+    }
+
     public List<Trip> searchTrips(String from, String to, String date) {
         if ((from == null || from.isEmpty()) && (to == null || to.isEmpty()) && (date == null || date.isEmpty())) {
             return getAllTrips();
         }
-        return tripRepository.findByDeparturePointContainingIgnoreCaseAndArrivalPointContainingIgnoreCaseAndDepartureDateContaining(
-                from != null ? from : "", 
-                to != null ? to : "",
-                date != null ? date : ""
-        );
+        
+        List<Trip> tripsByDate = tripRepository.findByDepartureDateContaining(date != null ? date : "");
+        if ((from == null || from.trim().isEmpty()) && (to == null || to.trim().isEmpty())) {
+            return tripsByDate;
+        }
+
+        String normalizedFrom = stripAccents(from);
+        String normalizedTo = stripAccents(to);
+
+        return tripsByDate.stream().filter(t -> {
+            String tFrom = stripAccents(t.getDeparturePoint());
+            String tTo = stripAccents(t.getArrivalPoint());
+            
+            boolean matchFrom = normalizedFrom.isEmpty() || tFrom.contains(normalizedFrom) || normalizedFrom.contains(tFrom);
+            boolean matchTo = normalizedTo.isEmpty() || tTo.contains(normalizedTo) || normalizedTo.contains(tTo);
+            
+            return matchFrom && matchTo;
+        }).collect(java.util.stream.Collectors.toList());
     }
 
     // Khi lưu chuyến xe mới, tự động sinh ra 24 ghế tương ứng!

@@ -169,10 +169,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 
 const route = useRoute();
 const router = useRouter();
+const api = useApi();
 const tripId = route.query.tripId;
 
 const trip = ref(null);
@@ -182,8 +183,8 @@ const selectedSeats = ref([]);
 const fetchTripData = async () => {
   try {
     const [tripRes, seatsRes] = await Promise.all([
-      axios.get(`http://localhost:8080/api/trips/${tripId}`),
-      axios.get(`http://localhost:8080/api/trips/${tripId}/seats`)
+      api.get(`/trips/${tripId}`),
+      api.get(`/trips/${tripId}/seats`)
     ]);
     trip.value = tripRes.data;
     seats.value = seatsRes.data;

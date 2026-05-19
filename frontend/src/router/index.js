@@ -138,31 +138,26 @@ const router = createRouter({
   ]
 })
 
-// 🛡️ HỆ THỐNG TƯỜNG LỬA CỬA NGÕ (VUE NAVIGATION GUARD)
-// Chặn đứng 100% các hành vi truy cập trái phép vào khu vực ADMIN
+// 🛡️ HỆ THỐNG TƯỜNG LỬA CỬA NGÕ (VUE NAVIGATION GUARD - JWT VERSION)
 router.beforeEach((to, from, next) => {
-  // Kiểm tra xem đường đi có bắt đầu bằng tiền tố quản trị /admin hay không
+  // Đọc thẳng từ localStorage (cách này hoạt động trước khi Pinia khởi tạo)
+  const token = localStorage.getItem('jwt_token')
+  const userStr = localStorage.getItem('jwt_user')
+  let userRole = null
+
+  if (userStr) {
+    try { userRole = JSON.parse(userStr)?.role } catch { /* bỏ qua */ }
+  }
+
+  // 🔒 Bảo vệ route ADMIN
   if (to.path.startsWith('/admin')) {
-    const storedUser = localStorage.getItem('currentUser');
-
-    // TRƯỜNG HỢP 1: Chưa hề đăng nhập
-    if (!storedUser) {
+    if (!token) {
       alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Quản Trị Viên!");
-      return next('/auth/login');
+      return next({ path: '/auth/login', query: { redirect: to.fullPath } });
     }
-
-    try {
-      const user = JSON.parse(storedUser);
-
-      // TRƯỜNG HỢP 2: Đã đăng nhập nhưng ROLE là USER thường (Xâm nhập trái phép)
-      if (user.role !== 'ADMIN') {
-        alert("⛔ CẢNH BÁO XÂM NHẬP: Bạn không có đặc quyền truy cập Bảng Quản Trị!\nHệ thống sẽ tự động trục xuất bạn về Trang Chủ.");
-        return next('/'); // Đá bay về trang chủ ngay lập tức!
-      }
-    } catch (error) {
-      // Lỗi format bộ nhớ -> Bắt login lại cho an toàn
-      localStorage.removeItem('currentUser');
-      return next('/auth/login');
+    if (userRole !== 'ADMIN') {
+      alert("⛔ CẢNH BÁO: Bạn không có đặc quyền truy cập Bảng Quản Trị!\nHệ thống sẽ trục xuất bạn về Trang Chủ.");
+      return next('/');
     }
   }
 

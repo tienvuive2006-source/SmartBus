@@ -28,7 +28,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-5">
+            <div class="grid grid-cols-1 gap-5 relative">
               <div class="space-y-1.5 relative">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
                   <span>Điểm khởi hành</span>
@@ -49,7 +49,19 @@
                 <!-- Suggestions handled by parent via slot or direct injection if complex -->
                 <slot name="from-suggestions"></slot>
               </div>
- 
+
+              <!-- 🔄 Nút đảo chiều lộ trình khứ hồi thông minh ở giữa -->
+              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[1002]">
+                <button 
+                  type="button"
+                  @click="$emit('swap-route')" 
+                  class="w-8 h-8 rounded-full bg-[#075955] text-white hover:bg-[#0a7a75] hover:rotate-180 active:scale-95 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-md border border-white"
+                  title="Đảo chiều lộ trình (Khứ hồi)"
+                >
+                  <span class="material-symbols-outlined text-sm">sync_alt</span>
+                </button>
+              </div>
+  
               <div class="space-y-1.5 relative">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
                   <span>Điểm kết thúc</span>
@@ -114,13 +126,19 @@
                     </h4>
                     <span class="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 tracking-tighter">GPS ACTIVE</span>
                  </div>
-                 <div v-if="form.departureLat && form.arrivalLat" class="text-[10px] font-bold text-slate-400 leading-tight">
-                    <div class="flex items-center gap-1 text-[#075955]">
-                      <span class="material-symbols-outlined text-[12px]">check_circle</span>
-                      Tọa độ đã được xác nhận chuẩn xác
-                    </div>
-                    <div class="mt-1 text-[9px] italic text-slate-400">Mẹo: Click lên bản đồ để sửa vị trí nếu cần</div>
-                 </div>
+                 <div v-if="form.departureLat && form.arrivalLat" class="text-[10px] font-bold text-slate-500 leading-tight">
+                     <div class="flex items-center gap-1 text-[#075955] mb-2">
+                       <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                       Tọa độ lộ trình đã xác nhận chuẩn xác
+                     </div>
+                     <div v-if="form.duration" class="bg-slate-50 border border-slate-100 p-2.5 rounded-xl flex gap-4 text-xs">
+                       <div class="flex items-center gap-1 text-slate-700">
+                         <span class="material-symbols-outlined text-slate-400 text-sm">route</span>
+                         <span>Lộ trình: <strong class="text-[#075955] font-black">{{ form.duration }}</strong></span>
+                       </div>
+                     </div>
+                     <div class="mt-2 text-[9px] italic text-slate-400">Mẹo: Click lên bản đồ để tinh chỉnh vị trí nếu cần</div>
+                  </div>
                  <div v-else class="text-[10px] font-bold text-rose-500 flex flex-col gap-1 animate-pulse">
                     <div class="flex items-center gap-1">
                       <span class="material-symbols-outlined text-[12px]">warning</span> Chờ xác định tọa độ...
@@ -151,7 +169,7 @@ defineProps({
   mapLoading: Boolean
 });
 
-defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-click']);
+defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-click', 'swap-route']);
 </script>
 
 <style scoped>

@@ -107,10 +107,14 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
+import { useApi } from '@/composables/useApi';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const api = useApi();
+
 const tripId = route.query.tripId;
 const selectedSeatsStr = route.query.seats;
 const seatsArray = computed(() => selectedSeatsStr ? selectedSeatsStr.split(',') : []);
@@ -120,10 +124,12 @@ const totalAmount = computed(() => parseInt(route.query.total) || 0);
 const trip = ref(null);
 const loading = ref(true);
 const isProcessing = ref(false);
-const currentUser = ref(null);
 const selectedMethod = ref('ATM');
 const customerName = ref('');
 const customerPhone = ref('');
+
+// currentUser reactive từ Pinia
+const currentUser = authStore.currentUser;
 
 const paymentMethods = computed(() => {
   const methods = [
@@ -131,8 +137,7 @@ const paymentMethods = computed(() => {
     { id: 'MOMO', name: 'Ví MoMo', icon: 'wallet' },
     { id: 'VNPAY', name: 'VNPAY-QR', icon: 'qr_code_2' }
   ];
-  if (currentUser.value) {
-    // Đã đổi tên thành Ví Saomaifly
+  if (authStore.isLoggedIn) {
     methods.unshift({ id: 'WALLET', name: 'Ví Trung - Nam (Khuyên dùng)', icon: 'account_balance_wallet' });
   }
   return methods;
@@ -140,7 +145,7 @@ const paymentMethods = computed(() => {
 
 const fetchTrip = async () => {
   try {
-    const res = await axios.get(`http://localhost:8080/api/trips/${tripId}`);
+    const res = await api.get(`/trips/${tripId}`);
     trip.value = res.data;
   } catch (err) { console.error(err); }
   finally { loading.value = false; }
@@ -151,7 +156,7 @@ const processPayment = async () => {
   
   // 🛡️ KIỂM TRA SỐ DƯ VÍ (NẾU CHỌN THANH TOÁN BẰNG VÍ)
   if (selectedMethod.value === 'WALLET') {
-    const balance = currentUser.value?.walletBalance || 0;
+    const balance = authStore.currentUser?.walletBalance || 0;
     if (balance < totalAmount.value) {
       return alert(`Số dư Ví Trung - Nam không đủ! Bạn cần thêm ${(totalAmount.value - balance).toLocaleString()}đ nữa để đặt vé này.`);
     }
@@ -159,26 +164,28 @@ const processPayment = async () => {
 
   isProcessing.value = true;
   try {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const user = authStore.currentUser;
     const bookingData = {
       customerName: customerName.value,
       customerPhone: customerPhone.value,
-      customerEmail: currentUser.email || 'customer@trungnam.com', // Đổi email mặc định
+      customerEmail: user?.email || 'customer@trungnam.com',
       seatNumbers: seatsArray.value,
       totalPrice: totalAmount.value,
       paymentMethod: selectedMethod.value,
-      status: 'SUCCESS',
+      status: 'PAID',
       trip: { id: parseInt(tripId) },
-      user: currentUser.id ? { id: currentUser.id } : null
+      user: user?.id ? { id: user.id } : null
     };
 
-    const res = await axios.post('http://localhost:8080/api/admin/bookings/create', bookingData);
+    // Dùng api (có JWT token) thay vì axios trực tiếp
+    const res = await api.post('/admin/bookings/create', bookingData);
     if (res.status === 200 || res.status === 201) {
-      if (res.data.user) {
-        localStorage.setItem('currentUser', JSON.stringify(res.data.user));
+      // Cập nhật số dư ví nếu thanh toán bằng ví
+      if (res.data.user?.walletBalance !== undefined) {
+        authStore.updateWalletBalance(res.data.user.walletBalance);
       }
 
-      // 💾 LƯU VÀO LỊCH SỬ LOCAL (Để hiện bên trang HistoryView)
+      // 💾 LƯU VÀO LỊCH SỬ LOCAL
       const newTicket = {
         id: res.data.id,
         from: trip.value.departurePoint,
@@ -192,7 +199,7 @@ const processPayment = async () => {
       };
       
       const history = JSON.parse(localStorage.getItem('trungnam_history') || '[]');
-      history.unshift(newTicket); // Thêm vào đầu danh sách
+      history.unshift(newTicket);
       localStorage.setItem('trungnam_history', JSON.stringify(history));
 
       router.push({ path: '/booking/payment-success', query: { bookingId: res.data.id, from: trip.value.departurePoint, to: trip.value.arrivalPoint, time: trip.value.departureTime, seats: seatNames.value, total: totalAmount.value, method: selectedMethod.value } });
@@ -202,12 +209,10 @@ const processPayment = async () => {
 };
 
 onMounted(() => {
-  const userStr = localStorage.getItem('currentUser');
-  if (userStr) {
-    currentUser.value = JSON.parse(userStr);
-    customerName.value = currentUser.value.fullName || '';
-    customerPhone.value = currentUser.value.phone || '';
-    selectedMethod.value = 'WALLET'; 
+  if (authStore.isLoggedIn) {
+    customerName.value = authStore.currentUser?.fullName || '';
+    customerPhone.value = authStore.currentUser?.phone || '';
+    selectedMethod.value = 'WALLET';
   } else {
     selectedMethod.value = 'ATM';
   }

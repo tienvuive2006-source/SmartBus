@@ -79,10 +79,13 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
+import { useRouter, useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+
 const phone = ref('');
 const password = ref('');
 const loading = ref(false);
@@ -93,20 +96,17 @@ const handleLogin = async () => {
   loading.value = true;
   
   try {
-    const response = await axios.post('http://localhost:8080/api/auth/login', {
-      phone: phone.value,
-      password: password.value
-    });
+    await authStore.login(phone.value, password.value);
     
-    // 💾 Lưu dữ liệu đăng nhập vĩnh viễn trong session khách hàng!
-    localStorage.setItem('currentUser', JSON.stringify(response.data));
-    
-    // Thành công ➔ Điều hướng về Profile
-    router.push('/profile');
+    // Nếu có redirect query param (bị chặn do chưa login) -> về đó
+    const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : '/profile');
+    router.push(redirectTo);
   } catch (error) {
     console.error("Đăng nhập thất bại:", error);
-    if (error.response && error.response.data) {
-      errorMsg.value = typeof error.response.data === 'string' ? error.response.data : "Mật khẩu hoặc SĐT không hợp lệ!";
+    if (error.response?.data) {
+      errorMsg.value = typeof error.response.data === 'string'
+        ? error.response.data
+        : "Mật khẩu hoặc SĐT không hợp lệ!";
     } else {
       errorMsg.value = "Lỗi máy chủ! Vui lòng khởi động lại Backend Java.";
     }
@@ -115,6 +115,7 @@ const handleLogin = async () => {
   }
 };
 </script>
+
 
 <style scoped>
 @keyframes fadeIn {

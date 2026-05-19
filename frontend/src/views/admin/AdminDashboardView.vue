@@ -191,9 +191,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import { useApi } from '@/composables/useApi';
 
-const API_URL = 'http://localhost:8080/api/dashboard/stats';
+const api = useApi();
 
 // Khởi tạo trạng thái ban đầu
 const stats = ref({
@@ -207,7 +207,7 @@ const stats = ref({
 
 const fetchStats = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const response = await api.get('/dashboard/stats');
     stats.value = response.data;
   } catch (error) {
     console.error("Lỗi tải số liệu Dashboard:", error);

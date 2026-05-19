@@ -2,12 +2,20 @@ import { ref } from 'vue';
 import axios from 'axios';
 
 export const locations = [
-  "An Giang", "Bà Rịa - Vũng Tàu", "Bạc Liêu", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Tĩnh", "Hậu Giang", "Hồ Chí Minh", "Sài Gòn", "Khánh Hòa", "Nha Trang", "Kiên Giang", "Kon Tum", "Lâm Đồng", "Đà Lạt", "Long An", "Nghệ An", "Ninh Thuận", "Phú Yên", "Quảng Bình", "Quảng Nam", "Hội An", "Quảng Ngãi", "Quảng Trị", "Sóc Trăng", "Tây Ninh", "Thanh Hóa", "Thừa Thiên Huế", "Huế", "Tiền Giang", "Trà Vinh", "Vĩnh Long",
-  "Bến xe Miền Đông, Hồ Chí Minh", "Bến xe Miền Tây, Hồ Chí Minh", "Bến xe An Sương, Hồ Chí Minh", "Bến xe Chợ Lớn, Hồ Chí Minh",
-  "Bến xe Trung tâm Đà Nẵng", "Bến xe Phía Nam, Huế", "Bến xe Phía Bắc, Huế", "Bến xe Trung tâm Cần Thơ", 
-  "Bến xe Tam Kỳ, Quảng Nam", "Bến xe Đức Long, Gia Lai", "Bến xe Quy Nhơn, Bình Định", 
-  "Bến xe phía Nam Nha Trang", "Bến xe phía Bắc Nha Trang", "Bến xe Liên tỉnh Đà Lạt",
-  "Bến xe Rạch Sỏi, Kiên Giang", "Bến xe Vũng Tàu", "Bến xe Phan Thiết"
+  "Bến xe Miền Đông, Hồ Chí Minh", "Bến xe Miền Tây, Hồ Chí Minh", "Bến xe An Sương, Hồ Chí Minh", "Bến xe Ngã Tư Ga, Hồ Chí Minh",
+  "Bến xe Trung tâm Đà Nẵng", "Bến xe Đức Long, Gia Lai", "Bến xe Quy Nhơn, Bình Định", "Bến xe Bồng Sơn, Hoài Nhơn",
+  "Bến xe Phía Nam Nha Trang", "Bến xe Phía Bắc Nha Trang", "Bến xe Cam Ranh", "Bến xe Phan Thiết",
+  "Bến xe Vĩnh Long", "Bến xe Trung tâm Cần Thơ", "Bến xe Rạch Sỏi, Kiên Giang", "Bến xe Hà Tiên",
+  "Bến xe Vũng Tàu", "Bến xe Bà Rịa", "Bến xe Long Điền", "Bến xe Bến Tre", "Bến xe Trà Vinh",
+  "Bến xe Cà Mau", "Bến xe Bạc Liêu", "Bến xe Sóc Trăng", "Bến xe Cao Lãnh", "Bến xe Sa Đéc",
+  "Bến xe Long Xuyên", "Bến xe Châu Đốc", "Bến xe Tây Ninh", "Bến xe Đồng Xoài", "Bến xe Gia Nghĩa",
+  "Bến xe Buôn Ma Thuột", "Bến xe Liên tỉnh Đà Lạt", "Bến xe Kon Tum", "Bến xe Tuy Hòa", 
+  "Bến xe Quảng Ngãi", "Bến xe Tam Kỳ, Quảng Nam", "Bến xe Phía Nam, Huế", "Bến xe Phía Bắc, Huế",
+  "Bến xe Đồng Hới", "Bến xe Đông Hà, Quảng Trị", "Bến xe Hà Tĩnh", "Bến xe Vinh", "Bến xe Thanh Hóa",
+  "Bến xe Ninh Bình", "Bến xe Thái Bình", "Bến xe Nam Định", "Bến xe Phủ Lý", "Bến xe Hòa Bình",
+  "Bến xe Mỹ Đình, Hà Nội", "Bến xe Giáp Bát, Hà Nội", "Bến xe Nước Ngầm, Hà Nội", "Bến xe Yên Nghĩa, Hà Nội",
+  "Bến xe Gia Lâm, Hà Nội", "Bến xe Thượng Lý, Hải Phòng", "Bến xe Cầu Rào, Hải Phòng",
+  "Bến xe Lạng Sơn", "Bến xe Cao Bằng", "Bến xe Hà Giang", "Bến xe Lào Cai", "Bến xe Điện Biên Phủ"
 ].sort();
 
 export const removeAccents = (str) => {
@@ -72,18 +80,39 @@ export function useLocationSearch() {
     
     isSearching.value = true;
     try {
-      const res = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: { q: val, format: 'json', addressdetails: 1, countrycodes: 'vn', limit: 5, 'accept-language': 'vi' },
+      // 🚌 THUẬT TOÁN TỐI ƯU: Nếu chưa có chữ "Bến xe", tự động thêm vào để quét bến xe nhỏ ở tỉnh
+      const searchQuery = val.toLowerCase().includes('ben xe') ? val : `Bến xe ${val}`;
+      
+      const params = new URLSearchParams({
+        q: searchQuery,
+        format: 'json',
+        addressdetails: '1',
+        countrycodes: 'vn',
+        limit: '10',
+        'accept-language': 'vi',
+        featuretype: 'transportation'
+      });
+
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
         signal: abortController.signal
       });
-      if (res.data && res.data.length > 0) {
-        const apiMatches = res.data.map(item => formatAddress(item, val));
+      const data = await res.json();
+
+      if (data && data.length > 0) {
+        // Lọc để ưu tiên các kết quả thực sự là bến xe hoặc trạm xe
+        const apiMatches = data
+          .filter(item => {
+            const dn = item.display_name.toLowerCase();
+            return dn.includes('ben xe') || dn.includes('bus station') || dn.includes('tram xe');
+          })
+          .map(item => formatAddress(item, val));
+        
         suggestions.value = [...new Set([...localMatches, ...apiMatches])];
       } else if (localMatches.length === 0) {
         suggestions.value = ['@@WARNING@@' + val];
       }
     } catch (e) {
-      if (!axios.isCancel(e)) {
+      if (e.name !== 'AbortError') {
         console.warn("Lỗi tìm kiếm API Địa chỉ:", e);
         if (localMatches.length === 0) suggestions.value = ['@@WARNING@@' + val];
       }

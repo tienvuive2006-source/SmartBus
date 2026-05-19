@@ -159,38 +159,28 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const user = ref(null);
 const loading = ref(true);
 
 const checkAuth = async () => {
-  const storedUser = localStorage.getItem('currentUser');
-  if (!storedUser) {
-    // 🚨 BÁO ĐỘNG: Chưa đăng nhập! Bắt buộc ra màn hình Login!
+  if (!authStore.isLoggedIn) {
     router.push('/auth/login');
     loading.value = false;
     return;
   }
 
   try {
-    const tempUser = JSON.parse(storedUser);
-    
-    // 📡 ĐỒNG BỘ THỜI GIAN THỰC: Hỏi trực tiếp SQL Server để lấy Số dư MỚI NHẤT
-    const response = await axios.get(`http://localhost:8080/api/users/${tempUser.id}`);
-    user.value = response.data;
-    
-    // Cập nhật ngược lại Cache của trình duyệt để mọi nơi đều được hưởng đồng bộ
-    localStorage.setItem('currentUser', JSON.stringify(user.value));
+    // 📡 Đồng bộ thời gian thực từ server dùng JWT token
+    const freshUser = await authStore.fetchMe();
+    user.value = freshUser || authStore.currentUser;
   } catch (err) {
-    console.error("Lỗi kết nối SQL Server, dùng tạm dữ liệu Cache:", err);
-    // Nếu server tạm mất kết nối, dự phòng nạp cache cũ để không hỏng giao diện
-    try {
-      user.value = JSON.parse(storedUser);
-    } catch (e) {
-      router.push('/auth/login');
-    }
+    console.error("Lỗi kết nối server, dùng cache:", err);
+    user.value = authStore.currentUser;
+    if (!user.value) router.push('/auth/login');
   } finally {
     loading.value = false;
   }
@@ -198,7 +188,7 @@ const checkAuth = async () => {
 
 const handleLogout = () => {
   if (confirm("Bạn thực sự muốn đăng xuất khỏi hệ thống SkyBus?")) {
-    localStorage.removeItem('currentUser');
+    authStore.logout();
     router.push('/auth/login');
   }
 };
@@ -207,6 +197,7 @@ onMounted(() => {
   checkAuth();
 });
 </script>
+
 
 <style scoped>
 @keyframes fadeIn {

@@ -29,9 +29,9 @@ frontend/yarn-error.log*
 # ==========================================
 backend/target/
 backend/out/
-backend/.mvn/
-backend/mvnw
-backend/mvnw.cmd
+# backend/.mvn/ - Nên giữ lại để chạy được lệnh mvnw
+# backend/mvnw - Cần mang lên GitHub
+# backend/mvnw.cmd - Cần mang lên GitHub
 backend/*.jar
 backend/*.war
 backend/*.zip
