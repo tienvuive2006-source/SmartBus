@@ -61,7 +61,7 @@ import { useAuthStore } from '@/stores/auth';
 const props = defineProps({
   title: {
     type: String,
-    default: 'SkyBus'
+    default: 'Trung Nam'
   },
   showBack: {
     type: Boolean,

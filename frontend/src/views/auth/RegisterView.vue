@@ -9,7 +9,7 @@
           <span class="material-symbols-outlined text-4xl font-black">person_add</span>
         </div>
         <h2 class="text-headline-md font-black tracking-tight">Khởi tạo tài khoản</h2>
-        <p class="text-label-md font-bold opacity-70 tracking-wider uppercase mt-1">GIA NHẬP HỆ THỐNG SKYBUS</p>
+        <p class="text-label-md font-bold opacity-70 tracking-wider uppercase mt-1">GIA NHẬP HỆ THỐNG TRUNG NAM</p>
       </div>
 
       <div class="p-8">
@@ -120,7 +120,7 @@ const handleRegister = async () => {
     await authStore.register(fullName.value, phone.value, password.value);
     
     // 🚀 Tự động đăng nhập ngay sau khi đăng ký -> về profile hưởng 500k
-    router.push('/profile');
+    router.push('/');
   } catch (error) {
     console.error("Đăng ký thất bại:", error);
     if (error.response?.data) {

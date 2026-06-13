@@ -70,9 +70,21 @@
             <div class="flex justify-between items-start mb-5">
               <div class="flex flex-col">
                 <div class="flex items-center gap-2 mb-3">
-                  <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-emerald-100/50 shadow-sm">
+                  <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-emerald-100/50 shadow-sm" v-if="ticket.status === 'PAID'">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                     ĐÃ THANH TOÁN
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-amber-100/50 shadow-sm" v-else-if="ticket.status === 'PENDING'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    CHỜ THANH TOÁN
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-rose-100/50 shadow-sm" v-else-if="ticket.status === 'CANCELLED'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    ĐÃ HỦY
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-blue-100/50 shadow-sm" v-else-if="ticket.status === 'CHECKED_IN'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    ĐÃ LÊN XE
                   </span>
                   <span class="text-[11px] font-bold text-gray-400">#{{ ticket.id }}</span>
                 </div>
@@ -86,13 +98,24 @@
                 </p>
               </div>
 
-              <button 
-                @click="openQrModal(ticket)"
-                class="p-3 bg-[#075955]/5 border border-[#075955]/10 rounded-2xl text-[#075955] hover:bg-[#075955] hover:text-white transition-all duration-300 shadow-sm active:scale-95 group-hover:scale-105 flex flex-col items-center gap-0.5"
-              >
-                <span class="material-symbols-outlined text-[28px] font-black">qr_code_2</span>
-                <span class="text-[9px] font-black tracking-widest">QUÉT MÃ</span>
-              </button>
+              <div class="flex gap-2">
+                <button 
+                  v-if="ticket.status === 'PAID' || ticket.status === 'PENDING'"
+                  @click="openCancelModal(ticket)"
+                  class="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
+                >
+                  <span class="material-symbols-outlined text-[28px] font-black">free_cancellation</span>
+                  <span class="text-[9px] font-black tracking-widest">HỦY VÉ</span>
+                </button>
+                <button 
+                  v-if="ticket.status !== 'CANCELLED'"
+                  @click="openQrModal(ticket)"
+                  class="p-3 bg-[#075955]/5 border border-[#075955]/10 rounded-2xl text-[#075955] hover:bg-[#075955] hover:text-white transition-all duration-300 shadow-sm active:scale-95 group-hover:scale-105 flex flex-col items-center gap-0.5"
+                >
+                  <span class="material-symbols-outlined text-[28px] font-black">qr_code_2</span>
+                  <span class="text-[9px] font-black tracking-widest">QUÉT MÃ</span>
+                </button>
+              </div>
             </div>
 
             <div class="border-t border-dashed border-gray-300 my-4 relative">
@@ -165,21 +188,91 @@
         </div>
       </div>
     </div>
+
+    <!-- Hủy Vé Modal -->
+    <div v-if="isCancelModalOpen && selectedTicket" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-[999] flex items-center justify-center p-6 animate-fade-in" @click.self="closeCancelModal">
+      <div class="bg-white w-full max-w-sm rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/20 animate-scale-up p-6 relative">
+        <button @click="closeCancelModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-900 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-all active:scale-90">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+
+        <h3 class="text-headline-sm font-black text-rose-600 mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined">warning</span> Hủy vé xe
+        </h3>
+        <p class="text-xs text-gray-500 font-medium mb-6 leading-relaxed">
+          Mã vé: <b>#{{ selectedTicket.id }}</b>. {{ selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH' ? 'Bạn sẽ được hoàn lại 90% số tiền vào Ví Trung Nam.' : 'Thao tác này không thể hoàn tác.' }}
+        </p>
+
+        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Lý do hủy vé (Bắt buộc)</label>
+        <select v-model="cancelReason" class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700 outline-none focus:border-[#075955] mb-4">
+          <option value="" disabled>-- Chọn lý do --</option>
+          <option value="Thay đổi lịch trình">Thay đổi lịch trình</option>
+          <option value="Tìm được xe khác phù hợp hơn">Tìm được xe khác phù hợp hơn</option>
+          <option value="Đặt nhầm ngày/giờ">Đặt nhầm ngày/giờ</option>
+          <option value="Lý do cá nhân">Lý do cá nhân</option>
+        </select>
+
+        <div v-if="selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH'" class="bg-amber-50 p-3 rounded-xl border border-amber-100 mb-6 flex items-start gap-2">
+           <span class="material-symbols-outlined text-amber-500 text-lg">account_balance_wallet</span>
+           <div>
+             <p class="text-xs font-bold text-amber-700">Số tiền hoàn lại (90%)</p>
+             <p class="text-base font-black text-amber-600">+{{ (selectedTicket.total * 0.9).toLocaleString('vi-VN') }}đ</p>
+           </div>
+        </div>
+
+        <button 
+          @click="confirmCancel" 
+          :disabled="!cancelReason || isCancelling"
+          class="w-full bg-rose-500 text-white font-black py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-md hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all active:scale-95"
+        >
+          <span v-if="isCancelling" class="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></span>
+          {{ isCancelling ? 'Đang xử lý...' : 'Xác nhận Hủy Vé' }}
+        </button>
+      </div>
+    </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { useApi } from '@/composables/useApi';
 
 const activeTab = ref('upcoming');
 const upcomingTickets = ref([]);
 const isModalOpen = ref(false);
 const selectedTicket = ref(null);
 
-// Nạp lịch sử thật từ Local Browser Storage
-const loadHistory = () => {
-  // Đã cập nhật key localstorage sang trungnam_history cho đồng bộ thương hiệu. 
+const authStore = useAuthStore();
+const api = useApi();
+
+const loadHistory = async () => {
+  if (authStore.isLoggedIn) {
+    try {
+      const response = await api.get('/auth/me/bookings');
+      if (response.data && Array.isArray(response.data)) {
+        upcomingTickets.value = response.data.map(b => ({
+          id: b.id,
+          from: b.trip.departurePoint,
+          to: b.trip.arrivalPoint,
+          busType: b.trip.busType,
+          time: b.trip.departureTime,
+          date: b.trip.departureDate,
+          seats: Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : b.seatNumbers,
+          method: b.paymentMethod,
+          total: b.totalPrice,
+          status: b.status
+        }));
+        return;
+      }
+    } catch (err) {
+      console.error("Lỗi lấy lịch sử từ server:", err);
+    }
+  }
+
+  // Fallback (cho khách vãng lai hoặc khi lỗi API)
   const stored = localStorage.getItem('trungnam_history') || localStorage.getItem('saomaifly_history') || localStorage.getItem('skybus_history');
   if (stored) {
     try {
@@ -200,6 +293,44 @@ const openQrModal = (ticket) => {
 
 const closeModal = () => {
   isModalOpen.value = false;
+};
+
+// Hủy vé
+const isCancelModalOpen = ref(false);
+const cancelReason = ref('');
+const isCancelling = ref(false);
+
+const openCancelModal = (ticket) => {
+  selectedTicket.value = ticket;
+  cancelReason.value = '';
+  isCancelModalOpen.value = true;
+};
+
+const closeCancelModal = () => {
+  isCancelModalOpen.value = false;
+};
+
+const confirmCancel = async () => {
+  if (!cancelReason.value) return;
+  isCancelling.value = true;
+  try {
+    const res = await api.post(`/auth/me/bookings/${selectedTicket.value.id}/cancel`, {
+      reason: cancelReason.value
+    });
+    
+    // Cập nhật số dư ví trong store nếu có
+    if (res.data.walletBalance !== undefined) {
+      authStore.updateWalletBalance(res.data.walletBalance);
+    }
+    
+    alert(`Đã hủy vé thành công! ${res.data.refundAmount ? 'Bạn được hoàn +' + res.data.refundAmount.toLocaleString('vi-VN') + 'đ vào ví.' : ''}`);
+    isCancelModalOpen.value = false;
+    loadHistory(); // Tải lại danh sách
+  } catch (err) {
+    alert("Hủy vé thất bại: " + (err.response?.data || err.message));
+  } finally {
+    isCancelling.value = false;
+  }
 };
 
 onMounted(() => {

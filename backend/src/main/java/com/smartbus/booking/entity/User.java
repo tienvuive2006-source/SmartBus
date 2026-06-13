@@ -26,11 +26,14 @@ public class User {
     private String fullName;
 
     @Builder.Default
-    private String role = "USER"; // USER hoặc ADMIN
+    private String role = "USER"; // USER, ADMIN, hoặc INSPECTOR
 
     @Column(nullable = true)
     private String email;
 
     @Builder.Default
     private Double walletBalance = 0.0; // Tích hợp ví tiền luôn cực xịn
+
+    @Transient
+    private int ticketCount;
 }

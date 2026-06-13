@@ -66,4 +66,10 @@ public class TripController {
         tripService.deleteTrip(id);
         return ResponseEntity.noContent().build();
     }
+
+    // 7. BẬT/TẮT HIỂN THỊ CHUYẾN XE (TOGGLE VISIBILITY)
+    @PatchMapping("/{id}/visibility")
+    public ResponseEntity<Trip> toggleVisibility(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(tripService.toggleVisibility(id));
+    }
 }

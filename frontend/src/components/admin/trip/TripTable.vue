@@ -1,19 +1,14 @@
 <template>
-  <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-    <!-- List Header -->
-    <div class="p-6 bg-[#075955] text-white flex justify-between items-center">
-      <div class="flex items-center gap-4">
-        <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-          <span class="material-symbols-outlined text-white">list_alt</span>
-        </div>
-        <div>
-          <h3 class="text-base font-black uppercase tracking-widest">Danh sách vận hành</h3>
-          <p class="text-[10px] text-white/60 font-bold tracking-wider">Tổng cộng {{ trips.length }} chuyến xe đang khai thác</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 px-4 py-1.5 bg-white/10 rounded-full border border-white/10 backdrop-blur-sm">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-[9px] font-black uppercase tracking-widest">Live Sync</span>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- Toolbar -->
+    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+         <span class="material-symbols-outlined text-[#075955] text-[20px]">list_alt</span>
+         Danh sách vận hành
+      </h3>
+      <div class="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[10px] font-bold text-emerald-700 uppercase">{{ trips.length }} chuyến</span>
       </div>
     </div>
 
@@ -28,6 +23,7 @@
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Thời gian</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Giá vé</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Trạng thái</th>
+            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Hiển thị</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Thao tác</th>
           </tr>
         </thead>
@@ -74,7 +70,10 @@
               {{ trip.price.toLocaleString() }}<span class="text-[10px] ml-0.5">đ</span>
             </td>
             <td class="px-6 py-5 text-center">
-              <div 
+              <div v-if="isTripPassed(trip)" class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm bg-slate-100 border-slate-200 text-slate-500">
+                Đã khởi hành
+              </div>
+              <div v-else
                 :class="[
                   'inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm',
                   trip.availableSeats <= 0 
@@ -87,6 +86,19 @@
                 {{ trip.availableSeats }} chỗ trống
               </div>
             </td>
+            <td class="px-6 py-5 text-center">
+              <button 
+                @click="toggleVisibility(trip)"
+                class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#075955]/30"
+                :class="trip.isVisible !== false ? 'bg-[#075955]' : 'bg-slate-300'"
+                :title="trip.isVisible !== false ? 'Đang hiển thị trên Home' : 'Đã bị ẩn'"
+              >
+                <span 
+                  class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-300 ease-in-out shadow-sm"
+                  :class="trip.isVisible !== false ? 'translate-x-4' : 'translate-x-0.5'"
+                ></span>
+              </button>
+            </td>
             <td class="px-6 py-5">
               <div class="flex items-center justify-center gap-2">
                 <button 
@@ -96,8 +108,17 @@
                   <span class="material-symbols-outlined text-lg">edit_note</span>
                 </button>
                 <button 
+                  v-if="!trip.totalSeats || trip.availableSeats === trip.totalSeats"
                   @click="$emit('delete', trip.id)" 
                   class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-slate-100"
+                  title="Xoá lộ trình này"
+                >
+                  <span class="material-symbols-outlined text-lg">delete_sweep</span>
+                </button>
+                <button 
+                  v-else
+                  class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-300 cursor-not-allowed shadow-sm border border-slate-200 opacity-50"
+                  title="Không thể xoá chuyến xe đã có khách mua vé"
                 >
                   <span class="material-symbols-outlined text-lg">delete_sweep</span>
                 </button>
@@ -124,11 +145,25 @@
 </template>
 
 <script setup>
+import { useApi } from '@/composables/useApi';
+
+const api = useApi();
+
 defineProps({
   trips: Array
 });
 
-defineEmits(['edit', 'delete']);
+const emit = defineEmits(['edit', 'delete']);
+
+const toggleVisibility = async (trip) => {
+  try {
+    const res = await api.patch(`/trips/${trip.id}/visibility`);
+    trip.isVisible = res.data.isVisible;
+  } catch (error) {
+    alert("Không thể thay đổi trạng thái hiển thị!");
+    console.error(error);
+  }
+};
 
 const simplifyLocation = (loc) => {
   if (!loc) return '';
@@ -139,5 +174,17 @@ const simplifyLocation = (loc) => {
 const formatDate = (d) => {
   if (!d) return '';
   return d.split('T')[0].split('-').reverse().join('/');
+};
+
+const isTripPassed = (trip) => {
+  if (!trip || !trip.departureDate || !trip.departureTime) return false;
+  try {
+    const [year, month, day] = trip.departureDate.split('T')[0].split('-');
+    const [hour, minute] = trip.departureTime.split(':');
+    const depTime = new Date(year, month - 1, day, hour, minute);
+    return new Date() > depTime;
+  } catch (e) {
+    return false;
+  }
 };
 </script>

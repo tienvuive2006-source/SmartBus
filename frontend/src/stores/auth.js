@@ -12,6 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   // ─── GETTERS ──────────────────────────────────────────────────────
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
+  const isInspector = computed(() => user.value?.role === 'INSPECTOR')
   const currentUser = computed(() => user.value)
 
   // ─── HELPERS ──────────────────────────────────────────────────────
@@ -44,6 +45,10 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('jwt_user')
     // Xóa luôn key cũ nếu còn tồn tại
     localStorage.removeItem('currentUser')
+    // Xóa lịch sử đặt vé để bảo mật (tránh lộ thông tin khi đổi tài khoản)
+    localStorage.removeItem('trungnam_history')
+    localStorage.removeItem('saomaifly_history')
+    localStorage.removeItem('skybus_history')
   }
 
   // ✅ Refresh thông tin user từ server (dùng token hiện tại)
@@ -90,6 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
     // getters
     isLoggedIn,
     isAdmin,
+    isInspector,
     currentUser,
     authHeader,
     // actions

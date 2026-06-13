@@ -1,19 +1,14 @@
 <template>
-  <div class="p-6 md:p-10 max-w-7xl mx-auto animate-fade-in">
+  <div class="p-6 md:p-8 max-w-7xl mx-auto">
     <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 border-b border-slate-200 pb-8">
-      <div class="flex items-center gap-5">
-        <div class="w-16 h-16 bg-[#075955] rounded-3xl flex items-center justify-center shadow-lg shadow-[#075955]/20">
-          <span class="material-symbols-outlined text-white text-4xl">confirmation_number</span>
-        </div>
-        <div>
-          <h1 class="text-3xl font-black text-slate-800 tracking-tight">Quản lý Đặt vé</h1>
-          <p class="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">Kiểm soát dòng tiền và đơn hàng từ SQL Server</p>
-        </div>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Quản lý Đặt vé</h1>
+        <p class="text-xs font-semibold text-slate-500 mt-1">Kiểm soát đơn hàng và trạng thái giao dịch</p>
       </div>
       <div class="flex items-center gap-3">
-        <button class="bg-white border border-slate-200 text-[#075955] px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-sm">download</span> Xuất báo cáo PDF
+        <button class="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-slate-50 hover:text-[#075955] hover:border-[#075955]/30 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-[18px]">download</span> Báo cáo PDF
         </button>
       </div>
     </div>
@@ -23,6 +18,7 @@
       :totalCount="bookings.length"
       :paidCount="paidCount"
       :pendingCount="pendingCount"
+      :checkedInCount="checkedInCount"
       :cancelledCount="cancelledCount"
     />
 
@@ -35,6 +31,7 @@
       :statusStyles="statusStyles"
       @view="viewDetail"
       @update-status="updateStatus"
+      @view-reason="viewReason"
     />
   </div>
 </template>
@@ -52,14 +49,16 @@ const statusFilter = ref('ALL');
 
 const statusLabels = {
   'PAID': 'Đã thanh toán',
-  'PENDING': 'Đang chờ xử lý',
-  'CANCELLED': 'Đã hủy bỏ'
+  'PENDING': 'Chờ thanh toán',
+  'CANCELLED': 'Đã hủy bỏ',
+  'CHECKED_IN': 'Đã lên xe'
 };
 
 const statusStyles = {
   'PAID': 'bg-emerald-50 text-emerald-600 border-emerald-100',
   'PENDING': 'bg-amber-50 text-amber-600 border-amber-100',
-  'CANCELLED': 'bg-rose-50 text-rose-600 border-rose-100'
+  'CANCELLED': 'bg-rose-50 text-rose-600 border-rose-100',
+  'CHECKED_IN': 'bg-blue-50 text-blue-600 border-blue-100'
 };
 
 const fetchBookings = async () => {
@@ -98,6 +97,7 @@ const filteredBookings = computed(() => {
 
 const paidCount = computed(() => bookings.value.filter(b => b.status === 'PAID').length);
 const pendingCount = computed(() => bookings.value.filter(b => b.status === 'PENDING').length);
+const checkedInCount = computed(() => bookings.value.filter(b => b.status === 'CHECKED_IN').length);
 const cancelledCount = computed(() => bookings.value.filter(b => b.status === 'CANCELLED').length);
 
 const updateStatus = async (id, newStatus) => {
@@ -110,7 +110,15 @@ const updateStatus = async (id, newStatus) => {
 };
 
 const viewDetail = (booking) => {
-  alert(`CHI TIẾT VÉ #${booking.id}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${booking.seats.join(', ')}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`);
+  let msg = `CHI TIẾT VÉ #${booking.id}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${booking.seats.join(', ')}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`;
+  if (booking.status === 'CANCELLED' && booking.cancellationReason) {
+    msg += `\nLý do hủy: ${booking.cancellationReason}`;
+  }
+  alert(msg);
+};
+
+const viewReason = (reason) => {
+  alert(`LÝ DO HỦY VÉ:\n\n${reason}`);
 };
 
 onMounted(fetchBookings);

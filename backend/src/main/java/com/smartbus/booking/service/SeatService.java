@@ -76,6 +76,9 @@ public class SeatService {
         // 2. Duyệt qua sơ đồ để đánh dấu Đã bán và đồng thời ĐẾM DỰ PHÒNG số ghế thực tế
         for (Seat seat : seats) {
             if (seatNumbers.contains(seat.getSeatNumber())) {
+                if (Boolean.TRUE.equals(seat.getIsBooked())) {
+                    throw new RuntimeException("Ghế " + seat.getSeatNumber() + " đã có người đặt! Vui lòng chọn ghế khác.");
+                }
                 seat.setIsBooked(true); // Đổi trạng thái thật trong SQL
             }
             
@@ -93,6 +96,31 @@ public class SeatService {
         tripRepository.findById(tripId).ifPresent(trip -> {
             trip.setAvailableSeats(finalCount);
             tripRepository.save(trip); // Ghi đè trực tiếp vào SQL Server!
+        });
+    }
+
+    // 🔄 HỦY GHẾ VÀ HOÀN LẠI SỐ DƯ GHẾ TRỐNG
+    @Transactional
+    public void releaseSeats(Long tripId, List<String> seatNumbers) {
+        List<Seat> seats = seatRepository.findByTripIdOrderBySeatNumberAsc(tripId);
+        int remainingEmptySeatsCount = 0;
+        
+        for (Seat seat : seats) {
+            if (seatNumbers.contains(seat.getSeatNumber())) {
+                seat.setIsBooked(false); // Đổi trạng thái thành trống
+            }
+            
+            if (!seat.getIsBooked()) {
+                remainingEmptySeatsCount++;
+            }
+        }
+        
+        seatRepository.saveAll(seats);
+        
+        int finalCount = remainingEmptySeatsCount;
+        tripRepository.findById(tripId).ifPresent(trip -> {
+            trip.setAvailableSeats(finalCount);
+            tripRepository.save(trip);
         });
     }
 }

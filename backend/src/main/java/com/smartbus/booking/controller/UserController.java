@@ -14,17 +14,35 @@ import java.util.Optional;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final com.smartbus.booking.repository.BookingRepository bookingRepository;
+    private final com.smartbus.booking.repository.InspectorRepository inspectorRepository;
+    private final com.smartbus.booking.repository.TripRepository tripRepository;
 
-    // 🛡️ CONSTRUCTOR THUẦN TÚY (Pure Vanilla Java): Khỏi cần cài Lombok cũng chạy
-    // cực êm!
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, 
+                          com.smartbus.booking.repository.BookingRepository bookingRepository, 
+                          com.smartbus.booking.repository.InspectorRepository inspectorRepository,
+                          com.smartbus.booking.repository.TripRepository tripRepository) {
         this.userRepository = userRepository;
+        this.bookingRepository = bookingRepository;
+        this.inspectorRepository = inspectorRepository;
+        this.tripRepository = tripRepository;
     }
 
     // 1. Lấy toàn bộ danh sách Người dùng
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+        List<User> users = userRepository.findAll();
+        List<com.smartbus.booking.entity.Booking> allBookings = bookingRepository.findAll();
+        for (User user : users) {
+            int count = 0;
+            for (com.smartbus.booking.entity.Booking b : allBookings) {
+                if (b.getUser() != null && b.getUser().getId().equals(user.getId()) && !"CANCELLED".equals(b.getStatus())) {
+                    count += b.getSeatNumbers().size();
+                }
+            }
+            user.setTicketCount(count);
+        }
+        return ResponseEntity.ok(users);
     }
 
     // 1.5 Lấy chi tiết 1 Người dùng duy nhất (Đồng bộ thời gian thực)
@@ -47,27 +65,116 @@ public class UserController {
         }
 
         User existingUser = userOpt.get();
+        
+        String currentPhone = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !existingUser.getPhone().equals(currentPhone)) {
+            return ResponseEntity.status(403).body("Không có quyền cập nhật tài khoản của người khác!");
+        }
+
         existingUser.setFullName(userUpdates.getFullName());
         existingUser.setPhone(userUpdates.getPhone());
-        existingUser.setRole(userUpdates.getRole());
-        existingUser.setWalletBalance(userUpdates.getWalletBalance());
+        existingUser.setEmail(userUpdates.getEmail());
+        
+        if (isAdmin) {
+            existingUser.setRole(userUpdates.getRole());
+            if (userUpdates.getWalletBalance() != null) {
+                existingUser.setWalletBalance(userUpdates.getWalletBalance());
+            }
+        }
         
         // Nếu có đổi mật khẩu mới (không trống)
         if (userUpdates.getPassword() != null && !userUpdates.getPassword().trim().isEmpty()) {
-            existingUser.setPassword(userUpdates.getPassword());
+            existingUser.setPassword(userUpdates.getPassword()); // Trong thực tế cần dùng PasswordEncoder
         }
 
         User savedUser = userRepository.save(existingUser);
+
+        // Auto-sync Inspector entity
+        if ("INSPECTOR".equals(savedUser.getRole())) {
+            Optional<com.smartbus.booking.entity.Inspector> existingInsp = inspectorRepository.findByUserAccountId(savedUser.getId());
+            if (existingInsp.isEmpty()) {
+                com.smartbus.booking.entity.Inspector newInsp = com.smartbus.booking.entity.Inspector.builder()
+                        .fullName(savedUser.getFullName())
+                        .phone(savedUser.getPhone())
+                        .employeeCode("NV" + savedUser.getId())
+                        .userAccount(savedUser)
+                        .build();
+                inspectorRepository.save(newInsp);
+            } else {
+                // ĐỒNG BỘ: Cập nhật lại Tên và SĐT cho Inspector nếu Admin sửa User
+                com.smartbus.booking.entity.Inspector insp = existingInsp.get();
+                insp.setFullName(savedUser.getFullName());
+                insp.setPhone(savedUser.getPhone());
+                inspectorRepository.save(insp);
+            }
+        }
+
         return ResponseEntity.ok(savedUser);
     }
 
     // 3. Xoá người dùng
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable("id") Long id) {
-        if (!userRepository.existsById(id)) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
             return ResponseEntity.notFound().build();
         }
+        
+        User targetUser = userOpt.get();
+
+        // Không cho phép xoá ADMIN
+        if ("ADMIN".equals(targetUser.getRole())) {
+            return ResponseEntity.status(400).body(java.util.Map.of("message", "Không thể xoá tài khoản Quản trị viên (ADMIN)!"));
+        }
+
+        // Kiểm tra xem khách hàng đã mua vé chưa, nếu có vé thì cấm xoá
+        List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findAll();
+        for (com.smartbus.booking.entity.Booking b : userBookings) {
+            if (b.getUser() != null && b.getUser().getId().equals(id)) {
+                return ResponseEntity.status(400).body(java.util.Map.of("message", "Không thể xoá khách hàng đã có lịch sử mua vé!"));
+            }
+        }
+
+        // Unlink or delete inspector if this user is an inspector
+        Optional<com.smartbus.booking.entity.Inspector> insp = inspectorRepository.findByUserAccountId(id);
+        if (insp.isPresent()) {
+            com.smartbus.booking.entity.Inspector inspector = insp.get();
+            // Unlink trips assigned to this inspector
+            List<com.smartbus.booking.entity.Trip> trips = tripRepository.findAll();
+            for (com.smartbus.booking.entity.Trip t : trips) {
+                if (t.getInspector() != null && t.getInspector().getId().equals(inspector.getId())) {
+                    t.setInspector(null);
+                    tripRepository.save(t);
+                }
+            }
+            inspectorRepository.delete(inspector);
+        }
+        
         userRepository.deleteById(id);
-        return ResponseEntity.ok("Xoá người dùng thành công!");
+        return ResponseEntity.ok(java.util.Map.of("message", "Xoá người dùng thành công!"));
+    }
+
+    // 4. Lấy lịch sử giao dịch/đặt vé của người dùng
+    @GetMapping("/{id}/bookings")
+    public ResponseEntity<?> getUserBookings(@PathVariable("id") Long id) {
+        String currentPhone = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User existingUser = userOpt.get();
+        if (!isAdmin && !existingUser.getPhone().equals(currentPhone)) {
+            return ResponseEntity.status(403).body("Không có quyền xem lịch sử của người khác!");
+        }
+
+        List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(id);
+        return ResponseEntity.ok(userBookings);
     }
 }

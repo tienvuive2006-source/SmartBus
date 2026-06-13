@@ -42,6 +42,12 @@
             <select 
               v-model="form.busType" 
               required
+              @change="(e) => {
+                const selectedType = busTypes.find(t => t.name === e.target.value);
+                if(selectedType && selectedType.imageUrl) {
+                  form.imageUrl = selectedType.imageUrl;
+                }
+              }"
               class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold transition-colors"
             >
               <option v-if="busTypes.length === 0" value="" disabled>-- Chưa cấu hình catalog Dòng xe --</option>
@@ -69,55 +75,7 @@
             />
           </div>
 
-          <div class="space-y-1.5 p-3 bg-surface-container-lowest rounded-2xl border border-dashed border-primary/30">
-            <label class="text-label-md font-black text-primary uppercase flex items-center gap-1">
-              <span class="material-symbols-outlined text-sm">location_on</span>
-              Vị Trí/Trạm Đậu Xe Hiện Tại
-            </label>
-            <select 
-              v-model="form.currentStation" 
-              required
-              class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold bg-white transition-colors"
-            >
-              <option value="Hà Nội">Trạm Hà Nội (Trụ sở)</option>
-              <option value="Hải Phòng">Trạm Hải Phòng</option>
-              <option value="SaPa">Trạm SaPa</option>
-              <option value="Đà Nẵng">Trạm Đà Nẵng</option>
-              <option value="Nha Trang">Trạm Nha Trang</option>
-              <option value="Sài Gòn">Trạm Sài Gòn</option>
-              <option value="Cần Thơ">Trạm Cần Thơ</option>
-            </select>
-            <p class="text-[10px] font-medium text-on-surface-variant mt-1">💡 Định vị GPS vệ tinh sẽ tự động thả ghim vị trí của xe tại Tỉnh thành này trên bản đồ!</p>
-          </div>
 
-          <div class="space-y-1.5">
-            <label class="text-label-md font-black text-on-surface-variant uppercase flex items-center gap-1">
-              <span class="material-symbols-outlined text-sm">image</span>
-              Hình Ảnh Xe Thật
-            </label>
-            <div class="flex gap-2">
-              <input 
-                v-model="form.imageUrl" 
-                type="url" 
-                placeholder="Link ảnh hoặc tải lên..."
-                class="flex-1 border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold transition-colors"
-              />
-              <button 
-                type="button"
-                @click="fileInput.click()"
-                class="px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl flex items-center justify-center transition-all active:scale-95 border border-slate-200"
-                :disabled="uploading"
-              >
-                <span class="material-symbols-outlined">{{ uploading ? 'sync' : 'upload_file' }}</span>
-              </button>
-            </div>
-            <div v-if="form.imageUrl" class="mt-2 relative group overflow-hidden rounded-2xl border-2 border-dashed border-primary/20 aspect-video bg-slate-50 flex items-center justify-center">
-              <img :src="form.imageUrl" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" @error="(e) => e.target.style.display = 'none'" />
-              <div class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <span class="text-white text-[10px] font-black uppercase tracking-widest">Xem trước hình ảnh xe</span>
-              </div>
-            </div>
-          </div>
 
           <div class="space-y-1.5">
             <label class="text-label-md font-black text-on-surface-variant uppercase">Trạng Thái Máy Móc & Khai Thác</label>
@@ -162,8 +120,6 @@
           </button>
         </div>
       </div>
-      <!-- Hidden File Input -->
-      <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleImageUpload" />
     </div>
   </Teleport>
 </template>
@@ -181,29 +137,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit']);
 
-const fileInput = ref(null);
-const uploading = ref(false);
-
-const handleImageUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  uploading.value = true;
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', 'skybus_preset');
-
-  try {
-    const res = await axios.post('https://api.cloudinary.com/v1_1/dzydry2xn/image/upload', formData);
-    // Lưu ý: Cần gán trực tiếp vào props.form vì đây là object tham chiếu
-    props.form.imageUrl = res.data.secure_url;
-  } catch (err) {
-    console.error("Lỗi tải ảnh Cloudinary:", err);
-    alert("Lỗi tải ảnh lên Cloudinary!");
-  } finally {
-    uploading.value = false;
-  }
-};
 </script>
 
 <style scoped>

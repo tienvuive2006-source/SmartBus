@@ -1,35 +1,53 @@
 <template>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-      <div class="w-12 h-12 bg-[#075955]/10 rounded-2xl flex items-center justify-center text-[#075955] mb-4">
-        <span class="material-symbols-outlined text-2xl">confirmation_number</span>
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+      <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 border border-slate-100">
+        <span class="material-symbols-outlined text-xl">receipt_long</span>
       </div>
-      <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tổng đơn đặt vé</p>
-      <p class="text-3xl font-black text-slate-800 mt-1">{{ totalCount }}</p>
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tổng đơn</p>
+        <p class="text-xl font-extrabold text-slate-800">{{ totalCount }}</p>
+      </div>
     </div>
 
-    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm border-l-4 border-emerald-500 hover:shadow-md transition-shadow">
-      <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mb-4">
-        <span class="material-symbols-outlined text-2xl">check_circle</span>
+    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+      <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 border border-emerald-100">
+        <span class="material-symbols-outlined text-xl">check_circle</span>
       </div>
-      <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Đã thanh toán</p>
-      <p class="text-3xl font-black text-emerald-600 mt-1">{{ paidCount }}</p>
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã thanh toán</p>
+        <p class="text-xl font-extrabold text-emerald-600">{{ paidCount }}</p>
+      </div>
     </div>
 
-    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm border-l-4 border-amber-500 hover:shadow-md transition-shadow">
-      <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 mb-4">
-        <span class="material-symbols-outlined text-2xl">hourglass_empty</span>
+    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+      <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 border border-amber-100">
+        <span class="material-symbols-outlined text-xl">pending_actions</span>
       </div>
-      <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest">Chờ thanh toán</p>
-      <p class="text-3xl font-black text-amber-600 mt-1">{{ pendingCount }}</p>
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Chờ thanh toán</p>
+        <p class="text-xl font-extrabold text-amber-600">{{ pendingCount }}</p>
+      </div>
     </div>
 
-    <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm border-l-4 border-rose-500 hover:shadow-md transition-shadow">
-      <div class="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 mb-4">
-        <span class="material-symbols-outlined text-2xl">cancel</span>
+    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+      <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 border border-blue-100">
+        <span class="material-symbols-outlined text-xl">directions_bus</span>
       </div>
-      <p class="text-[10px] font-black text-rose-700 uppercase tracking-widest">Đơn đã hủy</p>
-      <p class="text-3xl font-black text-rose-600 mt-1">{{ cancelledCount }}</p>
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã lên xe</p>
+        <p class="text-xl font-extrabold text-blue-600">{{ checkedInCount }}</p>
+      </div>
+    </div>
+
+    <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+      <div class="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600 border border-rose-100">
+        <span class="material-symbols-outlined text-xl">cancel</span>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Đã hủy</p>
+        <p class="text-xl font-extrabold text-rose-600">{{ cancelledCount }}</p>
+      </div>
     </div>
   </div>
 </template>
@@ -39,6 +57,7 @@ defineProps({
   totalCount: Number,
   paidCount: Number,
   pendingCount: Number,
+  checkedInCount: Number,
   cancelledCount: Number
 });
 </script>

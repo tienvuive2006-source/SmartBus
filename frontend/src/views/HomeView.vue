@@ -20,7 +20,7 @@
             <button @click="openInfoModal('nhaxe')" class="hover:text-yellow-300 transition-colors bg-transparent border-none outline-none cursor-pointer text-white font-semibold">Nhà Xe</button>
             <button @click="openInfoModal('diemden')" class="hover:text-yellow-300 transition-colors bg-transparent border-none outline-none cursor-pointer text-white font-semibold">Điểm đến</button>
             <button @click="openInfoModal('thongtin')" class="hover:text-yellow-300 transition-colors bg-transparent border-none outline-none cursor-pointer text-white font-semibold">Thông tin ngành vận tải</button>
-            <button @click="scrollToSection('scheduleSection')" class="hover:text-yellow-300 transition-colors bg-transparent border-none outline-none cursor-pointer text-white font-semibold">Lịch xuất bến</button>
+            <button @click="scrollToSection('searchSection')" class="hover:text-yellow-300 transition-colors bg-transparent border-none outline-none cursor-pointer text-white font-semibold">Các tuyến đường chính</button>
           </div>
         </div>
 
@@ -40,7 +40,7 @@
       </div>
     </nav>
 
-    <header class="relative bg-slate-900 pt-16 pb-36 flex flex-col items-center justify-center min-h-[450px]">
+    <header class="relative bg-slate-900 pt-16 pb-16 flex flex-col items-center justify-center min-h-[350px]">
       <div 
         class="absolute inset-0 bg-cover bg-center z-0 opacity-80"
         style="background-image: url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop');"
@@ -64,133 +64,114 @@
       </div>
     </header>
 
-    <div id="searchSection" class="max-w-6xl mx-auto px-4 relative z-30 -mt-6 mb-8">
-      <div class="bg-white rounded-2xl shadow-xl p-3 flex flex-col md:flex-row items-stretch gap-2 border border-gray-200">
-        
-        <div class="flex-1 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-200 bg-white">
-          
-          <div class="flex-1 p-3 relative group flex items-center gap-3 hover:bg-gray-50 transition-colors md:rounded-l-xl rounded-t-xl md:rounded-tr-none" ref="fromContainer">
-            <span class="material-symbols-outlined text-gray-400">location_on</span>
-            <div class="flex-1">
-              <label class="block text-[11px] text-gray-500 mb-0.5">Nơi đi</label>
-              <input v-model="fromQuery" @focus="onFromFocus" placeholder="Chọn nơi đi..." class="w-full font-semibold text-gray-800 focus:outline-none bg-transparent placeholder-gray-400 text-sm"/>
-            </div>
-            <ul v-if="showFromDropdown && fromSuggestions.length" class="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 shadow-xl rounded-xl z-50 overflow-hidden">
-              <li v-for="loc in fromSuggestions" :key="loc" @click="selectFromLocation(loc)" class="px-4 py-3 hover:bg-gray-100 cursor-pointer text-sm text-gray-700 flex items-center gap-2">
-                <span class="material-symbols-outlined text-gray-400 text-sm">history</span>
-                {{ loc.replace('@@WARNING@@', '') }}
-              </li>
-            </ul>
-          </div>
 
-          <div class="hidden md:flex items-center justify-center -mx-3 z-10">
-            <button class="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-500 hover:text-[#075955] shadow-sm hover:rotate-180 transition-transform">
-              <span class="material-symbols-outlined text-sm">swap_horiz</span>
-            </button>
-          </div>
-
-          <div class="flex-1 p-3 relative group flex items-center gap-3 hover:bg-gray-50 transition-colors" ref="toContainer">
-            <span class="material-symbols-outlined text-gray-400">location_on</span>
-            <div class="flex-1">
-              <label class="block text-[11px] text-gray-500 mb-0.5">Nơi đến</label>
-              <input v-model="toQuery" @focus="onToFocus" placeholder="Chọn nơi đến..." class="w-full font-semibold text-gray-800 focus:outline-none bg-transparent placeholder-gray-400 text-sm"/>
-            </div>
-            <ul v-if="showToDropdown && toSuggestions.length" class="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-200 shadow-xl rounded-xl z-50 overflow-hidden">
-              <li v-for="loc in toSuggestions" :key="loc" @click="selectToLocation(loc)" class="px-4 py-3 hover:bg-gray-100 cursor-pointer text-sm text-gray-700 flex items-center gap-2">
-                <span class="material-symbols-outlined text-gray-400 text-sm">history</span>
-                {{ loc.replace('@@WARNING@@', '') }}
-              </li>
-            </ul>
-          </div>
-
-          <div class="flex-1 p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-            <span class="material-symbols-outlined text-gray-400">directions_bus</span>
-            <div class="flex-1">
-              <label class="block text-[11px] text-gray-500 mb-0.5">Nhà xe yêu thích</label>
-              <select v-model="busCompanyQuery" class="w-full font-semibold text-gray-800 focus:outline-none bg-transparent text-sm appearance-none cursor-pointer">
-                <option value="all">Tất cả</option>
-                <option v-for="company in uniqueCompanies" :key="company.name" :value="company.name">
-                  {{ company.name }}
-                </option>
-              </select>
-            </div>
-            <span class="material-symbols-outlined text-gray-400 text-sm">expand_more</span>
-          </div>
-
-          <div class="flex-1 p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors md:rounded-r-xl rounded-b-xl md:rounded-bl-none">
-            <span class="material-symbols-outlined text-gray-400">calendar_month</span>
-            <div class="flex-1">
-              <label class="block text-[11px] text-gray-500 mb-0.5">Ngày đi</label>
-              <input type="date" v-model="dateQuery" class="w-full font-semibold text-gray-800 focus:outline-none bg-transparent text-sm uppercase"/>
-            </div>
-          </div>
-        </div>
-
-        <button @click="handleSearch" class="bg-[#f03a17] hover:bg-[#d63314] text-white rounded-xl font-bold text-sm px-10 py-3 md:py-0 transition-colors">
-          TÌM
-        </button>
-      </div>
-    </div>
-
-    <div id="scheduleSection" class="max-w-6xl mx-auto px-4 mb-8">
-      <div class="flex flex-col md:flex-row items-center justify-between border-b border-gray-300 pb-2">
-        <div class="flex items-center gap-3">
-          <h3 class="text-lg font-bold text-gray-800">Lịch xuất bến hàng ngày</h3>
-          <span v-if="popularRoutes.length > 0" class="bg-[#075955]/10 text-[#075955] text-[11px] font-bold px-2 py-0.5 rounded-full border border-[#075955]/20 flex items-center gap-1">
-             <span class="material-symbols-outlined text-[12px]">directions_bus</span>
-             Hiện có {{ popularRoutes.length }} chuyến xe
+    <div id="searchSection" class="max-w-6xl mx-auto px-4 mb-4 mt-10">
+      <!-- Section Header -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <h3 class="text-xl font-black text-slate-800 tracking-tight">Các tuyến đường chính</h3>
+          <span v-if="popularRoutes.length > 0" class="bg-[#075955]/10 text-[#075955] text-xs font-bold px-3 py-1 rounded-full border border-[#075955]/15 flex items-center gap-1.5 w-fit">
+            <span class="material-symbols-outlined text-sm">directions_bus</span>
+            Hiện có {{ popularRoutes.length }} tuyến đường
           </span>
         </div>
-        <div class="flex flex-wrap gap-4 mt-2 md:mt-0">
-          <div class="flex items-center bg-white border border-gray-300 rounded-md px-2 py-1 text-sm shadow-sm">
-            <span class="bg-[#075955] text-white px-2 py-0.5 rounded text-[10px] mr-2 shrink-0">Ngày đi</span>
-            <input type="date" v-model="filterDate" class="bg-transparent border-none outline-none font-semibold text-gray-700 cursor-pointer text-xs" />
+        <p class="text-slate-500 text-sm font-semibold italic md:text-right hidden sm:block">
+          Nền tảng đặt xe uy tín - giá gốc 100% từ nhà xe
+        </p>
+      </div>
+
+      <!-- Super Optimized Filter Bar -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider">
+            <span class="material-symbols-outlined text-base">tune</span>
+            Bộ lọc chuyến đi
           </div>
-          <div class="flex items-center bg-white border border-gray-300 rounded-md px-2 py-1 text-sm shadow-sm">
-            <span class="bg-[#075955] text-white px-2 py-0.5 rounded text-[10px] mr-2 shrink-0">Nơi đi</span>
-            <select v-model="filterFrom" class="bg-transparent border-none outline-none font-semibold text-gray-700 cursor-pointer pr-2">
-              <option value="">Tất cả</option>
-              <option v-for="loc in allDeparturePoints" :key="loc" :value="loc">{{ simplifyLocation(loc) }}</option>
-            </select>
+          <!-- Reset Filters Button -->
+          <button 
+            v-if="filterDate || filterFrom || filterTo || filterCompany"
+            @click="clearAllFilters" 
+            class="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 bg-transparent border-none outline-none cursor-pointer hover:underline transition-colors"
+          >
+            <span class="material-symbols-outlined text-sm">filter_alt_off</span>
+            Xóa bộ lọc
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Filter Date -->
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-[#075955]/20 focus-within:border-[#075955] transition-all">
+            <span class="material-symbols-outlined text-[#075955] text-lg shrink-0">calendar_month</span>
+            <div class="flex-1 text-left">
+              <label class="block text-[9px] text-slate-400 font-black uppercase tracking-wider">Ngày đi</label>
+              <input type="date" v-model="filterDate" class="w-full bg-transparent border-none outline-none font-bold text-slate-700 text-xs cursor-pointer p-0 m-0" />
+            </div>
           </div>
-          <div class="flex items-center bg-white border border-gray-300 rounded-md px-2 py-1 text-sm shadow-sm">
-            <span class="bg-[#075955] text-white px-2 py-0.5 rounded text-[10px] mr-2 shrink-0">Nơi đến</span>
-            <select v-model="filterTo" class="bg-transparent border-none outline-none font-semibold text-gray-700 cursor-pointer pr-2">
-              <option value="">Tất cả</option>
-              <option v-for="loc in allArrivalPoints" :key="loc" :value="loc">{{ simplifyLocation(loc) }}</option>
-            </select>
+
+          <!-- Filter From -->
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-[#075955]/20 focus-within:border-[#075955] transition-all">
+            <span class="material-symbols-outlined text-[#075955] text-lg shrink-0">location_on</span>
+            <div class="flex-1 text-left">
+              <label class="block text-[9px] text-slate-400 font-black uppercase tracking-wider">Nơi đi</label>
+              <select v-model="filterFrom" class="w-full bg-transparent border-none outline-none font-bold text-slate-700 text-xs cursor-pointer p-0 m-0 appearance-none">
+                <option value="">Tất cả điểm đi</option>
+                <option v-for="loc in allDeparturePoints" :key="loc" :value="loc">{{ simplifyLocation(loc) }}</option>
+              </select>
+            </div>
+            <span class="material-symbols-outlined text-slate-400 text-sm">expand_more</span>
           </div>
-          <div class="flex items-center bg-white border border-gray-300 rounded-md px-2 py-1 text-sm shadow-sm">
-            <span class="bg-[#075955] text-white px-2 py-0.5 rounded text-[10px] mr-2 shrink-0">Hãng xe</span>
-            <select v-model="filterCompany" class="bg-transparent border-none outline-none font-semibold text-gray-700 cursor-pointer pr-2">
-              <option value="">Tất cả</option>
-              <option v-for="company in uniqueCompanies" :key="company.name" :value="company.name">{{ company.name }}</option>
-            </select>
+
+          <!-- Filter To -->
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-[#075955]/20 focus-within:border-[#075955] transition-all">
+            <span class="material-symbols-outlined text-[#075955] text-lg shrink-0">pin_drop</span>
+            <div class="flex-1 text-left">
+              <label class="block text-[9px] text-slate-400 font-black uppercase tracking-wider">Nơi đến</label>
+              <select v-model="filterTo" class="w-full bg-transparent border-none outline-none font-bold text-slate-700 text-xs cursor-pointer p-0 m-0 appearance-none">
+                <option value="">Tất cả điểm đến</option>
+                <option v-for="loc in allArrivalPoints" :key="loc" :value="loc">{{ simplifyLocation(loc) }}</option>
+              </select>
+            </div>
+            <span class="material-symbols-outlined text-slate-400 text-sm">expand_more</span>
+          </div>
+
+          <!-- Filter Company -->
+          <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-[#075955]/20 focus-within:border-[#075955] transition-all">
+            <span class="material-symbols-outlined text-[#075955] text-lg shrink-0">directions_bus</span>
+            <div class="flex-1 text-left">
+              <label class="block text-[9px] text-slate-400 font-black uppercase tracking-wider">Hãng xe</label>
+              <select v-model="filterCompany" class="w-full bg-transparent border-none outline-none font-bold text-slate-700 text-xs cursor-pointer p-0 m-0 appearance-none">
+                <option value="">Tất cả hãng xe</option>
+                <option v-for="company in uniqueCompanies" :key="company.name" :value="company.name">{{ company.name }}</option>
+              </select>
+            </div>
+            <span class="material-symbols-outlined text-slate-400 text-sm">expand_more</span>
           </div>
         </div>
       </div>
-      <p class="text-center italic text-gray-600 mt-6 font-medium text-lg">
-        Nền tảng đặt xe uy tín - giá gốc 100% từ nhà xe
-      </p>
     </div>
 
-    <main v-if="popularRoutes.length > 0" class="max-w-6xl mx-auto px-4 py-8">
+    <main v-if="popularRoutes.length > 0" class="max-w-6xl mx-auto px-4 pb-8">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div v-for="route in popularRoutes" :key="route.id" @click="quickSearch(route.from, route.to, route.date)" class="group bg-white rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-200 flex flex-col">
-          <div class="relative h-48 overflow-hidden">
-            <img 
-              :src="route.image" 
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop'"
-            />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-            <div class="absolute top-3 left-3">
-              <span class="bg-white/90 backdrop-blur-sm text-[#075955] text-[10px] font-black px-2 py-1 rounded-md shadow-sm uppercase tracking-tighter border border-[#075955]/20">
-                {{ route.busType }}
-              </span>
-            </div>
-            <div class="absolute bottom-3 left-4 text-white">
-              <h3 class="font-bold text-xl">{{ route.shortFrom }} ➝ {{ route.shortTo }}</h3>
+        <div v-for="route in popularRoutes" :key="route.id" @click="quickSearch(route.from, route.to, '')" class="group bg-white rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-200 flex flex-col">
+          <div class="relative h-48 overflow-hidden bg-slate-200">
+            <template v-if="route.image">
+              <img 
+                :src="route.image" 
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                @error="(e) => e.target.style.display = 'none'"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+            </template>
+            <template v-else>
+              <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 group-hover:scale-105 transition-transform duration-500 ease-out">
+                <span class="material-symbols-outlined text-4xl mb-2 opacity-30">directions_bus</span>
+                <span class="text-xs font-semibold uppercase tracking-wider opacity-60">Chưa có ảnh</span>
+              </div>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+            </template>
+
+            <div class="absolute bottom-3 left-4 right-4 text-white">
+              <h3 class="font-bold text-[17px] truncate" :title="`${route.shortFrom} ➝ ${route.shortTo}`">{{ route.shortFrom }} ➝ {{ route.shortTo }}</h3>
             </div>
           </div>
           <div class="p-4 flex justify-between items-center bg-white">
@@ -244,7 +225,7 @@
               <div>
                 <p class="m-0 text-emerald-900 font-bold">💡 Bộ lọc nhanh Trang Chủ</p>
                 <p class="text-slate-500 font-normal mt-1 mb-0">
-                  Bấm nút bên dưới để lập tức lọc danh sách <strong>Lịch xuất bến hàng ngày</strong> tại trang chủ theo bến xe bạn chọn!
+                  Bấm nút bên dưới để lập tức lọc danh sách <strong>Các tuyến đường chính</strong> tại trang chủ theo bến xe bạn chọn!
                 </p>
               </div>
             </div>
@@ -385,6 +366,13 @@ const filterFrom = ref('');
 const filterTo = ref('');
 const filterCompany = ref('');
 
+const clearAllFilters = () => {
+  filterDate.value = '';
+  filterFrom.value = '';
+  filterTo.value = '';
+  filterCompany.value = '';
+};
+
 // 🚀 CHUẨN ĐỒ ÁN: Quản lý xem chi tiết thông tin nhà xe, bến xe, điểm đến qua modal (ĐỒNG BỘ TỪ ADMIN ĐĂNG)
 const showInfoModal = ref(false);
 const activeModalType = ref(''); // '', 'benxe', 'nhaxe', 'diemden', 'thongtin'
@@ -466,7 +454,7 @@ const selectToLocation = (loc) => toSelect(loc, (val) => toQuery.value = val);
 const fetchTrips = async () => {
   try {
     const response = await api.get('/trips');
-    trips.value = response.data;
+    trips.value = response.data.filter(t => t.isVisible !== false);
   } catch (err) { console.error(err); }
 };
 
@@ -491,7 +479,6 @@ const simplifyLocation = (loc) => {
     if (match.toLowerCase() === 'thành phố' || match.toLowerCase() === 'tp' || match.toLowerCase() === 'tỉnh') return '';
     return match;
   }).trim();
-  
   if (!s) s = parts[0].replace(/\b(Bến xe|Phường|Quận|Huyện|Xã|TT)\b/gi, '').trim();
   return s;
 };
@@ -501,6 +488,8 @@ const quickSearch = (from, to, date) => {
   toQuery.value = to;
   if (date) {
     dateQuery.value = date.split('T')[0];
+  } else {
+    dateQuery.value = '';
   }
   handleSearch();
 };
@@ -515,63 +504,137 @@ const allArrivalPoints = computed(() => {
   return points.sort();
 });
 
+const debugRoutes = ref([]);
+const savedRoutes = ref([]);
+
+const fetchSavedRoutes = async () => {
+  try {
+    const response = await api.get('/routes');
+    savedRoutes.value = response.data;
+  } catch (err) { console.error(err); }
+};
+
+// Counter tăng mỗi 3 giây → force popularRoutes recompute và đọc localStorage mới nhất
+const _syncCounter = ref(0);
+
 const popularRoutes = computed(() => {
-  const images = [
-    'https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&q=80&w=600',
-    'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&q=80&w=600',
-    'https://images.unsplash.com/photo-1590393275627-0c484ceac518?auto=format&fit=crop&q=80&w=600',
-    'https://images.unsplash.com/photo-1543306917-ce6bb04791e8?auto=format&fit=crop&q=80&w=600'
-  ];
-  if (trips.value.length === 0) return [];
+  // Hàm chuẩn hóa loại bỏ hoàn toàn dấu, khoảng trắng và ký tự đặc biệt
+  const normalizeKey = (s) => {
+    if (!s) return '';
+    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
+  const rawImagesMap = JSON.parse(localStorage.getItem('smartbus_route_images') || '{}');
+  const routeImagesMap = {};
+  for (const k in rawImagesMap) {
+    const parts = k.split('||');
+    if (parts.length === 2) {
+      routeImagesMap[`${normalizeKey(parts[0])}||${normalizeKey(parts[1])}`] = rawImagesMap[k];
+    }
+  }
   
-  // 🔍 Lọc dữ liệu dựa trên Select
+  savedRoutes.value.forEach(r => {
+    if (r.imageUrl) {
+      const sd = normalizeKey(r.departurePoint.split(',')[0]);
+      const sa = normalizeKey(r.arrivalPoint.split(',')[0]);
+      routeImagesMap[`${sd}||${sa}`] = r.imageUrl;
+      routeImagesMap[`${sa}||${sd}`] = r.imageUrl; // Hỗ trợ chiều ngược lại
+    }
+  });
+  
   let filtered = [...trips.value];
-  if (filterFrom.value) {
-    filtered = filtered.filter(t => t.departurePoint === filterFrom.value);
-  }
-  if (filterTo.value) {
-    filtered = filtered.filter(t => t.arrivalPoint === filterTo.value);
-  }
-  if (filterCompany.value) {
-    filtered = filtered.filter(t => t.companyName === filterCompany.value);
-  }
-  if (filterDate.value) {
-    filtered = filtered.filter(t => t.departureDate?.split('T')[0] === filterDate.value);
-  }
+  if (filterFrom.value) filtered = filtered.filter(t => t.departurePoint === filterFrom.value);
+  if (filterTo.value) filtered = filtered.filter(t => t.arrivalPoint === filterTo.value);
+  if (filterCompany.value) filtered = filtered.filter(t => t.companyName === filterCompany.value);
+  if (filterDate.value) filtered = filtered.filter(t => t.departureDate?.split('T')[0] === filterDate.value);
 
   const routes = [];
   const seen = new Set();
+
+  const getCityName = (loc) => {
+    if (!loc) return '';
+    if (loc.includes('Hồ Chí Minh')) return 'Hồ Chí Minh';
+    if (loc.includes('Hà Nội')) return 'Hà Nội';
+    if (loc.includes('Đà Nẵng')) return 'Đà Nẵng';
+    if (loc.includes('Quy Nhơn')) return 'Quy Nhơn';
+    if (loc.includes('Nha Trang')) return 'Nha Trang';
+    if (loc.includes('Đà Lạt')) return 'Đà Lạt';
+    if (loc.includes('Cần Thơ')) return 'Cần Thơ';
+    if (loc.includes('Hải Phòng')) return 'Hải Phòng';
+    if (loc.includes('Vũng Tàu')) return 'Vũng Tàu';
+    
+    let city = loc.replace(/Bến xe Trung tâm/i, '')
+                  .replace(/Bến xe Phía Nam/i, '')
+                  .replace(/Bến xe Phía Bắc/i, '')
+                  .replace(/Bến xe Liên tỉnh/i, '')
+                  .replace(/Bến xe/i, '')
+                  .trim();
+                  
+    if (city.includes(',')) {
+      const parts = city.split(',');
+      city = parts[parts.length - 1].trim();
+    }
+    return city;
+  };
+
   filtered.sort((a, b) => b.id - a.id).forEach(t => {
     const key = `${t.departurePoint}-${t.arrivalPoint}`;
     if (!seen.has(key)) {
       seen.add(key);
+      const rawShortFrom = t.departurePoint.split(',')[0].trim();
+      const rawShortTo = t.arrivalPoint.split(',')[0].trim();
       
-      // Kiểm tra tính hợp lệ của link ảnh
-      const isValidImage = t.imageUrl && t.imageUrl.startsWith('http');
+      const targetKey = `${normalizeKey(rawShortFrom)}||${normalizeKey(rawShortTo)}`;
+      
+      // Fuzzy tìm kiếm trong routeImagesMap (kể cả chứa một phần tên)
+      let matchedImageUrl = routeImagesMap[targetKey];
+      if (!matchedImageUrl) {
+        // Tìm gần đúng: nếu targetKey chứa 80% key trong map
+        for (const mapKey in routeImagesMap) {
+          const [mFrom, mTo] = mapKey.split('||');
+          if (mFrom && mTo && normalizeKey(rawShortFrom).includes(mFrom) && normalizeKey(rawShortTo).includes(mTo)) {
+            matchedImageUrl = routeImagesMap[mapKey];
+            break;
+          }
+        }
+      }
+      
+      const displayFrom = getCityName(t.departurePoint);
+      const displayTo = getCityName(t.arrivalPoint);
+      
+      const routeImageUrl = matchedImageUrl || t.imageUrl || '';
       
       routes.push({ 
         id: t.id, 
         from: t.departurePoint, 
         to: t.arrivalPoint, 
-        shortFrom: simplifyLocation(t.departurePoint),
-        shortTo: simplifyLocation(t.arrivalPoint),
+        shortFrom: displayFrom,
+        shortTo: displayTo,
         date: t.departureDate,
         price: t.price,
         busType: t.busType,
-        image: isValidImage ? t.imageUrl : images[routes.length % images.length] 
+        image: routeImageUrl
       });
     }
   });
   return routes;
 });
 
-const currentUser2 = ref(null); // không cần nữa — dùng authStore.currentUser ở trên
+const currentUser2 = ref(null);
+let _syncInterval = null;
+
 onMounted(() => {
   window.scrollTo(0, 0);
   fetchTrips();
+  fetchSavedRoutes();
   window.addEventListener('click', handleClickOutside);
+  // Force recompute mỗi 3 giây để bắt ảnh mới từ admin
+  _syncInterval = setInterval(() => { _syncCounter.value++; }, 3000);
+  // Bắt ngay khi localStorage thay đổi từ tab khác
+  window.addEventListener('storage', () => { _syncCounter.value++; });
 });
 onUnmounted(() => {
   window.removeEventListener('click', handleClickOutside);
+  if (_syncInterval) clearInterval(_syncInterval);
 });
 </script>

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;
 import java.util.Optional;
@@ -116,6 +117,98 @@ public class AuthController {
             ));
         } catch (Exception e) {
             return ResponseEntity.status(401).body("Token đã hết hạn hoặc không hợp lệ!");
+        }
+    }
+
+    // ============================================================
+    // API LẤY LỊCH SỬ ĐẶT VÉ CỦA USER TỪ TOKEN (ME)
+    // ============================================================
+    @Autowired
+    private com.smartbus.booking.repository.BookingRepository bookingRepository;
+
+    @GetMapping("/me/bookings")
+    public ResponseEntity<?> getMyBookings(@RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Token không hợp lệ!");
+        }
+
+        try {
+            String token = authHeader.substring(7);
+            String phone = jwtService.extractPhone(token);
+            Optional<User> userOpt = userRepository.findByPhone(phone);
+
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(404).body("Không tìm thấy người dùng!");
+            }
+
+            User user = userOpt.get();
+            return ResponseEntity.ok(bookingRepository.findByUserIdOrderByCreatedAtDesc(user.getId()));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Token đã hết hạn hoặc không hợp lệ!");
+        }
+    }
+
+    // ============================================================
+    // API HỦY VÉ & HOÀN TIỀN VÀO VÍ (ME)
+    // ============================================================
+    @Autowired
+    private com.smartbus.booking.service.SeatService seatService;
+
+    @PostMapping("/me/bookings/{id}/cancel")
+    public ResponseEntity<?> cancelMyBooking(@PathVariable("id") Long id, @RequestBody Map<String, String> payload, @RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Token không hợp lệ!");
+        }
+
+        try {
+            String token = authHeader.substring(7);
+            String phone = jwtService.extractPhone(token);
+            Optional<User> userOpt = userRepository.findByPhone(phone);
+
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(404).body("Không tìm thấy người dùng!");
+            }
+
+            User user = userOpt.get();
+            Optional<com.smartbus.booking.entity.Booking> bookingOpt = bookingRepository.findById(id);
+            if (bookingOpt.isEmpty()) {
+                return ResponseEntity.status(404).body("Không tìm thấy vé!");
+            }
+            com.smartbus.booking.entity.Booking booking = bookingOpt.get();
+            
+            // Check ownership
+            if (booking.getUser() == null || !booking.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(403).body("Bạn không có quyền hủy vé này!");
+            }
+
+            // Check status
+            if (!"PAID".equals(booking.getStatus()) && !"PENDING".equals(booking.getStatus())) {
+                return ResponseEntity.status(400).body("Vé này không ở trạng thái cho phép hủy!");
+            }
+
+            // Calculate refund if paid and not cash
+            double refundAmount = 0.0;
+            if ("PAID".equals(booking.getStatus()) && !"CASH".equals(booking.getPaymentMethod())) {
+                refundAmount = booking.getTotalPrice() * 0.9;
+                user.setWalletBalance(user.getWalletBalance() + refundAmount);
+                userRepository.save(user);
+            }
+
+            // Free seats
+            seatService.releaseSeats(booking.getTrip().getId(), booking.getSeatNumbers());
+
+            // Update booking status
+            booking.setStatus("CANCELLED");
+            booking.setCancellationReason(payload.get("reason"));
+            bookingRepository.save(booking);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Hủy vé thành công!",
+                    "refundAmount", refundAmount,
+                    "walletBalance", user.getWalletBalance()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Lỗi hệ thống: " + e.getMessage());
         }
     }
 

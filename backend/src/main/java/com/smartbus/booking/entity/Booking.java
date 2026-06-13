@@ -41,7 +41,10 @@ public class Booking {
     private String paymentMethod; // CASH, BANK_TRANSFER, WALLET
 
     @Column(nullable = false)
-    private String status; // PENDING, PAID, CANCELLED
+    private String status; // PENDING, PAID, CANCELLED, CHECKED_IN
+
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String cancellationReason;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

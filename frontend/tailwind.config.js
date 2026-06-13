@@ -70,6 +70,7 @@ export default {
         "stack-space": "1.5rem"
       },
       fontFamily: {
+        sans: ["'Plus Jakarta Sans'", "sans-serif"],
         "headline-md": ["Inter", "sans-serif"],
         "ticket-number": ["Inter", "sans-serif"],
         "label-md": ["Inter", "sans-serif"],

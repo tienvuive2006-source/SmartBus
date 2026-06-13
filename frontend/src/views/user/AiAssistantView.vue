@@ -12,7 +12,7 @@
       </div>
       <div class="flex flex-col gap-2">
         <div class="bg-surface-container-low text-on-surface p-4 rounded-2xl rounded-tl-none shadow-sm text-body-lg font-body-lg border border-surface-container-highest">
-          Xin chào! Tôi là Trợ lý AI của SkyBus. Tôi có thể giúp gì cho chuyến đi tiếp theo của bạn?
+          Xin chào! Tôi là Trợ lý AI của Trung Nam. Tôi có thể giúp gì cho chuyến đi tiếp theo của bạn?
         </div>
         <!-- Quick Actions / Suggestions -->
         <div class="flex flex-wrap gap-2 mt-2">

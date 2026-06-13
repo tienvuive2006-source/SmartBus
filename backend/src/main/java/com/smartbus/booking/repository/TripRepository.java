@@ -15,4 +15,7 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     // Hỗ trợ tìm kiếm linh hoạt theo điểm đi, điểm đến và ngày đi
     List<Trip> findByDeparturePointContainingIgnoreCaseAndArrivalPointContainingIgnoreCaseAndDepartureDateContaining(
             String departurePoint, String arrivalPoint, String departureDate);
+
+    // Lấy danh sách chuyến xe được phân công cho một nhân viên soát vé
+    List<Trip> findByInspectorId(Long inspectorId);
 }

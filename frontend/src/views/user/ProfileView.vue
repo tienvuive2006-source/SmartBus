@@ -1,157 +1,233 @@
 <template>
-  <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-800">
-    <nav class="bg-[#075955] text-white border-b border-[#05403d] sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-2 cursor-pointer" @click="$router.push('/')">
-          <span class="material-symbols-outlined text-white text-4xl">directions_bus</span>
+  <div class="min-h-screen bg-[#f4f7f6] font-sans text-slate-800 pb-20">
+    <!-- Navigation Bar -->
+    <nav class="bg-white text-slate-800 border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3 cursor-pointer" @click="$router.push('/')">
+          <div class="w-10 h-10 rounded-full bg-[#075955] flex items-center justify-center text-white">
+            <span class="material-symbols-outlined text-xl">directions_bus</span>
+          </div>
           <div class="flex flex-col">
-            <span class="text-xl font-bold leading-none tracking-tight">Trung - Nam</span>
-            <span class="text-[9px] uppercase tracking-wider font-semibold">Nhà xe chuyên tuyến Miền Trung - Nam</span>
+            <span class="text-lg font-black text-gray-900 leading-none tracking-tight">Trung - Nam</span>
+            <span class="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-1">Hồ sơ cá nhân</span>
           </div>
         </div>
         <div class="flex items-center gap-6">
-          <button @click="$router.push('/')" class="text-sm font-semibold hover:text-yellow-300 transition-colors flex items-center gap-1">
-            <span class="material-symbols-outlined text-xl">home</span>
+          <button @click="$router.push('/')" class="text-[10px] font-black uppercase tracking-widest bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl transition-all duration-200 hidden sm:block">
             Trang chủ
           </button>
         </div>
       </div>
     </nav>
     
-    <div class="pb-12 px-4 animate-fade-in bg-[#f2f5f8]">
+    <div class="px-4 py-8 animate-fade-in">
     
     <!-- Loading State -->
-    <div v-if="loading" class="min-h-[70vh] flex flex-col items-center justify-center gap-3">
-      <div class="w-10 h-10 border-4 border-[#075955] border-t-transparent rounded-full animate-spin"></div>
-      <p class="text-sm font-bold text-slate-500 animate-pulse">Đang tải thông tin cá nhân...</p>
+    <div v-if="loading" class="max-w-4xl mx-auto min-h-[50vh] flex flex-col items-center justify-center gap-4">
+      <div class="w-12 h-12 border-4 border-gray-200 border-t-[#075955] rounded-full animate-spin"></div>
+      <p class="text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">Đang tải thông tin...</p>
     </div>
 
     <!-- Main Profile View -->
-    <main v-else-if="user" class="max-w-2xl mx-auto space-y-6 py-6">
+    <main v-else-if="user" class="max-w-4xl mx-auto">
       
-      <!-- Banner Welcome -->
-      <div class="bg-gradient-to-r from-[#075955] to-[#05403d] p-8 rounded-[32px] shadow-lg border border-[#05403d] text-white relative overflow-hidden">
-        <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-        <div class="relative z-10 flex flex-col md:flex-row items-center gap-6">
-          <div class="relative">
-            <img 
-              alt="Profile Avatar" 
-              class="w-24 h-24 rounded-3xl object-cover border-4 border-white/20 shadow-xl" 
-              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=ffffff&color=075955&bold=true&size=128`"
-            />
-            <div class="absolute -bottom-2 -right-2 bg-yellow-400 border-2 border-white w-6 h-6 rounded-full flex items-center justify-center shadow-md">
-              <span class="material-symbols-outlined text-[14px] text-[#075955] font-black">verified</span>
-            </div>
-          </div>
-          <div class="text-center md:text-left">
-            <div class="flex items-center justify-center md:justify-start gap-2 mb-1">
-              <h1 class="text-2xl font-black">{{ user.fullName }}</h1>
-              <span class="bg-white/20 backdrop-blur-sm text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-white/10">
-                {{ user.role === 'ADMIN' ? 'Quản trị viên' : 'Hạng VIP' }}
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Tài khoản của bạn</h1>
+        <p class="text-sm font-semibold text-gray-500 mt-2">Quản lý thông tin cá nhân, ví điện tử và các tùy chọn bảo mật.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Profile Card -->
+        <div class="lg:col-span-1 space-y-8">
+          <div class="bg-white rounded-3xl p-8 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-emerald-50 to-teal-50"></div>
+            <div class="relative z-10 flex flex-col items-center">
+              <div class="relative mb-4">
+                <img 
+                  alt="Profile Avatar" 
+                  class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md bg-white" 
+                  :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=075955&color=ffffff&bold=true&size=128`"
+                />
+                <div class="absolute bottom-0 right-0 bg-emerald-500 border-2 border-white w-7 h-7 rounded-full flex items-center justify-center shadow-sm">
+                  <span class="material-symbols-outlined text-[14px] text-white font-black">verified</span>
+                </div>
+              </div>
+              <h2 class="text-xl font-black text-gray-900">{{ user.fullName }}</h2>
+              <p class="text-sm font-semibold text-gray-500 mb-4">{{ user.phone }}</p>
+              
+              <span class="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-emerald-100">
+                {{ user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên VIP' }}
               </span>
             </div>
-            <p class="text-white/70 font-bold flex items-center justify-center md:justify-start gap-1">
-              <span class="material-symbols-outlined text-[18px]">call</span>
-              {{ user.phone }}
-            </p>
           </div>
+
+          <!-- Quick Navigation -->
+          <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+             <nav class="flex flex-col space-y-1">
+               <button @click="$router.push('/history')" class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-gray-50 transition-colors text-left group">
+                 <span class="material-symbols-outlined text-gray-400 group-hover:text-[#075955] transition-colors">receipt_long</span>
+                 <span class="text-sm font-bold text-gray-700 group-hover:text-gray-900">Lịch sử đặt vé</span>
+               </button>
+               <button @click="$router.push('/ai-assistant')" class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-gray-50 transition-colors text-left group">
+                 <span class="material-symbols-outlined text-gray-400 group-hover:text-[#075955] transition-colors">smart_toy</span>
+                 <span class="text-sm font-bold text-gray-700 group-hover:text-gray-900">Trợ lý ảo AI</span>
+               </button>
+               <button class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-gray-50 transition-colors text-left group">
+                 <span class="material-symbols-outlined text-gray-400 group-hover:text-[#075955] transition-colors">notifications</span>
+                 <span class="text-sm font-bold text-gray-700 group-hover:text-gray-900">Cài đặt thông báo</span>
+               </button>
+               
+               <div class="h-[1px] bg-gray-100 my-2"></div>
+               
+               <button @click="handleLogout" class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-red-50 transition-colors text-left group">
+                 <span class="material-symbols-outlined text-red-400 group-hover:text-red-600 transition-colors">logout</span>
+                 <span class="text-sm font-bold text-red-500 group-hover:text-red-600">Đăng xuất</span>
+               </button>
+             </nav>
+          </div>
+        </div>
+
+        <!-- Right Column: Details & Wallet -->
+        <div class="lg:col-span-2 space-y-8">
+          
+          <!-- Personal Information -->
+          <section class="bg-white rounded-3xl p-8 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest">Thông tin cá nhân</h3>
+              <div class="flex gap-2">
+                <button v-if="isEditing" @click="isEditing = false" class="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors">
+                  Hủy
+                </button>
+                <button v-if="isEditing" @click="saveProfile" class="text-[10px] font-black text-white uppercase tracking-widest bg-emerald-600 px-4 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
+                  Lưu
+                </button>
+                <button v-else @click="startEdit" class="text-[10px] font-black text-[#075955] uppercase tracking-widest bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
+                  Chỉnh sửa
+                </button>
+              </div>
+            </div>
+            
+            <div class="space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Họ và tên</p>
+                  <input v-if="isEditing" v-model="editForm.fullName" type="text" class="w-full text-sm font-black text-gray-900 bg-white p-3 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
+                  <p v-else class="text-sm font-black text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">{{ user.fullName }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Số điện thoại</p>
+                  <input v-if="isEditing" v-model="editForm.phone" type="text" class="w-full text-sm font-black text-gray-900 bg-white p-3 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
+                  <p v-else class="text-sm font-black text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">{{ user.phone }}</p>
+                </div>
+              </div>
+              <div>
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email liên hệ</p>
+                  <input v-if="isEditing" v-model="editForm.email" type="email" class="w-full text-sm font-black text-gray-900 bg-white p-3 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
+                  <p v-else class="text-sm font-black text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">{{ user.email || 'Chưa cập nhật' }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Wallet & Points -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Wallet Card -->
+            <section class="bg-[#075955] text-white p-8 rounded-3xl shadow-lg shadow-[#075955]/20 relative overflow-hidden group">
+              <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 blur-xl"></div>
+              <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-6">
+                  <span class="material-symbols-outlined text-emerald-300">account_balance_wallet</span>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-emerald-100">Ví điện tử</p>
+                </div>
+                <p class="text-xs font-semibold text-emerald-100 mb-1">Số dư khả dụng</p>
+                <h3 class="text-3xl font-black tracking-tight mb-8">
+                  {{ user.walletBalance ? user.walletBalance.toLocaleString('vi-VN') : '0' }}<span class="text-lg ml-1 text-emerald-200">₫</span>
+                </h3>
+                <button class="w-full bg-white text-[#075955] hover:bg-gray-50 text-xs font-black uppercase tracking-widest py-3.5 rounded-xl transition-all duration-200 shadow-sm active:scale-95">
+                  Nạp thêm tiền
+                </button>
+              </div>
+            </section>
+
+            <!-- Points Card -->
+            <section class="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
+              <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-amber-500">stars</span>
+                <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">Điểm thưởng</p>
+              </div>
+              <p class="text-xs font-semibold text-gray-500 mb-1">Loyalty Points</p>
+              <h3 class="text-3xl font-black tracking-tight text-gray-900 mb-8">
+                1,250<span class="text-lg ml-1 text-gray-400 font-semibold tracking-normal">pts</span>
+              </h3>
+              
+              <div class="flex items-center gap-3 bg-amber-50 p-4 rounded-xl border border-amber-100">
+                <span class="material-symbols-outlined text-amber-600 text-lg">local_activity</span>
+                <p class="text-xs font-bold text-amber-800">Bạn có 2 ưu đãi có sẵn</p>
+              </div>
+            </section>
+          </div>
+
+          <!-- Transaction History -->
+          <section class="bg-white rounded-3xl p-8 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest">Lịch sử giao dịch</h3>
+            </div>
+            
+            <div v-if="transactions.length === 0" class="text-center py-6 text-sm font-bold text-gray-400">
+              Chưa có giao dịch nào
+            </div>
+            <div v-else class="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <div v-for="txn in transactions" :key="txn.id" class="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" :class="txn.amount > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'">
+                    <span class="material-symbols-outlined">{{ txn.amount > 0 ? 'south_west' : 'north_east' }}</span>
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-black text-gray-900">{{ txn.title }}</h4>
+                    <p class="text-xs font-medium text-gray-500">{{ txn.description }}</p>
+                    <p class="text-[10px] font-bold text-gray-400 mt-1">{{ new Date(txn.date).toLocaleString('vi-VN') }}</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-base font-black tracking-tight" :class="txn.color">
+                    {{ txn.amount > 0 ? '+' : '' }}{{ txn.amount.toLocaleString('vi-VN') }}₫
+                  </p>
+                  <span class="text-[10px] font-black uppercase tracking-widest" :class="txn.status === 'Thành công' ? 'text-emerald-500' : 'text-amber-500'">
+                    {{ txn.status }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+
+
         </div>
       </div>
-
-      <!-- Wallet & Loyalty -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Wallet Card -->
-        <section class="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden group">
-          <div class="relative z-10">
-            <div class="flex justify-between items-start mb-4">
-              <div class="w-12 h-12 bg-[#075955]/10 rounded-2xl flex items-center justify-center text-[#075955]">
-                <span class="material-symbols-outlined text-2xl font-black">account_balance_wallet</span>
-              </div>
-              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ví Trung - Nam</p>
-            </div>
-            <p class="text-sm font-bold text-slate-500 mb-1">Số dư hiện tại</p>
-            <h3 class="text-3xl font-black text-[#075955] tracking-tight">
-              {{ user.walletBalance ? user.walletBalance.toLocaleString('vi-VN') : '0' }}<span class="text-sm ml-1 underline">đ</span>
-            </h3>
-          </div>
-          <button class="mt-6 w-full bg-[#075955] hover:bg-[#05403d] text-white text-xs font-black py-3.5 rounded-2xl transition-all duration-200 active:scale-95 shadow-md">
-            + NẠP THÊM TIỀN
-          </button>
-        </section>
-
-        <!-- Points Card -->
-        <section class="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden">
-          <div>
-            <div class="flex justify-between items-start mb-4">
-              <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
-                <span class="material-symbols-outlined text-2xl font-black">stars</span>
-              </div>
-              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Điểm thưởng</p>
-            </div>
-            <p class="text-sm font-bold text-slate-500 mb-1">Loyalty Points</p>
-            <h3 class="text-3xl font-black text-amber-500 tracking-tight">
-              1,250<span class="text-sm ml-1">pts</span>
-            </h3>
-          </div>
-          <div class="mt-6 flex items-center gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-            <span class="material-symbols-outlined text-emerald-500 text-sm">confirmation_number</span>
-            <p class="text-[10px] font-bold text-slate-600">Bạn có 2 mã giảm giá chưa dùng</p>
-          </div>
-        </section>
-      </div>
-
-      <!-- Settings Menu -->
-      <section class="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-6 border-b border-slate-50 bg-slate-50/50">
-          <h3 class="text-xs font-black text-slate-800 uppercase tracking-[0.2em]">Cài đặt tài khoản</h3>
-        </div>
-        
-        <div class="divide-y divide-slate-50">
-          <div @click="$router.push('/history')" class="flex items-center justify-between p-6 hover:bg-slate-50 transition-all cursor-pointer group">
-            <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-[#075955]/10 group-hover:text-[#075955] transition-all duration-300">
-                <span class="material-symbols-outlined text-xl font-black">receipt_long</span>
-              </div>
-              <div>
-                <p class="text-sm font-black text-slate-800">Lịch sử đặt vé</p>
-                <p class="text-[11px] font-bold text-slate-400">Xem lại tất cả chuyến đi đã mua</p>
-              </div>
-            </div>
-            <span class="material-symbols-outlined text-slate-300 group-hover:text-[#075955] group-hover:translate-x-1 transition-transform">chevron_right</span>
-          </div>
-
-          <div @click="$router.push('/ai-assistant')" class="flex items-center justify-between p-6 hover:bg-slate-50 transition-all cursor-pointer group">
-            <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-[#075955]/10 group-hover:text-[#075955] transition-all duration-300">
-                <span class="material-symbols-outlined text-xl font-black">robot_2</span>
-              </div>
-              <div>
-                <p class="text-sm font-black text-slate-800">Trợ lý ảo AI</p>
-                <p class="text-[11px] font-bold text-slate-400">Hỏi đáp về hành trình & chính sách</p>
-              </div>
-            </div>
-            <span class="material-symbols-outlined text-slate-300 group-hover:text-[#075955] group-hover:translate-x-1 transition-transform">chevron_right</span>
-          </div>
-
-          <div @click="handleLogout" class="flex items-center justify-between p-6 hover:bg-red-50 transition-all cursor-pointer group">
-            <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 group-hover:bg-red-500 group-hover:text-white transition-all duration-300">
-                <span class="material-symbols-outlined text-xl font-black">logout</span>
-              </div>
-              <div>
-                <p class="text-sm font-black text-red-600">Đăng xuất</p>
-                <p class="text-[11px] font-bold text-red-400">Thoát khỏi phiên làm việc hiện tại</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Footer Info -->
-      <footer class="py-8 text-center">
-        <p class="text-[9px] font-black tracking-[0.3em] uppercase text-slate-300">Trung - Nam Enterprise v3.2.0 • Secure Session</p>
-      </footer>
     </main>
+    </div>
+    
+    <!-- Custom Logout Confirmation Modal -->
+    <div v-if="showLogoutConfirm" class="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+        <div class="p-6 text-center">
+          <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-3xl text-red-500">logout</span>
+          </div>
+          <h3 class="text-lg font-black text-slate-800 mb-2">Xác nhận đăng xuất</h3>
+          <p class="text-sm font-medium text-slate-500 mb-6">Bạn có chắc chắn muốn đăng xuất khỏi hệ thống Trung Nam không?</p>
+          
+          <div class="flex gap-3">
+            <button @click="showLogoutConfirm = false" class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors">
+              Hủy bỏ
+            </button>
+            <button @click="executeLogout" class="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-red-500/30 transition-all active:scale-95">
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -160,11 +236,88 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useApi } from '@/composables/useApi';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const api = useApi();
 const user = ref(null);
 const loading = ref(true);
+const showLogoutConfirm = ref(false);
+const transactions = ref([]);
+
+const fetchTransactions = async () => {
+    try {
+        const res = await api.get(`/users/${user.value.id}/bookings`);
+        const history = [];
+        res.data.forEach(b => {
+             // Giao dịch mua vé
+             history.push({
+                 id: b.id + '_buy',
+                 title: 'Thanh toán vé xe',
+                 description: `Chuyến: ${b.trip.departurePoint} - ${b.trip.arrivalPoint}`,
+                 date: b.createdAt,
+                 amount: -b.totalPrice,
+                 status: b.status === 'PENDING' ? 'Đang xử lý' : 'Thành công',
+                 color: 'text-rose-600'
+             });
+
+             // Nếu hủy vé -> Hoàn tiền (90% giá vé, trừ 10% phí)
+             if (b.status === 'CANCELLED') {
+                 // Dùng một thời gian trễ nhỏ để hiển thị giao dịch hủy diễn ra sau mua
+                 const cancelDate = new Date(new Date(b.createdAt).getTime() + 60000).toISOString(); 
+                 history.push({
+                     id: b.id + '_refund',
+                     title: 'Hoàn tiền hủy vé (90%)',
+                     description: `Mã đơn hàng: #${b.id}`,
+                     date: cancelDate,
+                     amount: b.totalPrice * 0.9,
+                     status: 'Thành công',
+                     color: 'text-emerald-600'
+                 });
+             }
+        });
+
+        // Sắp xếp giảm dần theo thời gian (mới nhất lên đầu)
+        transactions.value = history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    } catch (e) {
+        console.error("Lỗi lấy lịch sử giao dịch", e);
+    }
+};
+
+const isEditing = ref(false);
+const editForm = ref({
+  fullName: '',
+  phone: '',
+  email: ''
+});
+
+const startEdit = () => {
+  editForm.value = {
+    fullName: user.value.fullName,
+    phone: user.value.phone,
+    email: user.value.email || ''
+  };
+  isEditing.value = true;
+};
+
+const saveProfile = async () => {
+  try {
+    const updatedUser = {
+      ...user.value,
+      fullName: editForm.value.fullName,
+      phone: editForm.value.phone,
+      email: editForm.value.email
+    };
+    await api.put(`/users/${user.value.id}`, updatedUser);
+    user.value = { ...user.value, ...updatedUser };
+    authStore.currentUser = user.value; // Đồng bộ với store
+    isEditing.value = false;
+  } catch (error) {
+    console.error("Lỗi khi lưu profile:", error);
+    alert("Có lỗi xảy ra khi cập nhật thông tin!");
+  }
+};
 
 const checkAuth = async () => {
   if (!authStore.isLoggedIn) {
@@ -177,6 +330,7 @@ const checkAuth = async () => {
     // 📡 Đồng bộ thời gian thực từ server dùng JWT token
     const freshUser = await authStore.fetchMe();
     user.value = freshUser || authStore.currentUser;
+    await fetchTransactions(); // Gọi fetch transaction sau khi có user.value
   } catch (err) {
     console.error("Lỗi kết nối server, dùng cache:", err);
     user.value = authStore.currentUser;
@@ -187,10 +341,13 @@ const checkAuth = async () => {
 };
 
 const handleLogout = () => {
-  if (confirm("Bạn thực sự muốn đăng xuất khỏi hệ thống SkyBus?")) {
-    authStore.logout();
-    router.push('/auth/login');
-  }
+  showLogoutConfirm.value = true;
+};
+
+const executeLogout = () => {
+  showLogoutConfirm.value = false;
+  authStore.logout();
+  router.push('/auth/login');
 };
 
 onMounted(() => {
@@ -206,5 +363,15 @@ onMounted(() => {
 }
 .animate-fade-in {
   animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
 }
 </style>

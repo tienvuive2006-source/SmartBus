@@ -41,24 +41,33 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // ✅ Public endpoints - không cần token
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/error").permitAll()
                 .requestMatchers("/health/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/trips/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/routes/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/bus-types/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/buses/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/seats/**").permitAll()
+                // Cho phép khách vãng lai đặt vé và kiểm tra thanh toán
+                .requestMatchers("/admin/bookings/**").permitAll()
                 // ⚡ H2 console (chỉ dùng khi dev)
                 .requestMatchers("/h2-console/**").permitAll()
                 // 🔒 Admin endpoints - chỉ ADMIN
                 .requestMatchers("/dashboard/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/routes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/routes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/routes/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/trips/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/trips/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/trips/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/buses/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/buses/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/buses/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/users/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/users/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/users/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/users/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
+                // 🎫 Inspector endpoints
+                .requestMatchers("/inspector/**").hasAnyRole("ADMIN", "INSPECTOR")
                 // 🔐 Các route còn lại cần đăng nhập
                 .anyRequest().authenticated()
             )

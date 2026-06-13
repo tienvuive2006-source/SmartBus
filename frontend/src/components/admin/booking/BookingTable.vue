@@ -1,38 +1,33 @@
 <template>
-  <div class="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
-    <!-- List Header -->
-    <div class="p-6 bg-[#075955] text-white flex flex-col md:flex-row justify-between items-center gap-4">
-      <div class="flex items-center gap-4">
-        <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-          <span class="material-symbols-outlined text-white">receipt_long</span>
-        </div>
-        <div>
-          <h3 class="text-base font-black uppercase tracking-widest">Sổ lệnh đặt vé</h3>
-          <p class="text-[10px] text-white/60 font-bold tracking-wider uppercase">Live updates from database</p>
-        </div>
-      </div>
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- Toolbar -->
+    <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
+      <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+         <span class="material-symbols-outlined text-[#075955] text-[20px]">list_alt</span>
+         Danh sách Đơn hàng
+      </h3>
       
-      <!-- Filters inside table header for modern look -->
-      <div class="flex items-center gap-3 w-full md:w-auto">
-        <div class="relative flex-1 md:w-64">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">search</span>
+      <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+        <div class="relative flex-1 sm:w-64">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
           <input 
             :value="searchQuery"
             @input="$emit('update:searchQuery', $event.target.value)"
             type="text" 
             placeholder="Tìm mã vé, SĐT..."
-            class="w-full pl-9 pr-4 py-2 bg-white/10 rounded-xl border border-white/10 focus:bg-white focus:text-[#075955] outline-none transition-all text-xs font-bold placeholder:text-white/30"
+            class="w-full pl-9 pr-4 py-2 bg-white rounded-lg border border-slate-200 focus:border-[#075955] focus:ring-1 focus:ring-[#075955] outline-none transition-all text-xs text-slate-700 placeholder:text-slate-400 shadow-sm"
           />
         </div>
         <select 
           :value="statusFilter"
           @change="$emit('update:statusFilter', $event.target.value)"
-          class="bg-white/10 border border-white/10 rounded-xl px-4 py-2 outline-none font-bold text-xs text-white"
+          class="w-full sm:w-auto bg-white border border-slate-200 rounded-lg px-4 py-2 outline-none text-xs font-semibold text-slate-700 shadow-sm focus:border-[#075955]"
         >
-          <option value="ALL" class="text-slate-800">Tất cả</option>
-          <option value="PAID" class="text-slate-800">Đã thanh toán</option>
-          <option value="PENDING" class="text-slate-800">Chờ xử lý</option>
-          <option value="CANCELLED" class="text-slate-800">Đã hủy</option>
+          <option value="ALL">Tất cả trạng thái</option>
+          <option value="PAID">Đã thanh toán</option>
+          <option value="PENDING">Chờ thanh toán</option>
+          <option value="CHECKED_IN">Đã lên xe</option>
+          <option value="CANCELLED">Đã hủy</option>
         </select>
       </div>
     </div>
@@ -111,12 +106,20 @@
                   <span class="material-symbols-outlined text-lg">check_circle</span>
                 </button>
                 <button 
-                  v-if="booking.status !== 'CANCELLED'" 
+                  v-if="booking.status === 'PENDING'" 
                   @click="$emit('update-status', booking.id, 'CANCELLED')" 
                   class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-slate-100 shadow-sm"
                   title="Hủy vé"
                 >
                   <span class="material-symbols-outlined text-lg">block</span>
+                </button>
+                <button 
+                  v-if="booking.status === 'CANCELLED' && booking.cancellationReason" 
+                  @click="$emit('view-reason', booking.cancellationReason)" 
+                  class="w-9 h-9 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white transition-all border border-rose-100 shadow-sm"
+                  title="Xem lý do hủy"
+                >
+                  <span class="material-symbols-outlined text-lg">info</span>
                 </button>
               </div>
             </td>

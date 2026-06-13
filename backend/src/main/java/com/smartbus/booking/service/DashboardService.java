@@ -19,20 +19,24 @@ public class DashboardService {
     private final TripRepository tripRepository;
     private final BusRepository busRepository;
 
+    private final com.smartbus.booking.repository.BookingRepository bookingRepository;
+
     public Map<String, Object> getLiveStats() {
         Map<String, Object> stats = new HashMap<>();
 
-        // 1. Lấy tất cả ghế đã bán để tính toán thật 100%
-        List<Seat> allSeats = seatRepository.findAll();
-        
-        long totalTicketsSold = allSeats.stream()
-                .filter(Seat::getIsBooked)
-                .count();
+        // Lấy tất cả bookings đã thanh toán hoặc đã lên xe
+        List<com.smartbus.booking.entity.Booking> paidBookings = bookingRepository.findAll().stream()
+                .filter(b -> "PAID".equals(b.getStatus()) || "CHECKED_IN".equals(b.getStatus()))
+                .toList();
 
-        // 2. Doanh thu thật = Tổng (Đơn giá chuyến xe của ghế đã bán)
-        double realRevenue = allSeats.stream()
-                .filter(Seat::getIsBooked)
-                .mapToDouble(s -> s.getTrip() != null ? s.getTrip().getPrice() : 0.0)
+        // 1. Tính tổng số vé đã bán thành công
+        long totalTicketsSold = paidBookings.stream()
+                .mapToLong(b -> b.getSeatNumbers() != null ? b.getSeatNumbers().size() : 0)
+                .sum();
+
+        // 2. Tính doanh thu thực tế dựa trên tổng tiền của các booking đã thanh toán
+        double realRevenue = paidBookings.stream()
+                .mapToDouble(com.smartbus.booking.entity.Booking::getTotalPrice)
                 .sum();
 
         // 3. Thống kê Chuyến xe

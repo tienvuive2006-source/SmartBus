@@ -30,16 +30,28 @@
         class="bg-white rounded-2xl shadow-[0px_4px_16px_rgba(0,0,0,0.02)] border border-outline-variant/25 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group"
       >
         <div class="p-5 flex flex-col sm:flex-row gap-5">
-          <div :class="[
-            'w-20 h-20 rounded-xl flex flex-col items-center justify-center text-white shadow-md shrink-0 transition-all',
-            bus.status === 'ĐANG CHẠY' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' :
-            bus.status === 'BẢO TRÌ' ? 'bg-gradient-to-br from-amber-500 to-orange-600 animate-pulse' :
-            'bg-gradient-to-br from-slate-500 to-slate-600'
-          ]">
-            <span class="material-symbols-outlined text-3xl">
-              {{ bus.status === 'BẢO TRÌ' ? 'build' : 'directions_bus' }}
-            </span>
-            <span class="text-[10px] font-black tracking-wider mt-1 uppercase">{{ bus.busType.split(' ')[0] }}</span>
+          <div class="relative w-24 h-24 sm:w-32 sm:h-24 rounded-xl overflow-hidden shrink-0 shadow-md">
+            <img v-if="bus.imageUrl" :src="bus.imageUrl" class="w-full h-full object-cover" />
+            <div v-else :class="[
+              'w-full h-full flex flex-col items-center justify-center text-white transition-all',
+              bus.status === 'ĐANG CHẠY' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600' :
+              bus.status === 'BẢO TRÌ' ? 'bg-gradient-to-br from-amber-500 to-orange-600 animate-pulse' :
+              'bg-gradient-to-br from-slate-500 to-slate-600'
+            ]">
+              <span class="material-symbols-outlined text-3xl">
+                {{ bus.status === 'BẢO TRÌ' ? 'build' : 'directions_bus' }}
+              </span>
+              <span class="text-[10px] font-black tracking-wider mt-1 uppercase">{{ bus.busType.split(' ')[0] }}</span>
+            </div>
+            
+            <div :class="[
+                'absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-black tracking-wide uppercase shadow-sm backdrop-blur-sm',
+                bus.status === 'ĐANG CHẠY' ? 'bg-emerald-500/90 text-white' :
+                bus.status === 'BẢO TRÌ' ? 'bg-amber-500/90 text-white' :
+                'bg-slate-700/90 text-white'
+              ]">
+                {{ bus.status }}
+            </div>
           </div>
           
           <div class="flex-1">
@@ -56,17 +68,10 @@
                 </p>
               </div>
 
-              <div :class="[
-                'px-3 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border shadow-sm',
-                bus.status === 'ĐANG CHẠY' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                bus.status === 'BẢO TRÌ' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                'bg-slate-50 border-slate-200 text-slate-600'
-              ]">
-                ● {{ bus.status }}
-              </div>
+              <!-- Status badge is moved to image overlay -->
             </div>
 
-            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-on-surface-variant">
+            <div class="mt-4 grid grid-cols-1 gap-3 text-on-surface-variant">
               <div class="flex items-center gap-2 bg-surface-container-lowest p-2 rounded-xl border border-outline-variant/20">
                 <span class="material-symbols-outlined text-primary text-[20px]">airline_seat_recline_normal</span>
                 <div class="flex flex-col">
@@ -74,27 +79,11 @@
                   <span class="text-label-md font-bold text-on-surface">{{ bus.driverName || 'Chưa phân công' }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-2 bg-surface-container-lowest p-2 rounded-xl border border-outline-variant/20">
-                <span class="material-symbols-outlined text-secondary text-[20px]">location_on</span>
-                <div class="flex flex-col">
-                  <span class="text-[10px] font-black text-outline uppercase">Vị trí hiện tại (Trạm)</span>
-                  <span class="text-label-md font-bold text-on-surface">{{ bus.currentStation || 'Chưa xác định' }}</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
-        <div class="border-t border-dashed border-outline-variant/30 p-3 bg-surface-container-lowest flex justify-between items-center px-5 flex-wrap gap-2">
-          <div class="flex items-center gap-2">
-            <button 
-              @click="$emit('locate', bus)"
-              class="text-primary hover:text-surface-tint font-black text-label-md flex items-center gap-1 px-3 py-1 hover:bg-primary/5 rounded-lg transition-all"
-            >
-              <span class="material-symbols-outlined text-sm">share_location</span>
-              ĐỊNH VỊ GPS ➔
-            </button>
-          </div>
+        <div class="border-t border-dashed border-outline-variant/30 p-3 bg-surface-container-lowest flex justify-end items-center px-5 flex-wrap gap-2">
 
           <div class="flex items-center gap-2">
             <button 

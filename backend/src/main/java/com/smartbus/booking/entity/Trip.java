@@ -24,6 +24,9 @@ public class Trip {
     @Column(nullable = false)
     private String busType;
 
+    @Column(nullable = true)
+    private String assignedLicensePlate; // Biển số xe thực tế được phân công để chạy chuyến này
+
     @Column(nullable = false)
     private String departurePoint;
 
@@ -63,10 +66,21 @@ public class Trip {
     @Column(nullable = false)
     private Integer availableSeats;
 
-    @Column(nullable = true, columnDefinition = "LONGTEXT")
+    @Column(nullable = false, columnDefinition = "int default 24")
+    @Builder.Default
+    private Integer totalSeats = 24;
+
+    @Column(nullable = true, columnDefinition = "NVARCHAR(MAX)")
     private String imageUrl;
 
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String routeData;
+
     private Boolean instantConfirmation;
+
+    @Column(nullable = false, columnDefinition = "BIT DEFAULT 1")
+    @Builder.Default
+    private Boolean isVisible = true; // Trạng thái hiển thị trên Home
 
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore // Tránh lặp vô hạn JSON
@@ -75,4 +89,13 @@ public class Trip {
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private java.util.List<Booking> bookings;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "inspector_id", nullable = true)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Inspector inspector;
+
+    @Column(nullable = true)
+    @Builder.Default
+    private String status = "SCHEDULED"; // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
 }

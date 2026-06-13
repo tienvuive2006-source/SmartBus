@@ -18,6 +18,12 @@ import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
 import AdminUserManagerView from '../views/admin/AdminUserManagerView.vue'
 import AdminBookingManagerView from '../views/admin/AdminBookingManagerView.vue'
+import AdminRouteManagerView from '../views/admin/AdminRouteManagerView.vue'
+import InspectorLayout from '../layouts/InspectorLayout.vue'
+import InspectorDashboardView from '../views/inspector/InspectorDashboardView.vue'
+import InspectorTripDetailView from '../views/inspector/InspectorTripDetailView.vue'
+
+// (I will add routes inside the router array)
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -35,7 +41,7 @@ const router = createRouter({
           name: 'home',
           component: HomeView,
           // Thêm hideHeader: true vào đây
-          meta: { title: 'SkyBus', showBack: false, hideHeader: true }
+          meta: { title: 'Trung Nam', showBack: false, hideHeader: true }
         },
         {
           path: 'booking/search',
@@ -119,6 +125,11 @@ const router = createRouter({
           component: AdminBookingManagerView
         },
         {
+          path: 'route-manager',
+          name: 'admin-route-manager',
+          component: AdminRouteManagerView
+        },
+        {
           path: 'bus-type',
           name: 'admin-bus-type',
           component: AdminBusTypeView
@@ -132,6 +143,22 @@ const router = createRouter({
           path: 'users',
           name: 'admin-user-manager',
           component: AdminUserManagerView
+        }
+      ]
+    },
+    {
+      path: '/inspector',
+      component: InspectorLayout,
+      children: [
+        {
+          path: '',
+          name: 'inspector-dashboard',
+          component: InspectorDashboardView
+        },
+        {
+          path: 'trip/:id',
+          name: 'inspector-trip-detail',
+          component: InspectorTripDetailView
         }
       ]
     }
@@ -157,6 +184,18 @@ router.beforeEach((to, from, next) => {
     }
     if (userRole !== 'ADMIN') {
       alert("⛔ CẢNH BÁO: Bạn không có đặc quyền truy cập Bảng Quản Trị!\nHệ thống sẽ trục xuất bạn về Trang Chủ.");
+      return next('/');
+    }
+  }
+
+  // 🔒 Bảo vệ route INSPECTOR
+  if (to.path.startsWith('/inspector')) {
+    if (!token) {
+      alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Nhân viên Soát vé!");
+      return next({ path: '/auth/login', query: { redirect: to.fullPath } });
+    }
+    if (userRole !== 'INSPECTOR' && userRole !== 'ADMIN') {
+      alert("⛔ CẢNH BÁO: Bạn không có quyền hạn Soát vé!");
       return next('/');
     }
   }

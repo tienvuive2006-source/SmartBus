@@ -15,71 +15,90 @@
         <div class="flex-1 flex overflow-hidden">
           <!-- Left: Form Column -->
           <form @submit.prevent="$emit('submit')" class="w-1/2 p-8 space-y-6 overflow-y-auto border-r border-slate-100 bg-white">
+            
+            <div class="space-y-1.5 mb-6">
+              <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center justify-between">
+                 <span>
+                   Chọn Tuyến Đường Cố Định <span class="text-rose-500">*</span>
+                   <span v-if="isEditMode && form.originalAvailableSeats < form.originalTotalSeats" class="text-rose-500 lowercase normal-case italic ml-1">(Đã có khách đặt, không thể đổi)</span>
+                 </span>
+                 <span v-if="!savedRoutes || savedRoutes.length === 0" class="text-rose-400 text-[9px] italic">Chưa có tuyến mẫu nào</span>
+              </label>
+              <select 
+                :value="form.departurePoint && form.arrivalPoint ? `${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}` : ''"
+                @change="(e) => {
+                  const selectedRoute = savedRoutes.find(r => r.name === e.target.value);
+                  if(selectedRoute) $emit('apply-template', selectedRoute);
+                }"
+                required
+                :disabled="isEditMode && form.originalAvailableSeats < form.originalTotalSeats"
+                class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3.5 text-sm font-bold outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <option value="" disabled>-- Vui lòng chọn một tuyến đường --</option>
+                <option v-for="route in savedRoutes" :key="route.name" :value="route.name">
+                  {{ route.name }}
+                </option>
+              </select>
+            </div>
+
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1.5">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Hãng xe vận hành</label>
                 <input v-model="form.companyName" required class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all" />
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Dòng xe khai thác</label>
-                <select v-model="form.busType" required class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Dòng xe khai thác
+                  <span v-if="isEditMode && form.originalAvailableSeats < form.originalTotalSeats" class="text-rose-500 lowercase normal-case italic ml-1">(Đã có khách đặt, không thể đổi)</span>
+                </label>
+                <select 
+                  v-model="form.busType" 
+                  required 
+                  @change="(e) => {
+                    if (form.assignedLicensePlate) {
+                      const assignedBus = buses?.find(b => b.licensePlate === form.assignedLicensePlate);
+                      if (assignedBus && assignedBus.busType !== e.target.value) {
+                        form.assignedLicensePlate = '';
+                      }
+                    }
+                  }"
+                  :disabled="isEditMode && form.originalAvailableSeats < form.originalTotalSeats"
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
                   <option v-for="t in busTypes" :key="t.id" :value="t.name">{{ t.name }} ({{ t.seatCount }} Ghế)</option>
                 </select>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-5 relative">
-              <div class="space-y-1.5 relative">
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
-                  <span>Điểm khởi hành</span>
-                  <span v-if="geocoding.departure" class="text-[#075955] animate-pulse text-[8px]">Đang lấy tọa độ...</span>
-                </label>
-                <div class="relative flex items-center">
-                  <input 
-                    v-model="form.departurePoint" 
-                    @focus="$emit('from-focus')" 
-                    @keyup.enter="$emit('geocode', form.departurePoint, 'departure')"
-                    required placeholder="Ví dụ: Bến xe Đà Nẵng" 
-                    class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-3.5 text-sm font-bold outline-none transition-all" 
-                  />
-                  <button type="button" @click="$emit('geocode', form.departurePoint, 'departure')" class="absolute right-3 text-slate-400 hover:text-[#075955] p-1">
-                    <span class="material-symbols-outlined text-lg">my_location</span>
-                  </button>
-                </div>
-                <!-- Suggestions handled by parent via slot or direct injection if complex -->
-                <slot name="from-suggestions"></slot>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Phân công Xe & Tài xế (Tùy chọn)</label>
+                <select 
+                  v-model="form.assignedLicensePlate" 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all"
+                  @change="(e) => {
+                    const bus = buses?.find(b => b.licensePlate === e.target.value);
+                    if(bus && (!isEditMode || form.availableSeats === form.totalSeats)) { form.busType = bus.busType; }
+                  }"
+                >
+                  <option value="">-- Chưa phân công --</option>
+                  <option v-for="bus in (form.busType ? buses.filter(b => b.busType === form.busType) : buses)" :key="bus.id" :value="bus.licensePlate">
+                    {{ bus.licensePlate }} - Tài xế: {{ bus.driverName || 'N/A' }}
+                  </option>
+                </select>
               </div>
 
-              <!-- 🔄 Nút đảo chiều lộ trình khứ hồi thông minh ở giữa -->
-              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[1002]">
-                <button 
-                  type="button"
-                  @click="$emit('swap-route')" 
-                  class="w-8 h-8 rounded-full bg-[#075955] text-white hover:bg-[#0a7a75] hover:rotate-180 active:scale-95 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-md border border-white"
-                  title="Đảo chiều lộ trình (Khứ hồi)"
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Phân công Lơ xe (Tùy chọn)</label>
+                <select 
+                  v-model="form.inspectorId" 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all"
                 >
-                  <span class="material-symbols-outlined text-sm">sync_alt</span>
-                </button>
-              </div>
-  
-              <div class="space-y-1.5 relative">
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
-                  <span>Điểm kết thúc</span>
-                  <span v-if="geocoding.arrival" class="text-[#075955] animate-pulse text-[8px]">Đang lấy tọa độ...</span>
-                </label>
-                <div class="relative flex items-center">
-                  <input 
-                    v-model="form.arrivalPoint" 
-                    @focus="$emit('to-focus')" 
-                    @keyup.enter="$emit('geocode', form.arrivalPoint, 'arrival')"
-                    required placeholder="Ví dụ: Bến xe Miền Tây" 
-                    class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-3.5 text-sm font-bold outline-none transition-all" 
-                  />
-                  <button type="button" @click="$emit('geocode', form.arrivalPoint, 'arrival')" class="absolute right-3 text-slate-400 hover:text-[#075955] p-1">
-                    <span class="material-symbols-outlined text-lg">my_location</span>
-                  </button>
-                </div>
-                <slot name="to-suggestions"></slot>
+                  <option value="">-- Chưa phân công --</option>
+                  <option v-for="inspector in inspectors" :key="inspector.id" :value="inspector.id">
+                    {{ inspector.fullName }}
+                  </option>
+                </select>
               </div>
             </div>
 
@@ -97,15 +116,54 @@
             <div class="grid grid-cols-3 gap-4">
               <div class="space-y-1.5">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 text-center block">Giờ đi</label>
-                <input v-model="form.departureTime" placeholder="08:00" class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center" />
+                <input 
+                  v-model="form.departureTime" 
+                  type="text"
+                  placeholder="15:00"
+                  @change="() => {
+                    let timeVal = form.departureTime?.trim() || '';
+                    if (/^\d{1,2}$/.test(timeVal)) timeVal = `${timeVal.padStart(2, '0')}:00`;
+                    else if (/^\d{3,4}$/.test(timeVal)) timeVal = `${timeVal.length === 3 ? '0' + timeVal[0] : timeVal.slice(0,2)}:${timeVal.slice(-2)}`;
+                    else if (/^\d{1,2}:\d{1,2}$/.test(timeVal)) {
+                       const parts = timeVal.split(':');
+                       timeVal = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+                    }
+                    form.departureTime = timeVal;
+
+                    if (form.departureTime && form.duration) {
+                      const match = form.duration.match(/(\d+)h(?:\s*(\d+)m)?/);
+                      if (match) {
+                        const durationH = parseInt(match[1]) || 0;
+                        const durationM = parseInt(match[2]) || 0;
+                        const [depH, depM] = form.departureTime.split(':').map(Number);
+                        if (!isNaN(depH) && !isNaN(depM)) {
+                          let arrH = depH + durationH;
+                          let arrM = depM + durationM;
+                          if (arrM >= 60) {
+                            arrH += Math.floor(arrM / 60);
+                            arrM = arrM % 60;
+                          }
+                          arrH = arrH % 24;
+                          form.arrivalTime = `${String(arrH).padStart(2, '0')}:${String(arrM).padStart(2, '0')}`;
+                        }
+                      }
+                    }
+                  }"
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center" 
+                />
               </div>
               <div class="space-y-1.5">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 text-center block">Giờ đến</label>
-                <input v-model="form.arrivalTime" placeholder="12:00" class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center" />
+                <input v-model="form.arrivalTime" type="text" placeholder="19:00" class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center" />
               </div>
               <div class="space-y-1.5">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 text-center block">Số ghế</label>
-                <input v-model.number="form.availableSeats" type="number" class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center" />
+                <input 
+                  v-model.number="form.availableSeats" 
+                  type="number" 
+                  :disabled="isEditMode && form.originalAvailableSeats < form.originalTotalSeats"
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center disabled:opacity-60 disabled:cursor-not-allowed" 
+                />
               </div>
             </div>
 
@@ -165,11 +223,14 @@ defineProps({
   isEditMode: Boolean,
   form: Object,
   busTypes: Array,
+  buses: Array,
+  inspectors: Array,
   geocoding: Object,
-  mapLoading: Boolean
+  mapLoading: Boolean,
+  savedRoutes: Array
 });
 
-defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-click', 'swap-route']);
+defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-click', 'swap-route', 'save-template', 'apply-template', 'delete-template']);
 </script>
 
 <style scoped>

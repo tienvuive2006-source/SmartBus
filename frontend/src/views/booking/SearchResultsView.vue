@@ -17,9 +17,17 @@
                 <span class="material-symbols-outlined text-gray-400 text-sm shrink-0">near_me</span>
                 <span class="text-sm font-semibold truncate text-gray-700" :title="$route.query.to">{{ $route.query.to }}</span>
              </div>
-             <div class="px-4 py-2.5 flex items-center gap-2 shrink-0 bg-gray-100/50">
-                <span class="material-symbols-outlined text-gray-400 text-sm">calendar_month</span>
-                <span class="text-sm font-semibold text-gray-600">{{ formatDateDisplay($route.query.date) }}</span>
+             <div class="px-4 py-2.5 flex items-center gap-2 shrink-0 bg-gray-100/50 relative cursor-pointer group hover:bg-gray-200/50 transition-colors" title="Đổi ngày đi">
+                <span class="material-symbols-outlined text-gray-400 text-sm group-hover:text-[#075955] transition-colors">calendar_month</span>
+                <input 
+                  type="date" 
+                  :value="$route.query.date"
+                  @change="handleDateChange"
+                  onclick="this.showPicker()"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style="z-index: 10;"
+                />
+                <span class="text-sm font-semibold text-gray-600 group-hover:text-[#075955] transition-colors">{{ formatDateDisplay($route.query.date) }}</span>
              </div>
              <button @click="$router.push('/')" class="px-6 py-2.5 bg-[#f03a17] hover:bg-[#d63314] text-white font-black text-xs uppercase tracking-widest transition-all shrink-0">Sửa</button>
           </div>
@@ -95,15 +103,16 @@
         <div v-else class="space-y-4">
           <article 
             v-for="trip in filteredTrips" :key="trip.id" 
-            class="bg-white rounded-xl border border-gray-200 hover:border-[#075955]/50 transition-all duration-300 shadow-sm overflow-hidden flex flex-col md:flex-row"
+            class="bg-white rounded-xl border border-gray-200 hover:border-[#075955]/50 transition-all duration-300 shadow-sm overflow-hidden flex flex-col"
           >
-            <div class="md:w-48 bg-gray-100 relative group overflow-hidden shrink-0">
+            <div class="flex flex-col md:flex-row">
+            <div class="md:w-72 bg-slate-100 relative group overflow-hidden shrink-0 min-h-[240px]">
                <img 
                  :src="trip.imageUrl || 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=400'" 
-                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                 class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                  @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=400'"
                />
-               <div class="absolute top-2 left-2 flex flex-col gap-1">
+               <div class="absolute top-2 left-2 flex flex-col gap-1 z-10">
                   <span class="bg-[#075955] text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                      <span class="material-symbols-outlined text-[10px]">verified</span> Xác nhận tức thì
                   </span>
@@ -117,9 +126,9 @@
                <div>
                   <div class="flex justify-between items-start mb-4">
                      <div>
-                        <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ trip.companyName }}</h3>
-                        <p class="text-xs font-semibold text-gray-500 mt-1">{{ trip.busType.replace(/Luxyry/g, 'Luxury') }}</p>
-                     </div>
+                         <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ trip.companyName }}</h3>
+                         <p class="text-xs font-semibold text-gray-500 mt-1">{{ trip.busType.replace(/Luxyry/g, 'Luxury') }}</p>
+                      </div>
                   </div>
                   
                   <div class="flex items-center gap-6 mb-4">
@@ -145,16 +154,26 @@
                       <span class="flex items-center gap-1 text-right">{{ trip.arrivalPoint }} <span class="material-symbols-outlined text-sm">location_on</span></span>
                    </div>
                    
-                   <div class="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                      <span class="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
-                         <span class="material-symbols-outlined text-xs">sell</span> Giảm 10% khi đặt hôm nay
-                      </span>
-                      <button 
-                        @click="openMapModal(trip)"
-                        class="flex items-center gap-1 text-[11px] font-bold text-[#075955] hover:underline"
-                      >
-                        <span class="material-symbols-outlined text-xs">map</span> Xem bản đồ hành trình
-                      </button>
+                   <div class="mt-4 pt-4 border-t border-gray-50 flex flex-col gap-3">
+                      <div class="flex items-center justify-between">
+                         <div class="flex gap-4">
+                            <button 
+                              @click="trip.showInfo = !trip.showInfo"
+                              class="flex items-center gap-1 text-[11px] font-bold text-[#075955] hover:underline"
+                            >
+                              <span class="material-symbols-outlined text-xs">info</span> {{ trip.showInfo ? 'Đóng thông tin' : 'Thông tin xe' }}
+                            </button>
+                            <button 
+                              @click="openMapModal(trip)"
+                              class="flex items-center gap-1 text-[11px] font-bold text-[#075955] hover:underline"
+                            >
+                              <span class="material-symbols-outlined text-xs">map</span> Xem lộ trình
+                            </button>
+                         </div>
+                         <span class="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                            <span class="material-symbols-outlined text-xs">sell</span> Giảm 10%
+                         </span>
+                      </div>
                    </div>
                 </div>
              </div>
@@ -167,12 +186,51 @@
                </div>
                
                <button 
-                 @click="$router.push({ path: '/booking/seat', query: { tripId: trip.id } })"
-                 class="w-full bg-[#f03a17] hover:bg-[#d63314] text-white py-3 rounded-md font-bold text-sm transition-all shadow-sm active:scale-95"
+                 @click="!isTripPassed(trip) && $router.push({ path: '/booking/seat', query: { tripId: trip.id } })"
+                 :class="['w-full py-3 rounded-md font-bold text-sm transition-all shadow-sm', isTripPassed(trip) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#f03a17] hover:bg-[#d63314] text-white active:scale-95']"
+                 :disabled="isTripPassed(trip)"
                >
-                 Chọn chỗ
+                 {{ isTripPassed(trip) ? 'Đã khởi hành' : 'Chọn chỗ' }}
                </button>
                <p class="text-[10px] text-gray-400 mt-3 italic text-center w-full">KHÔNG CẦN THANH TOÁN TRƯỚC</p>
+            </div>
+            </div>
+            
+            <!-- Expandable Info -->
+            <div v-if="trip.showInfo" class="p-5 bg-slate-50 border-t border-slate-100 animate-fade-in text-sm relative">
+               <!-- Nút đóng -->
+               <button @click="trip.showInfo = false" class="absolute top-4 right-5 text-gray-400 hover:text-gray-900 transition-colors">
+                  <span class="material-symbols-outlined">close</span>
+               </button>
+               
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                  <div>
+                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                       <span class="material-symbols-outlined text-[14px]">directions_bus</span> Phương tiện
+                     </p>
+                     <p class="font-semibold text-gray-800 text-[13px] mb-2">{{ trip.busType.replace(/Luxyry/g, 'Luxury') }}</p>
+                     <div class="space-y-1">
+                        <p class="text-xs text-gray-600 flex items-center gap-1.5"><span class="font-medium text-gray-500 w-16">Biển số:</span> <span class="font-medium text-gray-800">{{ trip.assignedLicensePlate || 'Chưa cập nhật' }}</span></p>
+                        <p class="text-xs text-gray-600 flex items-center gap-1.5"><span class="font-medium text-gray-500 w-16">Tài xế:</span> <span class="font-medium text-gray-800">{{ getDriverName(trip.assignedLicensePlate) || 'Chưa phân công' }}</span></p>
+                     </div>
+                  </div>
+                  <div>
+                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                       <span class="material-symbols-outlined text-[14px]">stars</span> Tiện ích trên xe
+                     </p>
+                     <div class="grid grid-cols-2 gap-2 mt-2">
+                       <template v-if="getBusUtilities(trip.busType)">
+                         <p v-for="(util, index) in getBusUtilities(trip.busType).split(',')" :key="index" class="text-xs text-gray-600 flex items-center gap-1.5">
+                           <span class="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span>
+                           {{ util.trim() }}
+                         </p>
+                       </template>
+                       <p v-else class="text-xs text-gray-600 flex items-center gap-1.5">
+                         <span class="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span> Xe tiêu chuẩn
+                       </p>
+                     </div>
+                   </div>
+               </div>
             </div>
           </article>
           
@@ -229,10 +287,11 @@
                 </div>
              </div>
              <button 
-               @click="$router.push({ path: '/booking/seat', query: { tripId: selectedTripForMap?.id } })"
-               class="px-8 py-2.5 bg-[#f03a17] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#d63314] transition-all shadow-md active:scale-95"
+               @click="!isTripPassed(selectedTripForMap) && $router.push({ path: '/booking/seat', query: { tripId: selectedTripForMap?.id } })"
+               :class="['px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-md', isTripPassed(selectedTripForMap) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#f03a17] hover:bg-[#d63314] text-white active:scale-95']"
+               :disabled="isTripPassed(selectedTripForMap)"
              >
-               Chọn chỗ chuyến này
+               {{ isTripPassed(selectedTripForMap) ? 'Đã khởi hành' : 'Chọn chỗ chuyến này' }}
              </button>
           </div>
         </div>
@@ -248,15 +307,29 @@ import { useRoute, useRouter } from 'vue-router';
 import { useApi } from '@/composables/useApi';
 import { removeAccents } from '../../composables/useLocationSearch';
 import { useAuthStore } from '@/stores/auth';
+import { decodePolyline, uploadPolylineToCloudinary, fetchPolylineFromCloudinary } from '@/utils/polyline';
 
 const route = useRoute();
 const router = useRouter();
 const api = useApi();
 const authStore = useAuthStore();
 const allTrips = ref([]);
+const allBuses = ref([]);
+const allBusTypes = ref([]);
 const loading = ref(true);
 const currentSort = ref('default');
 const selectedTimeSlots = ref([]);
+
+const handleDateChange = (e) => {
+  const newDate = e.target.value;
+  const newQuery = { ...route.query };
+  if (newDate) newQuery.date = newDate;
+  else delete newQuery.date;
+  
+  router.replace({ query: newQuery }).then(() => {
+    fetchTrips();
+  });
+};
 
 // ─── MAP MODAL STATE ─────────────────────────────────────────────────────────
 const isMapModalOpen = ref(false);
@@ -298,6 +371,18 @@ const sortOptions = [
   { id: 'rating_desc', name: 'Đánh giá cao nhất' }
 ];
 
+const isTripPassed = (trip) => {
+  if (!trip || !trip.departureDate || !trip.departureTime) return false;
+  try {
+    const [year, month, day] = trip.departureDate.split('T')[0].split('-');
+    const [hour, minute] = trip.departureTime.split(':');
+    const depTime = new Date(year, month - 1, day, hour, minute);
+    return new Date() > depTime;
+  } catch (e) {
+    return false;
+  }
+};
+
 const formatDateDisplay = (d) => {
   if (!d) return 'Chọn ngày';
   return new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -324,7 +409,10 @@ const filteredTrips = computed(() => {
   const cTo = normalize(to);
 
   let results = allTrips.value.filter(t => {
-    // 0. Lọc theo hãng xe (nếu được truyền)
+    // 0. Bỏ qua các chuyến đã bị ẩn
+    if (t.isVisible === false) return false;
+
+    // 0.5. Lọc theo hãng xe (nếu được truyền)
     if (company && company !== 'all') {
       if (t.companyName !== company) return false;
     }
@@ -373,7 +461,7 @@ const fetchTrips = async () => {
     const res = await api.get('/trips/search', {
       params: { from, to, date }
     });
-    allTrips.value = res.data;
+    allTrips.value = res.data.map(t => ({ ...t, showInfo: false }));
   } catch (err) { 
     console.error("Lỗi fetch trips:", err); 
   } finally { 
@@ -381,8 +469,35 @@ const fetchTrips = async () => {
   }
 };
 
+const fetchAdditionalInfo = async () => {
+  try {
+    const [busesRes, busTypesRes] = await Promise.all([
+      api.get('/buses'),
+      api.get('/bus-types')
+    ]);
+    allBuses.value = busesRes.data;
+    allBusTypes.value = busTypesRes.data;
+  } catch (err) {
+    console.error("Lỗi fetch additional info:", err);
+  }
+};
+
+const getDriverName = (licensePlate) => {
+  if (!licensePlate) return '';
+  const bus = allBuses.value.find(b => b.licensePlate === licensePlate);
+  return bus ? bus.driverName : '';
+};
+
+const getBusUtilities = (busTypeName) => {
+  if (!busTypeName) return '';
+  const btName = busTypeName.replace(/Luxyry/g, 'Luxury');
+  const busType = allBusTypes.value.find(bt => bt.name === btName || bt.name.replace(/Luxyry/g, 'Luxury') === btName);
+  return busType ? busType.description : '';
+};
+
 onMounted(() => {
   fetchTrips();
+  fetchAdditionalInfo();
 });
 
 let leafletMap = null;
@@ -461,11 +576,11 @@ const updateGoogleMap = () => {
   }
 };
 
-const initMap = () => {
+const initMap = async () => {
   const L = window.L;
   if (!L) return;
   
-  nextTick(() => {
+  nextTick(async () => {
     if (leafletMap) {
       leafletMap.remove();
     }
@@ -521,31 +636,70 @@ const initMap = () => {
       L.marker(fromCoords, { icon: startIcon }).addTo(leafletMap).bindPopup('Điểm khởi hành');
       L.marker(toCoords, { icon: endIcon }).addTo(leafletMap).bindPopup('Điểm đến');
       
-      // 🚀 GỌI API OSRM ĐỂ LẤY ĐƯỜNG ĐI THẬT (FOLLOW ROADS)
+      // 🚀 NẾU ĐÃ CÓ CACHE TUYẾN ĐƯỜNG TRONG DATABASE THÌ VẼ LUÔN (KHÔNG CẦN GỌI OSRM)
+      if (selectedTripForMap.value.routeData) {
+         try {
+           let routeStr = selectedTripForMap.value.routeData;
+           
+           // Nếu là URL Cloudinary thì tải về
+           if (routeStr.startsWith('http')) {
+               routeStr = await fetchPolylineFromCloudinary(routeStr);
+           }
+           
+           let coords = [];
+           if (routeStr.startsWith('[')) {
+               coords = JSON.parse(routeStr);
+           } else if (routeStr) {
+               coords = decodePolyline(routeStr);
+           }
+           
+           if (coords && coords.length > 0) {
+              L.polyline(coords, { color: '#075955', weight: 5, opacity: 0.8, lineJoin: 'round' }).addTo(leafletMap);
+              const bounds = L.latLngBounds(coords);
+              leafletMap.fitBounds(bounds, { padding: [50, 50] });
+              mapLoading.value = false;
+              return;
+           }
+         } catch (e) { console.error("Lỗi parse routeData", e); }
+      }
+      
+      // GỌI API OSRM ĐỂ LẤY ĐƯỜNG ĐI THẬT NẾU CHƯA CÓ CACHE
       let points = `${fromCoords[1]},${fromCoords[0]};${toCoords[1]},${toCoords[0]}`;
       
       const latDiff = Math.abs(fromCoords[0] - toCoords[0]);
       const isSouthBound = fromCoords[0] > toCoords[0];
       
       // 🇻🇳 THUẬT TOÁN ĐIỂM NEO THÔNG MINH (CHỈ THÊM KHI NẰM GIỮA)
-      if (latDiff > 3) {
-        if (isSouthBound && toCoords[0] < 12.2) { // Nếu đi vào Nam và đích đến xa hơn Nha Trang
-          const waypoint = [109.196747, 12.238791]; // Nha Trang
-          points = `${fromCoords[1]},${fromCoords[0]};${waypoint[0]},${waypoint[1]};${toCoords[1]},${toCoords[0]}`;
-        } else if (!isSouthBound && toCoords[0] > 16.0) { // Nếu đi ra Bắc và đích đến xa hơn Đà Nẵng
-          const waypoint = [108.206230, 16.047079]; // Đà Nẵng
-          points = `${fromCoords[1]},${fromCoords[0]};${waypoint[0]},${waypoint[1]};${toCoords[1]},${toCoords[0]}`;
+      if (latDiff > 2) {
+        let waypoints = [];
+        const minLat = Math.min(fromCoords[0], toCoords[0]);
+        const maxLat = Math.max(fromCoords[0], toCoords[0]);
+        // Ép đi theo đường Quốc lộ 1A / Cao tốc ven biển thay vì xuyên qua Lào/Campuchia
+        if (minLat < 13.0 && maxLat > 13.0) waypoints.push([109.2887, 13.0645]);
+        if (minLat < 15.1 && maxLat > 15.1) waypoints.push([108.8268, 15.1522]);
+        if (minLat < 17.5 && maxLat > 17.5) waypoints.push([106.5960, 17.4912]);
+        
+        if (isSouthBound) waypoints.reverse();
+        if (waypoints.length > 0) {
+           const waypointsStr = waypoints.map(wp => `${wp[0]},${wp[1]}`).join(';');
+           points = `${fromCoords[1]},${fromCoords[0]};${waypointsStr};${toCoords[1]},${toCoords[0]}`;
         }
       }
 
-      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${points}?overview=full&geometries=geojson`;
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${points}?overview=full&geometries=polyline`;
       
       fetch(osrmUrl)
         .then(res => res.json())
         .then(data => {
           if (data.routes && data.routes.length > 0) {
             const route = data.routes[0];
-            const coordinates = route.geometry.coordinates.map(c => [c[1], c[0]]);
+            const encodedPolyline = route.geometry;
+            
+            // Upload chuỗi lên Cloudinary để lấy Link siêu ngắn (nếu sau này cần API này tự cache lại)
+            // (Thường thì Booking ko cần lưu lại, nhưng để đồng bộ, ta cứ upload nếu được)
+            uploadPolylineToCloudinary(encodedPolyline).catch(e => console.error(e));
+            
+            const coordinates = decodePolyline(encodedPolyline);
             
             L.polyline(coordinates, { 
               color: '#075955', 

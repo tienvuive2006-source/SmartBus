@@ -1,23 +1,18 @@
 <template>
-  <div class="p-6 md:p-10 max-w-7xl mx-auto bg-slate-50 min-h-screen font-sans animate-fade-in">
+  <div class="p-6 md:p-8 max-w-7xl mx-auto bg-slate-50 min-h-screen font-sans">
     <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10 border-b border-slate-200 pb-8">
-      <div class="flex items-center gap-5">
-        <div class="w-16 h-16 bg-[#075955] rounded-3xl flex items-center justify-center shadow-lg shadow-[#075955]/20">
-          <span class="material-symbols-outlined text-white text-4xl">alt_route</span>
-        </div>
-        <div>
-          <h2 class="text-3xl font-black text-slate-900 tracking-tight">
-            Quản lý Chuyến xe
-          </h2>
-          <p class="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">Hệ thống điều hành lộ trình toàn quốc</p>
-        </div>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">
+          Quản lý Chuyến xe
+        </h2>
+        <p class="text-xs font-semibold text-slate-500 mt-1">Hệ thống điều hành lộ trình toàn quốc</p>
       </div>
       <button 
         @click="openAddModal" 
-        class="bg-[#075955] text-white hover:bg-[#0a7a75] px-10 py-4 rounded-2xl shadow-xl shadow-[#075955]/10 active:scale-95 transition-all duration-300 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3"
+        class="bg-[#075955] hover:bg-[#064a47] text-white px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md active:scale-95 transition-all duration-200 font-bold text-xs flex items-center justify-center gap-2"
       >
-        <span class="material-symbols-outlined">add_circle</span>
+        <span class="material-symbols-outlined text-[18px]">add_circle</span>
         Tạo lộ trình mới
       </button>
     </div>
@@ -43,8 +38,11 @@
       :isEditMode="isEditMode"
       :form="form"
       :busTypes="busTypes"
+      :buses="buses"
       :geocoding="geocoding"
       :mapLoading="adminMapLoading"
+      :savedRoutes="savedRoutes"
+      :inspectors="inspectors"
       @close="closeModal"
       @submit="handleFormSubmit"
       @geocode="autoGeocode"
@@ -52,6 +50,9 @@
       @to-focus="onToFocus"
       @upload-click="$refs.fileInput?.click()"
       @swap-route="swapRoute"
+      @save-template="saveCurrentRouteAsTemplate"
+      @apply-template="applyRouteTemplate"
+      @delete-template="deleteRouteTemplate"
     >
       <template #from-suggestions>
         <ul v-if="showFromDropdown && fromSuggestions.length" class="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl z-[1000] overflow-hidden max-h-48 overflow-y-auto">
@@ -79,6 +80,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import axios from 'axios';
 import { useApi } from '../../composables/useApi';
 import { useLocationSearch } from '../../composables/useLocationSearch';
+import { decodePolyline, uploadPolylineToCloudinary, fetchPolylineFromCloudinary } from '../../utils/polyline';
 import TripStats from '../../components/admin/trip/TripStats.vue';
 import TripTable from '../../components/admin/trip/TripTable.vue';
 import TripModal from '../../components/admin/trip/TripModal.vue';
@@ -86,46 +88,125 @@ import TripModal from '../../components/admin/trip/TripModal.vue';
 const api = useApi();
 const trips = ref([]);
 const busTypes = ref([]);
+const buses = ref([]);
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
 const adminMapLoading = ref(false);
 const leafletMap = ref(null);
 const fileInput = ref(null);
+const inspectors = ref([]);
 
 const defaultForm = {
-  id: null, companyName: 'Saomaifly', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
+  id: null, companyName: 'Trung - Nam', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
+  assignedLicensePlate: '',
   departureDate: new Date().toISOString().split('T')[0], departureTime: '08:00', arrivalTime: '12:00',
   duration: '4h', price: 250000, rating: 4.8, availableSeats: 36, imageUrl: '', instantConfirmation: true,
-  departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0
+  departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, inspectorId: '', routeData: ''
 };
 
 const form = ref({ ...defaultForm });
 const geocoding = ref({ departure: false, arrival: false });
 const lastGeocodeTarget = ref('departure');
 
+// --- 📌 TUYẾN ĐƯỜNG CỐ ĐỊNH (SAVED ROUTES) ---
+const savedRoutes = ref([]);
+
+const fetchSavedRoutes = async () => {
+  try {
+    const res = await api.get('/routes');
+    savedRoutes.value = res.data;
+  } catch (err) {
+    console.error('Lỗi tải danh sách tuyến đường mẫu:', err);
+  }
+};
+
+const saveCurrentRouteAsTemplate = async () => {
+  if (!form.value.departurePoint || !form.value.arrivalPoint) return alert("Vui lòng nhập điểm đi và điểm đến để lưu!");
+  const newRoute = {
+    name: `${form.value.departurePoint.split(',')[0]} ➔ ${form.value.arrivalPoint.split(',')[0]}`,
+    departurePoint: form.value.departurePoint,
+    arrivalPoint: form.value.arrivalPoint,
+    departureLat: form.value.departureLat || 0,
+    departureLng: form.value.departureLng || 0,
+    arrivalLat: form.value.arrivalLat || 0,
+    arrivalLng: form.value.arrivalLng || 0,
+    duration: form.value.duration || '',
+    imageUrl: '',
+    routeData: form.value.routeData || ''
+  };
+  
+  try {
+    const res = await api.post('/routes', newRoute);
+    savedRoutes.value.push(res.data);
+    alert("Đã lưu tuyến đường làm mẫu thành công!");
+  } catch (error) {
+    console.error(error);
+    alert("Không thể lưu tuyến đường lên máy chủ!");
+  }
+};
+
+const applyRouteTemplate = (route) => {
+  form.value.departurePoint = route.departurePoint;
+  form.value.arrivalPoint = route.arrivalPoint;
+  form.value.departureLat = route.departureLat;
+  form.value.departureLng = route.departureLng;
+  form.value.arrivalLat = route.arrivalLat;
+  form.value.arrivalLng = route.arrivalLng;
+  form.value.routeData = route.routeData; // COPY CACHE TỪ TEMPLATE
+  form.value.duration = route.duration || '4h'; // ĐỒNG BỘ THỜI GIAN LỘ TRÌNH
+  form.value.price = route.price || form.value.price;
+  form.value.busType = route.busType || form.value.busType;
+  form.value.departureTime = route.departureTime || form.value.departureTime;
+  updateTripImage();
+  updateArrivalAndDuration();
+  updateMap();
+};
+
+const deleteRouteTemplate = async (index) => {
+  if (confirm("Xóa mẫu tuyến đường này?")) {
+    const route = savedRoutes.value[index];
+    try {
+      if (route.id) await api.delete(`/routes/${route.id}`);
+      savedRoutes.value.splice(index, 1);
+    } catch (error) {
+      console.error(error);
+      alert("Lỗi xóa tuyến đường trên máy chủ!");
+    }
+  }
+};
+
 // --- 🛣️ TỰ ĐỘNG TÍNH TOÀN KM & GIỜ ĐẾN (CHỈ SỐ THỜI GIAN THỰC) ---
 const currentDurationSeconds = ref(0);
 const currentDistanceMeters = ref(0);
 
 const updateArrivalAndDuration = () => {
-  if (currentDurationSeconds.value <= 0) return;
+  let durationMinutes = 0;
+
+  if (currentDurationSeconds.value > 0) {
+    // 🇻🇳 HỆ SỐ ĐIỀU CHỈNH XE KHÁCH TẠI VIỆT NAM (1.35x)
+    const coachDurationSeconds = currentDurationSeconds.value * 1.35;
+    const distanceKm = Math.round(currentDistanceMeters.value / 1000);
+    
+    const hours = Math.floor(coachDurationSeconds / 3600);
+    const minutes = Math.round((coachDurationSeconds % 3600) / 60);
+    
+    let durationStr = '';
+    if (hours > 0) durationStr += `${hours}h`;
+    if (minutes > 0) durationStr += ` ${minutes}m`;
+    durationStr = durationStr.trim() || '1h';
+    
+    form.value.duration = `${durationStr} (${distanceKm} Km)`;
+    durationMinutes = Math.round(coachDurationSeconds / 60);
+  } else if (form.value.duration) {
+    // Parser string form.duration (e.g. "15h 48m (945 Km)")
+    const matchH = form.value.duration.match(/(\d+)h/);
+    const matchM = form.value.duration.match(/(\d+)m/);
+    const h = matchH ? parseInt(matchH[1]) : 0;
+    const m = matchM ? parseInt(matchM[1]) : 0;
+    durationMinutes = h * 60 + m;
+  }
   
-  // 🇻🇳 HỆ SỐ ĐIỀU CHỈNH XE KHÁCH TẠI VIỆT NAM (1.35x)
-  // OSRM mặc định tính theo tốc độ tối ưu của xe con (vd: phóng 120km/h cao tốc).
-  // Với xe giường nằm lớn, giới hạn tốc độ thấp hơn, cộng thêm thời gian dừng chân trạm nghỉ, đón trả khách
-  // và kẹt xe đô thị, hệ số chuẩn thực tế Việt Nam là 1.35x (tương đương tốc độ trung bình 60-65km/h).
-  const coachDurationSeconds = currentDurationSeconds.value * 1.35;
-  const distanceKm = Math.round(currentDistanceMeters.value / 1000);
-  
-  const hours = Math.floor(coachDurationSeconds / 3600);
-  const minutes = Math.round((coachDurationSeconds % 3600) / 60);
-  
-  let durationStr = '';
-  if (hours > 0) durationStr += `${hours}h`;
-  if (minutes > 0) durationStr += ` ${minutes}m`;
-  durationStr = durationStr.trim() || '1h';
-  
-  form.value.duration = `${durationStr} (${distanceKm} Km)`;
+  if (durationMinutes === 0) return;
   
   // 2. Tính toán Giờ đến tự động
   const depTime = form.value.departureTime || '08:00';
@@ -135,9 +216,7 @@ const updateArrivalAndDuration = () => {
   const [depHour, depMin] = depTime.split(':').map(Number);
   const totalDepMinutes = depHour * 60 + depMin;
   
-  const durationMinutes = Math.round(coachDurationSeconds / 60);
   const totalArrMinutes = (totalDepMinutes + durationMinutes) % (24 * 60);
-  
   const arrHour = Math.floor(totalArrMinutes / 60);
   const arrMin = totalArrMinutes % 60;
   
@@ -155,9 +234,7 @@ const todayTrips = computed(() => {
   return trips.value.filter(t => t.departureDate.startsWith(today)).length;
 });
 const totalEmptySeats = computed(() => {
-  const sum = trips.value.reduce((acc, t) => acc + t.availableSeats, 0);
-  const total = trips.value.reduce((acc, t) => acc + 36, 0); // Giả sử trung bình 36 ghế
-  return total > 0 ? Math.round((sum / total) * 100) : 0;
+  return trips.value.reduce((acc, t) => acc + (t.availableSeats || 0), 0);
 });
 const averagePrice = computed(() => {
   if (trips.value.length === 0) return 0;
@@ -383,7 +460,7 @@ const renderLeaflet = () => {
   });
 };
 
-const updateMap = () => {
+const updateMap = async () => {
   const L = window.L; if (!L || !leafletMap.value) return;
   leafletMap.value.eachLayer((layer) => { if (layer instanceof L.Marker || layer instanceof L.Polyline) leafletMap.value.removeLayer(layer); });
   
@@ -412,6 +489,35 @@ const updateMap = () => {
     }).addTo(leafletMap.value);
     leafletMap.value.fitBounds([from, to], { padding: [100, 100] });
 
+    // NẾU ĐÃ CÓ DATA TUYẾN ĐƯỜNG LƯU TRƯỚC ĐÓ THÌ VẼ LUÔN (KHÔNG GỌI OSRM)
+    if (form.value.routeData) {
+       try {
+         let routeStr = form.value.routeData;
+         
+         // Nếu là URL Cloudinary thì tải về
+         if (routeStr.startsWith('http')) {
+             routeStr = await fetchPolylineFromCloudinary(routeStr);
+         }
+         
+         let coords = [];
+         if (routeStr.startsWith('[')) {
+             coords = JSON.parse(routeStr);
+         } else if (routeStr) {
+             coords = decodePolyline(routeStr);
+         }
+         
+         if (coords && coords.length > 0) {
+           leafletMap.value.removeLayer(fallbackLine);
+           L.polyline(coords, { 
+             color: '#075955', weight: 7, opacity: 0.85, lineJoin: 'round', dashArray: '1, 12', lineCap: 'round'
+           }).addTo(leafletMap.value);
+           L.polyline(coords, { color: '#000', weight: 8, opacity: 0.1 }).addTo(leafletMap.value);
+           leafletMap.value.fitBounds(coords, { padding: [100, 100] });
+           return;
+         }
+       } catch (e) { console.error("Lỗi parse routeData", e); }
+    }
+
     adminMapLoading.value = true;
     
     // 🛣️ Tải đường bộ ngầm
@@ -419,28 +525,33 @@ const updateMap = () => {
     const latDiff = Math.abs(from[0] - to[0]);
     const isSouthBound = from[0] > to[0];
     
-    // 🇻🇳 THUẬT TOÁN ĐIỂM NEO THÔNG MINH (CHỈ THÊM KHI NẰM GIỮA)
-    if (latDiff > 3) {
-      if (isSouthBound && to[0] < 12.2) { // Nếu đi vào Nam và đích đến xa hơn Nha Trang
-        const waypoint = [109.196747, 12.238791]; 
-        points = `${from[1]},${from[0]};${waypoint[0]},${waypoint[1]};${to[1]},${to[0]}`;
-      } else if (!isSouthBound && to[0] > 16.0) { // Nếu đi ra Bắc và đích đến xa hơn Đà Nẵng
-        const waypoint = [108.206230, 16.047079]; 
-        points = `${from[1]},${from[0]};${waypoint[0]},${waypoint[1]};${to[1]},${to[0]}`;
+    // 🇻🇳 THUẬT TOÁN ĐIỂM NEO THÔNG MINH (BẢO VỆ TUYẾN ĐƯỜNG NỘI ĐỊA)
+    // Ngăn chặn OSRM tìm đường tắt qua Campuchia/Lào bằng cách ép đi qua tuyến chính QL1A / Cao tốc
+    if (latDiff > 2) {
+      let waypoints = [];
+      const minLat = Math.min(from[0], to[0]);
+      const maxLat = Math.max(from[0], to[0]);
+      
+      // Đồng bộ 100% với phía khách hàng (SearchResultsView)
+      if (minLat < 13.0 && maxLat > 13.0) waypoints.push([109.2887, 13.0645]);
+      if (minLat < 15.1 && maxLat > 15.1) waypoints.push([108.8268, 15.1522]);
+      if (minLat < 17.5 && maxLat > 17.5) waypoints.push([106.5960, 17.4912]);
+      
+      // Sắp xếp waypoint theo chiều đi (Bắc -> Nam thì đảo ngược mảng)
+      if (isSouthBound) waypoints.reverse();
+      
+      if (waypoints.length > 0) {
+         const waypointsStr = waypoints.map(wp => `${wp[0]},${wp[1]}`).join(';');
+         points = `${from[1]},${from[0]};${waypointsStr};${to[1]},${to[0]}`;
       }
     }
 
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${points}?overview=full&geometries=geojson&steps=true`;
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${points}?overview=full&geometries=polyline&steps=true`;
     
-    // Thêm AbortController để giới hạn thời gian chờ (Timeout 5 giây)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    fetch(osrmUrl, { signal: controller.signal })
+    fetch(osrmUrl)
       .then(r => r.json())
       .then(data => {
-        clearTimeout(timeoutId);
-        if (data.routes?.[0]) {
+        if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
           // Lưu trữ thông số OSRM thời gian thực
           currentDurationSeconds.value = data.routes[0].duration;
           currentDistanceMeters.value = data.routes[0].distance;
@@ -449,16 +560,25 @@ const updateMap = () => {
           // Xóa đường chim bay khi đã có đường bộ chuẩn
           leafletMap.value.removeLayer(fallbackLine);
           
-          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          const encodedPolyline = data.routes[0].geometry;
+          
+          // Upload chuỗi lên Cloudinary để lấy Link siêu ngắn lưu vào DB
+          uploadPolylineToCloudinary(encodedPolyline).then(url => {
+              form.value.routeData = url;
+          });
+          
+          const coords = decodePolyline(encodedPolyline);
           L.polyline(coords, { 
             color: '#075955', weight: 7, opacity: 0.85, lineJoin: 'round', dashArray: '1, 12', lineCap: 'round'
           }).addTo(leafletMap.value);
           L.polyline(coords, { color: '#000', weight: 8, opacity: 0.1 }).addTo(leafletMap.value);
           leafletMap.value.fitBounds(coords, { padding: [100, 100] });
+        } else {
+           console.warn("OSRM returned NoRoute. Falling back to straight line.");
         }
       })
       .catch(err => {
-        console.warn("Lộ trình road-path quá lâu, dùng đường chim bay làm dự phòng.");
+        console.error("Lộ trình road-path bị lỗi, dùng đường chim bay làm dự phòng.", err);
       })
       .finally(() => {
         adminMapLoading.value = false;
@@ -497,19 +617,37 @@ const fetchBusTypes = async () => {
   } catch (err) { console.error(err); }
 };
 
+const fetchBuses = async () => {
+  try {
+    const res = await api.get('/buses');
+    buses.value = res.data;
+  } catch (err) { console.error(err); }
+};
+
+const fetchInspectors = async () => {
+  try {
+    const res = await api.get('/inspector/all');
+    inspectors.value = res.data;
+  } catch (err) { console.error('Lỗi tải danh sách lơ xe:', err); }
+};
+
 const openAddModal = async () => { 
   isEditMode.value = false; 
   form.value = { ...defaultForm }; 
   currentDurationSeconds.value = 0;
   currentDistanceMeters.value = 0;
-  await fetchBusTypes(); // Làm tươi danh sách dòng xe để lấy ảnh mới nhất
+  await Promise.all([fetchBusTypes(), fetchBuses(), fetchInspectors()]);
   updateTripImage(); // Cập nhật ảnh ngay lập tức
   isModalOpen.value = true; 
   initAdminMap(); 
 };
 const openEditModal = async (trip) => { 
   isEditMode.value = true; 
-  form.value = { ...trip }; 
+  form.value = { 
+    ...trip,
+    originalAvailableSeats: trip.availableSeats,
+    originalTotalSeats: trip.totalSeats
+  }; 
   currentDurationSeconds.value = 0;
   currentDistanceMeters.value = 0;
   if (trip.duration && trip.duration.includes('Km')) {
@@ -518,7 +656,9 @@ const openEditModal = async (trip) => {
       currentDistanceMeters.value = parseInt(match[1]) * 1000;
     }
   }
-  await fetchBusTypes();
+  // Try to find the inspector if already assigned
+  form.value.inspectorId = trip.inspector ? trip.inspector.id : '';
+  await Promise.all([fetchBusTypes(), fetchBuses(), fetchInspectors()]);
   isModalOpen.value = true; 
   initAdminMap(); 
 };
@@ -526,10 +666,28 @@ const closeModal = () => { isModalOpen.value = false; };
 
 const handleFormSubmit = async () => {
   try {
-    if (isEditMode.value) await api.put(`/trips/${form.value.id}`, form.value);
-    else await api.post('/trips', form.value);
+    let tripRes;
+    if (isEditMode.value) {
+      tripRes = await api.put(`/trips/${form.value.id}`, form.value);
+    } else {
+      tripRes = await api.post('/trips', form.value);
+    }
+    
+    const tripId = tripRes.data.id || form.value.id;
+    
+    // Đảm bảo inspectorId hợp lệ (nếu lơ xe đã bị xoá nhưng frontend còn lưu ID cũ)
+    const isValidInspector = inspectors.value.find(i => i.id === form.value.inspectorId);
+    
+    if (form.value.inspectorId && isValidInspector) {
+      await api.put(`/inspector/assign-to-trip/${tripId}/${form.value.inspectorId}`);
+    } else {
+      await api.put(`/inspector/unassign-trip/${tripId}`);
+    }
+
     closeModal(); fetchTrips();
-  } catch (err) { alert('Lỗi lưu dữ liệu!'); }
+  } catch (err) { 
+    alert(err.response?.data?.message || 'Lỗi lưu dữ liệu! Vui lòng tải lại trang và thử lại.'); 
+  }
 };
 
 const deleteTrip = async (id) => {
@@ -539,7 +697,7 @@ const deleteTrip = async (id) => {
   }
 };
 
-onMounted(() => { fetchTrips(); fetchBusTypes(); });
+onMounted(() => { fetchTrips(); fetchBusTypes(); fetchBuses(); fetchSavedRoutes(); fetchInspectors(); });
 </script>
 
 <style scoped>

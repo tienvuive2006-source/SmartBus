@@ -9,7 +9,7 @@
           <span class="material-symbols-outlined text-4xl font-black">directions_bus</span>
         </div>
         <h2 class="text-headline-md font-black tracking-tight">Chào mừng trở lại!</h2>
-        <p class="text-label-md font-bold opacity-70 tracking-wider uppercase mt-1">ĐĂNG NHẬP HỆ THỐNG SKYBUS</p>
+        <p class="text-label-md font-bold opacity-70 tracking-wider uppercase mt-1">ĐĂNG NHẬP HỆ THỐNG TRUNG NAM</p>
       </div>
 
       <div class="p-8">
@@ -66,7 +66,7 @@
         <!-- Redirection -->
         <div class="mt-8 text-center border-t border-slate-100 pt-6">
           <p class="text-body-md font-bold text-slate-500">
-            Chưa có tài khoản SkyBus?
+            Chưa có tài khoản Trung Nam?
           </p>
           <button @click="$router.push('/auth/register')" class="text-primary font-black text-body-md mt-1 hover:underline tracking-wide">
             ĐĂNG KÝ TÀI KHOẢN MỚI
@@ -99,7 +99,7 @@ const handleLogin = async () => {
     await authStore.login(phone.value, password.value);
     
     // Nếu có redirect query param (bị chặn do chưa login) -> về đó
-    const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : '/profile');
+    const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : (authStore.isInspector ? '/inspector' : '/'));
     router.push(redirectTo);
   } catch (error) {
     console.error("Đăng nhập thất bại:", error);

@@ -1,5 +1,5 @@
 <template>
-  <div class="p-container-margin md:p-8 max-w-6xl mx-auto pb-24 md:pb-8 relative animate-fade-in">
+  <div class="p-container-margin md:p-8 max-w-6xl mx-auto pb-24 md:pb-8 relative">
     
     <!-- Header Panel -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 border-b border-outline-variant/20 pb-6">
@@ -78,7 +78,11 @@
             class="bg-white rounded-2xl border border-outline-variant/25 hover:border-primary/50 hover:shadow-[0px_12px_32px_rgba(0,0,0,0.04)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all group"
           >
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-on-surface-variant border border-outline-variant/20 flex items-center justify-center group-hover:scale-110 group-hover:from-primary/10 group-hover:to-primary/20 group-hover:text-primary transition-all shrink-0">
+              <!-- Hiển thị ảnh thực tế nếu có, ngược lại hiện icon mặc định -->
+              <div v-if="item.imageUrl" class="w-16 h-12 rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm shrink-0 group-hover:scale-105 transition-all">
+                 <img :src="item.imageUrl" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
+              </div>
+              <div v-else class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-on-surface-variant border border-outline-variant/20 flex items-center justify-center group-hover:scale-110 group-hover:from-primary/10 group-hover:to-primary/20 group-hover:text-primary transition-all shrink-0">
                 <span class="material-symbols-outlined">airline_seat_recline_extra</span>
               </div>
               <div>
@@ -176,15 +180,26 @@
               <p class="text-[11px] text-on-surface-variant mt-1">ℹ️ Số lượng ghế tiêu chuẩn trên thân xe để hệ thống sắp xếp sơ đồ.</p>
             </div>
 
-            <!-- Mô tả nhanh -->
-            <div class="space-y-1.5">
+            <div class="space-y-2">
               <label class="text-label-md font-black text-on-surface-variant uppercase">Mô tả tiện ích (Tùy chọn)</label>
-              <textarea 
-                v-model="form.description" 
-                rows="2"
-                placeholder="Có tủ lạnh mini, cổng sạc USB, tai nghe bluetooth..."
-                class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-3 focus:outline-none font-medium transition-colors resize-none"
-              ></textarea>
+              <div class="grid grid-cols-2 gap-3 p-4 border-2 border-outline-variant/50 rounded-xl bg-slate-50/50">
+                <label v-for="(util, index) in availableUtilities" :key="index" class="flex items-center gap-3 cursor-pointer group">
+                  <div class="relative flex items-center justify-center w-5 h-5">
+                    <input 
+                      type="checkbox" 
+                      :value="util" 
+                      v-model="selectedUtilities"
+                      class="peer sr-only"
+                    />
+                    <div class="w-5 h-5 border-2 border-outline-variant rounded bg-white peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                      <span class="material-symbols-outlined text-[14px] text-white opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all font-black">check</span>
+                    </div>
+                  </div>
+                  <span class="text-sm font-semibold text-on-surface-variant group-hover:text-on-surface transition-colors select-none">
+                    {{ util }}
+                  </span>
+                </label>
+              </div>
             </div>
 
             <div class="space-y-1.5">
@@ -254,6 +269,17 @@ const loading = ref(true);
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
+const selectedUtilities = ref([]);
+const availableUtilities = [
+  'Wifi tốc độ cao', 
+  'Cổng sạc USB', 
+  'Tủ lạnh mini', 
+  'Nhà vệ sinh', 
+  'Ghế massage', 
+  'Màn hình Tivi', 
+  'Tai nghe Bluetooth', 
+  'Nước uống & Khăn'
+];
 const form = ref({
   id: null,
   name: '',
@@ -277,12 +303,16 @@ const fetchBusTypes = async () => {
 const openCreateModal = () => {
   isEditMode.value = false;
   form.value = { id: null, name: '', seatCount: 24, description: '', imageUrl: '' };
+  selectedUtilities.value = [];
   isModalOpen.value = true;
 };
 
 const openEditModal = (item) => {
   isEditMode.value = true;
   form.value = { ...item };
+  selectedUtilities.value = item.description 
+    ? item.description.split(',').map(s => s.trim()).filter(s => availableUtilities.includes(s)) 
+    : [];
   isModalOpen.value = true;
 };
 
@@ -295,6 +325,8 @@ const handleSubmit = async () => {
     alert("Vui lòng nhập đầy đủ Tên dòng xe và Số ghế!");
     return;
   }
+  
+  form.value.description = selectedUtilities.value.join(', ');
 
   try {
     if (isEditMode.value) {
