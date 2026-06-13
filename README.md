@@ -4,10 +4,10 @@ Chào mừng bạn đến với dự án SmartBus! Đây là hệ thống quản
 
 ## 🛠 Yêu Cầu Hệ Thống
 Trước khi bắt đầu, hãy đảm bảo máy tính của bạn đã cài đặt:
-- **Java 17** hoặc mới hơn.
+- **Java 21** hoặc mới hơn.
 - **Node.js** (Phiên bản LTS).
-- **MySQL Server** (Hoặc XAMPP/WampServer).
-- **Maven** (Đã tích hợp sẵn trong thư mục backend qua `mvnw`).
+- **Microsoft SQL Server** (SSMS).
+- **Maven** (Cần cài đặt Maven trên máy và cấu hình biến môi trường PATH).
 
 ---
 
@@ -20,18 +20,19 @@ cd SmartBus
 ```
 
 ### 2. Cấu hình & Chạy Backend (Java Spring Boot)
-1. Mở MySQL và tạo một database mới tên là: `smart_bus_db`.
+1. Mở Microsoft SQL Server Management Studio (SSMS) và tạo một database mới tên là: `smart_bus_booking`.
 2. Truy cập vào file: `backend/src/main/resources/application.properties`.
-3. Cập nhật `username` và `password` MySQL của bạn:
+3. Cập nhật `username` và `password` SQL Server của bạn (nếu dùng tài khoản sa, hoặc sửa cổng nếu khác 1433):
    ```properties
    spring.datasource.username=YOUR_USERNAME
    spring.datasource.password=YOUR_PASSWORD
    ```
-4. Mở terminal tại thư mục `backend` và chạy lệnh:
+4. Để sử dụng tính năng gửi Email (Nhận mã QR qua mail), hãy cập nhật `spring.mail.password` thành Mật khẩu ứng dụng Gmail của bạn.
+5. Mở terminal tại thư mục `backend` và chạy lệnh:
    ```bash
-   ./mvnw spring-boot:run
+   mvn spring-boot:run
    ```
-   *(Nếu dùng Windows, hãy dùng lệnh `mvnw.cmd spring-boot:run`)*
+   *(Lưu ý: Do dự án không đính kèm Maven Wrapper, bạn phải dùng lệnh `mvn` trực tiếp)*
 
 ### 3. Cài đặt & Chạy Frontend (Vue 3 + Vite)
 1. Mở một terminal mới tại thư mục `frontend`.
@@ -48,10 +49,12 @@ cd SmartBus
 ---
 
 ## 📸 Tính Năng Nổi Bật
+- **Thanh toán tự động 100%**: Tích hợp SePay tự động nhận diện thanh toán chuyển khoản ngân hàng qua mã QR.
+- **Hoàn tiền thông minh**: Tự động hoàn tiền 90% vào Ví điện tử khi khách hàng hủy vé và giải phóng ghế theo thời gian thực.
 - **Quản lý lộ trình**: Bản đồ tương tác, tự động tìm tọa độ và chỉ đường thông minh.
 - **Quản lý đội xe**: Upload hình ảnh xe thật lên Cloudinary.
-- **Đặt vé trực tuyến**: Sơ đồ ghế ngồi thời gian thực, đồng bộ hóa trạng thái đặt chỗ.
-- **Giao diện Admin**: Dashboard thống kê chuyên nghiệp, quản lý người dùng và doanh thu.
+- **Đặt vé trực tuyến**: Sơ đồ ghế ngồi động, gửi vé điện tử QR Code qua Email ngay khi thanh toán.
+- **Giao diện Admin / Lơ xe**: Dashboard thống kê chuyên nghiệp, App lơ xe cho nhân viên soát vé quét mã QR lên xe.
 
 ---
 
