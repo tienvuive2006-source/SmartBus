@@ -37,6 +37,6 @@ public class Route {
     @Column(length = 1000)
     private String imageUrl;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String routeData;
 }

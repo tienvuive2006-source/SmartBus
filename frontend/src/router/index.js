@@ -18,6 +18,7 @@ import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
 import AdminUserManagerView from '../views/admin/AdminUserManagerView.vue'
 import AdminBookingManagerView from '../views/admin/AdminBookingManagerView.vue'
+import AdminReviewManagerView from '../views/admin/AdminReviewManagerView.vue'
 import AdminRouteManagerView from '../views/admin/AdminRouteManagerView.vue'
 import InspectorLayout from '../layouts/InspectorLayout.vue'
 import InspectorDashboardView from '../views/inspector/InspectorDashboardView.vue'
@@ -143,6 +144,11 @@ const router = createRouter({
           path: 'users',
           name: 'admin-user-manager',
           component: AdminUserManagerView
+        },
+        {
+          path: 'reviews',
+          name: 'admin-review-manager',
+          component: AdminReviewManagerView
         }
       ]
     },

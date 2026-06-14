@@ -70,15 +70,15 @@ public class Trip {
     @Builder.Default
     private Integer totalSeats = 24;
 
-    @Column(nullable = true, columnDefinition = "NVARCHAR(MAX)")
+    @Column(nullable = true, columnDefinition = "TEXT")
     private String imageUrl;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String routeData;
 
     private Boolean instantConfirmation;
 
-    @Column(nullable = false, columnDefinition = "BIT DEFAULT 1")
+    @Column(nullable = false, columnDefinition = "boolean DEFAULT true")
     @Builder.Default
     private Boolean isVisible = true; // Trạng thái hiển thị trên Home
 

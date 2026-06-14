@@ -13,41 +13,47 @@ import { useAuthStore } from '@/stores/auth'
 
 const API_BASE = 'http://localhost:8080/api'
 
+let apiInstance = null;
+
 export function useApi() {
   const authStore = useAuthStore()
 
-  // Tạo axios instance với baseURL cố định
-  const instance = axios.create({
-    baseURL: API_BASE,
-    timeout: 15000
-  })
+  if (!apiInstance) {
+    // Tạo axios instance với baseURL cố định chỉ 1 lần
+    apiInstance = axios.create({
+      baseURL: API_BASE,
+      timeout: 15000
+    })
 
-  // ✅ Request Interceptor: Tự động gắn token vào mọi request
-  instance.interceptors.request.use(
-    (config) => {
-      if (authStore.token) {
-        config.headers.Authorization = `Bearer ${authStore.token}`
-      }
-      return config
-    },
-    (error) => Promise.reject(error)
-  )
-
-  // ✅ Response Interceptor: Xử lý lỗi 401 (token hết hạn)
-  instance.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        // Token hết hạn -> tự động logout
-        authStore.logout()
-        // Redirect về login (dùng window.location để tránh circular dependency với router)
-        if (!window.location.pathname.includes('/auth/')) {
-          window.location.href = '/auth/login'
+    // ✅ Request Interceptor: Tự động gắn token vào mọi request
+    apiInstance.interceptors.request.use(
+      (config) => {
+        // Luôn lấy token mới nhất từ store tại thời điểm request
+        const currentToken = useAuthStore().token;
+        if (currentToken) {
+          config.headers.Authorization = `Bearer ${currentToken}`
         }
-      }
-      return Promise.reject(error)
-    }
-  )
+        return config
+      },
+      (error) => Promise.reject(error)
+    )
 
-  return instance
+    // ✅ Response Interceptor: Xử lý lỗi 401 (token hết hạn)
+    apiInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          // Token hết hạn -> tự động logout
+          useAuthStore().logout()
+          // Redirect về login
+          if (!window.location.pathname.includes('/auth/')) {
+            window.location.href = '/auth/login'
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
+  }
+
+  return apiInstance
 }

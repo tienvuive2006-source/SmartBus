@@ -55,7 +55,10 @@
                 </div>
               </div>
               <h2 class="text-xl font-black text-gray-900">{{ user.fullName }}</h2>
-              <p class="text-sm font-semibold text-gray-500 mb-4">{{ user.phone }}</p>
+              <p class="text-sm font-semibold text-gray-500 mb-4">
+                <span v-if="user.phone?.startsWith('GG_')" class="italic text-gray-400">Chưa cập nhật SĐT</span>
+                <span v-else>{{ user.phone }}</span>
+              </p>
               
               <span class="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-emerald-100">
                 {{ user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên VIP' }}
@@ -119,7 +122,10 @@
                 <div>
                   <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Số điện thoại</p>
                   <input v-if="isEditing" v-model="editForm.phone" type="text" class="w-full text-sm font-black text-gray-900 bg-white p-3 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
-                  <p v-else class="text-sm font-black text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">{{ user.phone }}</p>
+                  <p v-else class="text-sm font-black text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <span v-if="user.phone?.startsWith('GG_')" class="italic text-gray-400 font-normal">Chưa cập nhật SĐT</span>
+                    <span v-else>{{ user.phone }}</span>
+                  </p>
                 </div>
               </div>
               <div>
@@ -295,7 +301,7 @@ const editForm = ref({
 const startEdit = () => {
   editForm.value = {
     fullName: user.value.fullName,
-    phone: user.value.phone,
+    phone: user.value.phone?.startsWith('GG_') ? '' : user.value.phone,
     email: user.value.email || ''
   };
   isEditing.value = true;

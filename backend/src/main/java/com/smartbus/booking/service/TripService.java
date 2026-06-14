@@ -69,11 +69,14 @@ public class TripService {
         Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với mã ID: " + id));
         
-        // 🛡️ FIX LỖI "OVERWRITING SEATS": Frontend gửi "Số ghế" (Total Seats) thông qua field availableSeats.
         Integer requestedTotalSeats = updatedDetails.getAvailableSeats();
         boolean seatCountChanged = false;
         
         if (requestedTotalSeats != null && !requestedTotalSeats.equals(trip.getTotalSeats())) {
+            // 🛡️ BACKEND SECURITY CHECK: Ngăn chặn hack qua API khi đã có khách đặt vé
+            if (trip.getAvailableSeats() != null && trip.getAvailableSeats() < trip.getTotalSeats()) {
+                throw new RuntimeException("LỖI BẢO MẬT: Không thể thay đổi loại xe hoặc số ghế vì chuyến xe này đã có khách hàng đặt vé!");
+            }
             seatCountChanged = true;
         }
         

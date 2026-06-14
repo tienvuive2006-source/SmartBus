@@ -114,6 +114,7 @@ const menuItems = [
   { name: 'Quản lý Tuyến đường', path: '/admin/route-manager', icon: 'map' },
   { name: 'Quản lý Chuyến xe', path: '/admin/trip-manager', icon: 'route' },
   { name: 'Quản lý Đặt vé', path: '/admin/booking-manager', icon: 'receipt_long' },
+  { name: 'Quản lý Đánh giá', path: '/admin/reviews', icon: 'star_rate' },
   { name: 'Quản lý Loại xe', path: '/admin/bus-type', icon: 'directions_bus_filled' },
   { name: 'Trạng thái Đội xe', path: '/admin/fleet-status', icon: 'local_shipping' },
   { name: 'Quản lý Người dùng', path: '/admin/users', icon: 'manage_accounts' },

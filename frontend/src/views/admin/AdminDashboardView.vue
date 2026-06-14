@@ -117,10 +117,10 @@
         </div>
         <div class="h-64 w-full relative flex items-end justify-between gap-2 pt-8">
           <div class="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] font-black text-gray-400 uppercase tracking-widest pr-4 pb-8">
-            <span>1.2M</span>
-            <span>900k</span>
-            <span>600k</span>
-            <span>300k</span>
+            <span>{{ formatShortCurrency(maxWeeklyRevenue) }}</span>
+            <span>{{ formatShortCurrency(maxWeeklyRevenue * 0.75) }}</span>
+            <span>{{ formatShortCurrency(maxWeeklyRevenue * 0.5) }}</span>
+            <span>{{ formatShortCurrency(maxWeeklyRevenue * 0.25) }}</span>
             <span>0</span>
           </div>
           <div class="flex-1 ml-12 h-full relative flex items-end justify-between px-2 pb-8 border-b-2 border-l-2 border-gray-100">
@@ -132,13 +132,18 @@
             </div>
             <!-- Bars -->
             <div class="w-full flex justify-between items-end h-full z-10 px-4 md:px-8">
-              <div class="w-8 md:w-12 bg-gradient-to-t from-[#075955]/30 to-[#075955] rounded-t-lg h-[35%] hover:scale-105 transition-transform relative group"></div>
-              <div class="w-8 md:w-12 bg-gradient-to-t from-[#075955]/30 to-[#075955] rounded-t-lg h-[50%] hover:scale-105 transition-transform relative group"></div>
-              <div class="w-8 md:w-12 bg-gradient-to-t from-[#075955]/30 to-[#075955] rounded-t-lg h-[40%] hover:scale-105 transition-transform relative group"></div>
-              <div class="w-8 md:w-12 bg-gradient-to-t from-[#075955]/30 to-[#075955] rounded-t-lg h-[70%] hover:scale-105 transition-transform relative group"></div>
-              <div class="w-8 md:w-12 bg-gradient-to-t from-[#075955]/30 to-[#075955] rounded-t-lg h-[55%] hover:scale-105 transition-transform relative group"></div>
-              <div class="w-8 md:w-12 bg-gradient-to-t from-[#075955]/30 to-[#075955] rounded-t-lg h-[85%] hover:scale-105 transition-transform relative group"></div>
-              <div class="w-8 md:w-12 bg-gradient-to-t from-emerald-500/80 to-[#075955] rounded-t-lg h-[95%] hover:scale-105 transition-transform shadow-[0_0_15px_rgba(7,89,85,0.4)] relative group"></div>
+              <div 
+                v-for="(rev, index) in stats.weeklyRevenue || [0,0,0,0,0,0,0]" 
+                :key="index"
+                :style="{ height: `${Math.max((rev / maxWeeklyRevenue) * 100, 5)}%` }"
+                class="w-8 md:w-12 rounded-t-lg transition-all duration-700 hover:scale-105 relative group"
+                :class="index === 6 ? 'bg-gradient-to-t from-emerald-500/80 to-[#075955] shadow-[0_0_15px_rgba(7,89,85,0.4)]' : 'bg-gradient-to-t from-[#075955]/30 to-[#075955]'"
+              >
+                <!-- Tooltip hover -->
+                <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  {{ formatCurrency(rev) }}
+                </div>
+              </div>
             </div>
           </div>
           <div class="absolute bottom-0 left-12 right-0 flex justify-between px-4 md:px-8 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -202,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useApi } from '@/composables/useApi';
 
 const api = useApi();
@@ -213,7 +218,13 @@ const stats = ref({
   totalTrips: 0,
   totalBuses: 0,
   activeBuses: 0,
+  weeklyRevenue: [0, 0, 0, 0, 0, 0, 0],
   lastUpdated: '--:--'
+});
+
+const maxWeeklyRevenue = computed(() => {
+  const max = Math.max(...(stats.value.weeklyRevenue || [0,0,0,0,0,0,0]));
+  return max > 0 ? max : 1000000; // Tránh chia cho 0
 });
 
 const fetchStats = async () => {
@@ -227,6 +238,12 @@ const fetchStats = async () => {
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+};
+
+const formatShortCurrency = (value) => {
+  if (value >= 1000000) return (value / 1000000).toFixed(1) + 'Tr';
+  if (value >= 1000) return (value / 1000).toFixed(0) + 'K';
+  return value.toString();
 };
 
 onMounted(() => {

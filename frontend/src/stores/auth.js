@@ -30,6 +30,13 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data
   }
 
+  // ✅ Đăng nhập bằng Google
+  const googleLogin = async (credential) => {
+    const response = await axios.post(`${API_BASE}/auth/google`, { credential })
+    _saveSession(response.data)
+    return response.data
+  }
+
   // ✅ Đăng ký
   const register = async (fullName, phone, password) => {
     const response = await axios.post(`${API_BASE}/auth/register`, { fullName, phone, password })
@@ -100,6 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     authHeader,
     // actions
     login,
+    googleLogin,
     register,
     logout,
     fetchMe,

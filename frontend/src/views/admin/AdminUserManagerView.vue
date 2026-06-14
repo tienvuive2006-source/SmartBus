@@ -98,7 +98,8 @@
               <td class="px-6 py-4">
                 <div class="text-body-md font-bold text-slate-600 flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-[16px] text-slate-400">call</span>
-                  {{ user.phone }}
+                  <span v-if="user.phone?.startsWith('GG_')" class="italic text-slate-400 font-normal">Chưa cập nhật SĐT</span>
+                  <span v-else>{{ user.phone }}</span>
                 </div>
               </td>
               <!-- Tickets -->
@@ -361,7 +362,7 @@ const filteredUsers = computed(() => {
 
 const openEditModal = (user) => {
   isCreateMode.value = false;
-  editForm.value = { ...user, password: '' };
+  editForm.value = { ...user, phone: user.phone?.startsWith('GG_') ? '' : user.phone, password: '' };
   isModalOpen.value = true;
 };
 

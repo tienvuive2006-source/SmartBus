@@ -89,6 +89,10 @@ public class EmailService {
         String seatsJoined = String.join(", ", booking.getSeatNumbers());
         String formattedPrice = formatPrice(booking.getTotalPrice());
 
+        String introText = "CASH".equalsIgnoreCase(booking.getPaymentMethod())
+            ? "Cảm ơn bạn đã đặt vé. Yêu cầu đặt vé của bạn đã được ghi nhận thành công. Vui lòng <b>thanh toán trực tiếp cho nhân viên khi lên xe</b>. Dưới đây là thông tin chi tiết vé xe của bạn:"
+            : "Cảm ơn bạn đã tin tưởng lựa chọn dịch vụ đặt vé của chúng tôi. Yêu cầu đặt vé của bạn đã được thanh toán và xác nhận thành công. Dưới đây là thông tin chi tiết vé xe của bạn:";
+
         return "<!DOCTYPE html>" +
                 "<html>" +
                 "<head>" +
@@ -124,7 +128,7 @@ public class EmailService {
                 "        </div>" +
                 "        <div class='content'>" +
                 "            <div class='greeting'>Xin chào " + booking.getCustomerName() + ",</div>" +
-                "            <div class='intro'>Cảm ơn bạn đã tin tưởng lựa chọn dịch vụ đặt vé của chúng tôi. Yêu cầu đặt vé của bạn đã được thanh toán và xác nhận thành công. Dưới đây là thông tin chi tiết vé xe của bạn:</div>" +
+                "            <div class='intro'>" + introText + "</div>" +
                 "            " +
                 "            <div class='ticket-card'>" +
                 "                <div class='ticket-row'>" +

@@ -34,6 +34,10 @@ public class User {
     @Builder.Default
     private Double walletBalance = 0.0; // Tích hợp ví tiền luôn cực xịn
 
+    @Builder.Default
+    @Column(name = "auth_provider")
+    private String authProvider = "LOCAL"; // LOCAL hoặc GOOGLE
+
     @Transient
     private int ticketCount;
 }

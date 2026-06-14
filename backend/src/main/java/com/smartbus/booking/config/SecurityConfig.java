@@ -41,6 +41,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // ✅ Public endpoints - không cần token
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/ai/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/health/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/trips/**").permitAll()
@@ -48,12 +49,15 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/bus-types/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/buses/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/seats/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/reviews/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/settings/**").permitAll()
                 // Cho phép khách vãng lai đặt vé và kiểm tra thanh toán
                 .requestMatchers("/admin/bookings/**").permitAll()
                 // ⚡ H2 console (chỉ dùng khi dev)
                 .requestMatchers("/h2-console/**").permitAll()
                 // 🔒 Admin endpoints - chỉ ADMIN
                 .requestMatchers("/dashboard/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/settings/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/routes/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/routes/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/routes/**").hasRole("ADMIN")

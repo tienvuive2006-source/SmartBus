@@ -27,6 +27,9 @@ public class BookingController {
     private UserRepository userRepository;
 
     @Autowired
+    private com.smartbus.booking.repository.ReviewRepository reviewRepository;
+
+    @Autowired
     private com.smartbus.booking.service.SeatService seatService;
 
     @Autowired
@@ -72,6 +75,13 @@ public class BookingController {
                                 userRepository.save(user);
                             }
                         }
+                    }
+
+                    // Nếu đổi thành trạng thái CANCELLED, xóa đánh giá nếu có
+                    if ("CANCELLED".equals(newStatus)) {
+                        reviewRepository.findByBookingId(booking.getId()).ifPresent(review -> {
+                            reviewRepository.delete(review);
+                        });
                     }
 
                     booking.setStatus(newStatus);

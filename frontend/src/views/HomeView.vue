@@ -40,30 +40,28 @@
       </div>
     </nav>
 
-    <header class="relative bg-slate-900 pt-16 pb-16 flex flex-col items-center justify-center min-h-[350px]">
+    <header class="relative pt-16 pb-16 flex flex-col items-center justify-center min-h-[420px]">
       <div 
-        class="absolute inset-0 bg-cover bg-center z-0 opacity-80"
-        style="background-image: url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop');"
+        class="absolute inset-0 bg-cover bg-center z-0"
+        :style="`background-image: url('${heroBannerUrl}');`"
       ></div>
-      <div class="absolute inset-0 bg-gradient-to-b from-[#075955]/60 to-transparent z-10"></div>
 
-      <div class="relative z-20 max-w-5xl mx-auto px-4 text-center mt-[-40px]">
-        <h2 
-          class="text-red-500 text-5xl md:text-6xl mb-2 drop-shadow-md" 
-          style="font-family: 'Brush Script MT', 'Dancing Script', cursive;"
-        >
-          Giảm giá - Khuyến mãi
-        </h2>
-        <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 drop-shadow-lg tracking-tight">
-          NHÀ XE TRUNG - NAM <br/>
-          <span class="text-white">VÉ XE KHÁCH - MUA VÉ TRỰC TUYẾN</span>
-        </h1>
-        <p class="text-white/90 text-sm md:text-base font-medium drop-shadow mt-4">
-          Tính năng chọn chỗ, thanh toán và in vé điện tử
-        </p>
+      <!-- Nút Đổi Ảnh Bìa (Chỉ dành cho Admin) -->
+      <div v-if="authStore.isAdmin" class="absolute top-4 right-4 z-30">
+        <label for="banner-upload" class="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/40 backdrop-blur-md border border-white/30 text-white rounded-xl font-bold text-sm cursor-pointer transition-all shadow-lg hover:shadow-xl group">
+          <span class="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">add_a_photo</span>
+          {{ isUploadingBanner ? 'Đang tải lên...' : 'Đổi Ảnh Bìa' }}
+        </label>
+        <input 
+          id="banner-upload" 
+          type="file" 
+          accept="image/*" 
+          class="hidden" 
+          @change="handleBannerUpload" 
+          :disabled="isUploadingBanner"
+        />
       </div>
     </header>
-
 
     <div id="searchSection" class="max-w-6xl mx-auto px-4 mb-4 mt-10">
       <!-- Section Header -->
@@ -151,9 +149,9 @@
     </div>
 
     <main v-if="popularRoutes.length > 0" class="max-w-6xl mx-auto px-4 pb-8">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div v-for="route in popularRoutes" :key="route.id" @click="quickSearch(route.from, route.to, '')" class="group bg-white rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-gray-200 flex flex-col">
-          <div class="relative h-48 overflow-hidden bg-slate-200">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 gap-y-8 md:gap-8">
+        <div v-for="route in popularRoutes" :key="route.id" @click="quickSearch(route.from, route.to, '')" class="group rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col shadow-md">
+          <div class="relative h-56 sm:h-48 md:h-56 overflow-hidden bg-slate-200">
             <template v-if="route.image">
               <img 
                 :src="route.image" 
@@ -171,21 +169,54 @@
             </template>
 
             <div class="absolute bottom-3 left-4 right-4 text-white">
-              <h3 class="font-bold text-[17px] truncate" :title="`${route.shortFrom} ➝ ${route.shortTo}`">{{ route.shortFrom }} ➝ {{ route.shortTo }}</h3>
+              <h3 class="font-bold text-[17px] truncate" :title="route.customName || `${route.shortFrom} ➝ ${route.shortTo}`">
+                {{ route.customName || `${route.shortFrom} ➝ ${route.shortTo}` }}
+              </h3>
             </div>
           </div>
-          <div class="p-4 flex justify-between items-center bg-white">
-            <div>
-              <p class="text-xs text-gray-500 mb-1">Giá vé từ</p>
-              <p class="text-[#075955] font-bold text-lg">{{ route.price?.toLocaleString() }}đ</p>
-            </div>
-            <button class="bg-[#075955] text-white p-2 rounded-full hover:bg-[#05403d] transition-colors">
-               <span class="material-symbols-outlined text-sm">arrow_forward</span>
-            </button>
-          </div>
+
         </div>
       </div>
     </main>
+
+
+    <!-- Khu vực "Khách hàng nói gì về chúng tôi" -->
+    <div v-if="topReviews.length > 0" class="max-w-6xl mx-auto px-4 py-16">
+      <div class="text-center mb-12">
+        <h2 class="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Khách hàng nói gì về Trung Nam?</h2>
+        <p class="text-slate-500 font-medium mt-2 text-sm md:text-base">Đánh giá chân thực từ những hành khách đã trải nghiệm dịch vụ</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+        <div v-for="review in topReviews" :key="review.id" class="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-100 relative hover:shadow-lg transition-all duration-300">
+          <!-- Quote Icon -->
+          <span class="material-symbols-outlined text-[#075955]/10 text-6xl absolute top-4 right-4 z-0">format_quote</span>
+          
+          <!-- Rating -->
+          <div class="flex gap-1 text-amber-400 mb-4 relative z-10">
+            <span v-for="i in review.rating" :key="i" class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
+          </div>
+
+          <!-- Comment -->
+          <p class="text-slate-600 font-medium italic leading-relaxed mb-6 min-h-[80px] relative z-10">
+            "{{ review.comment }}"
+          </p>
+
+          <!-- User Info -->
+          <div class="flex items-center gap-4 mt-auto border-t border-slate-100 pt-4 relative z-10">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-100 to-teal-50 flex items-center justify-center font-bold text-teal-700 border border-teal-100">
+              {{ review.user?.fullName?.charAt(0)?.toUpperCase() || 'K' }}
+            </div>
+            <div>
+              <p class="font-bold text-slate-800">{{ review.user?.fullName || 'Khách hàng ẩn danh' }}</p>
+              <p v-if="review.booking?.trip" class="text-xs text-slate-400 mt-0.5">
+                Đã đi tuyến: <span class="font-semibold text-slate-500">{{ review.booking.trip.departurePoint?.split(',')[0] }} ➝ {{ review.booking.trip.arrivalPoint?.split(',')[0] }}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Info Modal for Bến Xe, Nhà Xe, Điểm Đến, Thông Tin (ĐỒNG BỘ ADMIN ĐĂNG) -->
     <div v-if="showInfoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -349,6 +380,7 @@ import { useRouter } from 'vue-router';
 import { useApi } from '../composables/useApi';
 import { useLocationSearch } from '../composables/useLocationSearch';
 import { useAuthStore } from '@/stores/auth';
+import axios from 'axios';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -506,6 +538,7 @@ const allArrivalPoints = computed(() => {
 
 const debugRoutes = ref([]);
 const savedRoutes = ref([]);
+const topReviews = ref([]);
 
 const fetchSavedRoutes = async () => {
   try {
@@ -533,12 +566,19 @@ const popularRoutes = computed(() => {
     }
   }
   
+  const routeNamesMap = {};
+  
   savedRoutes.value.forEach(r => {
+    const sd = normalizeKey(r.departurePoint.split(',')[0]);
+    const sa = normalizeKey(r.arrivalPoint.split(',')[0]);
+    
     if (r.imageUrl) {
-      const sd = normalizeKey(r.departurePoint.split(',')[0]);
-      const sa = normalizeKey(r.arrivalPoint.split(',')[0]);
       routeImagesMap[`${sd}||${sa}`] = r.imageUrl;
-      routeImagesMap[`${sa}||${sd}`] = r.imageUrl; // Hỗ trợ chiều ngược lại
+    }
+    
+    // Lưu tên tuỳ chỉnh (bỏ qua tên sinh tự động có dấu ➔)
+    if (r.name && !r.name.includes('➔')) {
+      routeNamesMap[`${sd}||${sa}`] = r.name;
     }
   });
   
@@ -604,6 +644,18 @@ const popularRoutes = computed(() => {
       
       const routeImageUrl = matchedImageUrl || t.imageUrl || '';
       
+      // Fuzzy tìm kiếm trong routeNamesMap
+      let matchedName = routeNamesMap[targetKey];
+      if (!matchedName) {
+        for (const mapKey in routeNamesMap) {
+          const [mFrom, mTo] = mapKey.split('||');
+          if (mFrom && mTo && normalizeKey(rawShortFrom).includes(mFrom) && normalizeKey(rawShortTo).includes(mTo)) {
+            matchedName = routeNamesMap[mapKey];
+            break;
+          }
+        }
+      }
+
       routes.push({ 
         id: t.id, 
         from: t.departurePoint, 
@@ -611,9 +663,10 @@ const popularRoutes = computed(() => {
         shortFrom: displayFrom,
         shortTo: displayTo,
         date: t.departureDate,
-        price: t.price,
+        price: t.ticketPrice,
         busType: t.busType,
-        image: routeImageUrl
+        image: routeImageUrl,
+        customName: matchedName || null
       });
     }
   });
@@ -623,10 +676,76 @@ const popularRoutes = computed(() => {
 const currentUser2 = ref(null);
 let _syncInterval = null;
 
+const heroBannerUrl = ref(localStorage.getItem('cached_hero_banner') || '');
+const isUploadingBanner = ref(false);
+
+const fetchSettings = async () => {
+  try {
+    // Tải Banner
+    const resBanner = await api.get('/settings/hero_banner_url');
+    if (resBanner.data && resBanner.data.value) {
+      heroBannerUrl.value = resBanner.data.value;
+      localStorage.setItem('cached_hero_banner', resBanner.data.value);
+    } else if (!heroBannerUrl.value) {
+      heroBannerUrl.value = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop';
+    }
+  } catch (err) {
+    console.error("Lỗi khi tải cài đặt:", err);
+    if (!heroBannerUrl.value) {
+      heroBannerUrl.value = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop';
+    }
+  }
+};
+
+const handleBannerUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  isUploadingBanner.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'skybus_preset');
+
+    // 1. Upload to Cloudinary
+    const cloudinaryRes = await axios.post('https://api.cloudinary.com/v1_1/dzydry2xn/image/upload', formData);
+    const newUrl = cloudinaryRes.data.secure_url;
+
+    // 2. Save to Backend
+    await api.put('/settings/hero_banner_url', { value: newUrl });
+
+    // 3. Update UI
+    heroBannerUrl.value = newUrl;
+    alert("Cập nhật ảnh bìa thành công!");
+  } catch (err) {
+    console.error("Lỗi upload ảnh bìa:", err);
+    alert("Cập nhật ảnh bìa thất bại! Vui lòng thử lại.");
+  } finally {
+    isUploadingBanner.value = false;
+    event.target.value = '';
+  }
+};
+
+const fetchTopReviews = async () => {
+  try {
+    const res = await api.get('/reviews/all');
+    if (res.data && Array.isArray(res.data)) {
+      topReviews.value = res.data
+        .filter(r => r.rating >= 4 && r.comment && r.comment.length > 10)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 3);
+    }
+  } catch (err) {
+    console.error("Lỗi khi tải đánh giá nổi bật:", err);
+  }
+};
+
 onMounted(() => {
   window.scrollTo(0, 0);
   fetchTrips();
   fetchSavedRoutes();
+  fetchSettings();
+  fetchTopReviews();
   window.addEventListener('click', handleClickOutside);
   // Force recompute mỗi 3 giây để bắt ảnh mới từ admin
   _syncInterval = setInterval(() => { _syncCounter.value++; }, 3000);

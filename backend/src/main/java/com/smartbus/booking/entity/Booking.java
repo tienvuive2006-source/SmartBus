@@ -43,7 +43,7 @@ public class Booking {
     @Column(nullable = false)
     private String status; // PENDING, PAID, CANCELLED, CHECKED_IN
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String cancellationReason;
 
     @Column(nullable = false)
@@ -56,4 +56,10 @@ public class Booking {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user; // Optional: If the user is logged in
+
+    @Transient
+    private boolean isReviewed;
+
+    @Transient
+    private Review userReview;
 }

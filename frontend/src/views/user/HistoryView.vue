@@ -99,7 +99,23 @@
               </div>
 
               <div class="flex gap-2">
+                
                 <button 
+                  v-if="(ticket.status === 'PAID' || ticket.status === 'CHECKED_IN' || ticket.status === 'COMPLETED') && !ticket.isReviewed"
+                  @click="openReviewModal(ticket)"
+                  class="p-3 bg-amber-50 border border-amber-100 rounded-2xl text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
+                >
+                  <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span class="text-[9px] font-black tracking-widest">ĐÁNH GIÁ</span>
+                </button>
+                <div 
+                  v-else-if="(ticket.status === 'PAID' || ticket.status === 'CHECKED_IN' || ticket.status === 'COMPLETED') && ticket.isReviewed"
+                  class="p-3 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 flex flex-col items-center gap-0.5 cursor-not-allowed opacity-70"
+                >
+                  <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                  <span class="text-[9px] font-black tracking-widest">ĐÃ ĐÁNH GIÁ</span>
+                </div>
+<button 
                   v-if="ticket.status === 'PAID' || ticket.status === 'PENDING'"
                   @click="openCancelModal(ticket)"
                   class="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
@@ -145,6 +161,18 @@
                 <p class="text-headline-sm font-black text-[#075955] tracking-tight">{{ parseFloat(ticket.total).toLocaleString('vi-VN') }}đ</p>
               </div>
             </div>
+            
+            <!-- Review Section (if already reviewed) -->
+            <div v-if="ticket.userReview" class="mt-4 p-4 bg-amber-50/50 rounded-2xl border border-amber-100/50 flex flex-col gap-2">
+              <div class="flex items-center gap-1.5 mb-1">
+                <span class="text-[10px] font-black uppercase tracking-widest text-amber-600/70">Đánh giá của bạn</span>
+                <div class="flex">
+                  <span v-for="star in ticket.userReview.rating" :key="star" class="material-symbols-outlined text-[14px] text-amber-400" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span v-for="star in (5 - ticket.userReview.rating)" :key="'empty'+star" class="material-symbols-outlined text-[14px] text-gray-300" style="font-variation-settings: 'FILL' 1;">star</span>
+                </div>
+              </div>
+              <p v-if="ticket.userReview.comment" class="text-sm font-semibold text-gray-700 italic">"{{ ticket.userReview.comment }}"</p>
+            </div>
           </div>
         </div>
       </div>
@@ -186,6 +214,59 @@
             Ghế {{ selectedTicket.seats }} • Khởi hành {{ selectedTicket.time }}
           </p>
         </div>
+      </div>
+    </div>
+
+    
+    <!-- Review Modal -->
+    <div v-if="isReviewModalOpen && selectedTicket" class="fixed inset-0 bg-slate-900/85 backdrop-blur-sm z-[999] flex items-center justify-center p-6 animate-fade-in" @click.self="closeReviewModal">
+      <div class="bg-white w-full max-w-sm rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/20 animate-scale-up p-6 relative">
+        <button @click="closeReviewModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-900 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-all active:scale-90">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+
+        <h3 class="text-headline-sm font-black text-amber-500 mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stars</span> Đánh giá Nhà xe
+        </h3>
+        <p class="text-xs text-gray-500 font-medium mb-4 leading-relaxed">
+          Chuyến: <b class="text-gray-800">{{ selectedTicket.from }} ➝ {{ selectedTicket.to }}</b>.<br/>
+          Dòng xe: <b class="text-amber-600">{{ selectedTicket.busType }}</b>
+        </p>
+
+        <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-xl mb-6 border border-gray-100">
+           <img :src="selectedTicket.imageUrl || 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=400'" 
+                class="w-16 h-16 object-cover rounded-lg shadow-sm" alt="Bus Image" />
+           <div class="flex flex-col">
+              <span class="text-xs text-gray-500 uppercase font-bold tracking-widest">Tài xế</span>
+              <span class="text-sm font-black text-gray-800">{{ selectedTicket.driverName }}</span>
+              <span class="text-[11px] font-semibold text-gray-500 mt-0.5 flex items-center gap-1">
+                 <span class="material-symbols-outlined text-[12px]">directions_bus</span> BKS: {{ selectedTicket.licensePlate || 'Chưa xếp xe' }}
+              </span>
+           </div>
+        </div>
+
+        <div class="flex justify-center gap-2 mb-6">
+          <span 
+            v-for="star in 5" 
+            :key="star"
+            @click="reviewForm.rating = star"
+            class="material-symbols-outlined text-5xl cursor-pointer transition-colors"
+            :class="star <= reviewForm.rating ? 'text-amber-400' : 'text-gray-200'"
+            style="font-variation-settings: 'FILL' 1;"
+          >star</span>
+        </div>
+
+        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bình luận (Tùy chọn)</label>
+        <textarea v-model="reviewForm.comment" rows="3" placeholder="Nhà xe phục vụ như thế nào?..." class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700 outline-none focus:border-amber-500 mb-6 resize-none"></textarea>
+
+        <button 
+          @click="submitReview" 
+          :disabled="reviewForm.rating === 0 || isSubmittingReview"
+          class="w-full bg-amber-500 text-white font-black py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-md hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all active:scale-95"
+        >
+          <span v-if="isSubmittingReview" class="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></span>
+          {{ isSubmittingReview ? 'Đang gửi...' : 'Gửi Đánh Giá' }}
+        </button>
       </div>
     </div>
 
@@ -244,6 +325,7 @@ const activeTab = ref('upcoming');
 const upcomingTickets = ref([]);
 const isModalOpen = ref(false);
 const selectedTicket = ref(null);
+const allBuses = ref([]);
 
 const authStore = useAuthStore();
 const api = useApi();
@@ -251,20 +333,32 @@ const api = useApi();
 const loadHistory = async () => {
   if (authStore.isLoggedIn) {
     try {
-      const response = await api.get('/auth/me/bookings');
+      const [response, busesRes] = await Promise.all([
+        api.get('/auth/me/bookings'),
+        api.get('/buses').catch(() => ({ data: [] }))
+      ]);
+      allBuses.value = busesRes.data;
       if (response.data && Array.isArray(response.data)) {
-        upcomingTickets.value = response.data.map(b => ({
-          id: b.id,
-          from: b.trip.departurePoint,
-          to: b.trip.arrivalPoint,
-          busType: b.trip.busType,
-          time: b.trip.departureTime,
-          date: b.trip.departureDate,
-          seats: Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : b.seatNumbers,
-          method: b.paymentMethod,
-          total: b.totalPrice,
-          status: b.status
-        }));
+        upcomingTickets.value = response.data.map(b => {
+          const bus = allBuses.value.find(bus => bus.licensePlate === b.trip.assignedLicensePlate);
+          return {
+            id: b.id,
+            from: b.trip.departurePoint,
+            to: b.trip.arrivalPoint,
+            busType: b.trip.busType,
+            time: b.trip.departureTime,
+            date: b.trip.departureDate,
+            seats: Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : b.seatNumbers,
+            method: b.paymentMethod,
+            total: b.totalPrice,
+            status: b.status,
+            imageUrl: b.trip.imageUrl,
+            licensePlate: b.trip.assignedLicensePlate,
+            driverName: bus ? bus.driverName : 'Đang cập nhật',
+            isReviewed: b.reviewed || b.isReviewed || false,
+            userReview: b.userReview || null
+          };
+        });
         return;
       }
     } catch (err) {
@@ -293,6 +387,49 @@ const openQrModal = (ticket) => {
 
 const closeModal = () => {
   isModalOpen.value = false;
+};
+
+
+// Đánh giá nhà xe
+const isReviewModalOpen = ref(false);
+const isSubmittingReview = ref(false);
+const reviewForm = ref({ rating: 0, comment: '' });
+
+const openReviewModal = (ticket) => {
+  selectedTicket.value = ticket;
+  reviewForm.value = { rating: 5, comment: '' };
+  isReviewModalOpen.value = true;
+};
+
+const closeReviewModal = () => {
+  isReviewModalOpen.value = false;
+};
+
+const submitReview = async () => {
+  if (reviewForm.value.rating === 0) return;
+  isSubmittingReview.value = true;
+  try {
+    const user = authStore.currentUser;
+    if (!user) throw new Error("Vui lòng đăng nhập!");
+    await api.post(`/reviews/create/${user.id}`, {
+      bookingId: selectedTicket.value.id,
+      rating: reviewForm.value.rating,
+      comment: reviewForm.value.comment
+    });
+    alert("Cảm ơn bạn đã đánh giá chuyến đi!");
+    if (selectedTicket.value) {
+      selectedTicket.value.isReviewed = true;
+      selectedTicket.value.userReview = {
+        rating: reviewForm.value.rating,
+        comment: reviewForm.value.comment
+      };
+    }
+    closeReviewModal();
+  } catch (err) {
+    alert("Gửi đánh giá thất bại: " + (err.response?.data?.message || err.message));
+  } finally {
+    isSubmittingReview.value = false;
+  }
 };
 
 // Hủy vé

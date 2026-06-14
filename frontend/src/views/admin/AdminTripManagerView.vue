@@ -23,11 +23,31 @@
       :todayTrips="todayTrips"
       :totalEmptySeats="totalEmptySeats"
       :averagePrice="averagePrice"
+      class="mb-6"
     />
+
+    <!-- Filters Section -->
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+      <div class="relative flex-1">
+        <select v-model="filterRoute" class="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm appearance-none cursor-pointer transition-all">
+          <option value="">Tất cả tuyến đường</option>
+          <option v-for="route in uniqueRoutesForFilter" :key="route" :value="route">{{ route }}</option>
+        </select>
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+      </div>
+      
+      <div class="relative flex-1 sm:max-w-[280px]">
+        <select v-model="filterBusType" class="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm appearance-none cursor-pointer transition-all">
+          <option value="">Tất cả dòng xe</option>
+          <option v-for="b in busTypes" :key="b.id" :value="b.name">{{ b.name }}</option>
+        </select>
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+      </div>
+    </div>
 
     <!-- 2. Main List -->
     <TripTable 
-      :trips="trips"
+      :trips="filteredTrips"
       @edit="openEditModal"
       @delete="deleteTrip"
     />
@@ -241,23 +261,59 @@ const averagePrice = computed(() => {
   return Math.round(trips.value.reduce((acc, t) => acc + t.price, 0) / trips.value.length);
 });
 
+// --- FILTERING LOGIC ---
+const filterRoute = ref('');
+const filterBusType = ref('');
+
+const uniqueRoutesForFilter = computed(() => {
+  const routes = new Set();
+  trips.value.forEach(t => {
+    if (!t.departurePoint || !t.arrivalPoint) return;
+    const from = t.departurePoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+    const to = t.arrivalPoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+    routes.add(`${from} ➔ ${to}`);
+  });
+  return Array.from(routes).sort();
+});
+
+const filteredTrips = computed(() => {
+  return trips.value.filter(t => {
+    let pass = true;
+    if (filterBusType.value && t.busType !== filterBusType.value) {
+      pass = false;
+    }
+    if (filterRoute.value) {
+      const from = t.departurePoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+      const to = t.arrivalPoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+      if (`${from} ➔ ${to}` !== filterRoute.value) {
+        pass = false;
+      }
+    }
+    return pass;
+  });
+});
+
 // --- Location Search & Geocoding ---
 const { suggestions: fromSuggestions, showDropdown: showFromDropdown, handleFocus: onFromFocus, handleSelect: fromSelect, performSearch: searchFrom } = useLocationSearch();
 const { suggestions: toSuggestions, showDropdown: showToDropdown, handleFocus: onToFocus, handleSelect: toSelect, performSearch: searchTo } = useLocationSearch();
 
 // 🚌 TỰ ĐỘNG CẬP NHẬT SỐ GHẾ KHI CHỌN DÒNG XE
-const updateTripImage = () => {
+const updateTripImage = (isManualChange = false) => {
   const selected = busTypes.value.find(t => t.name === form.value.busType);
   if (selected) {
-    form.value.availableSeats = selected.seatCount;
+    // Chỉ cập nhật số ghế nếu là tạo mới HOẶC người dùng thực sự đổi dòng xe trong lúc chỉnh sửa
+    if (!isEditMode.value || isManualChange) {
+      form.value.availableSeats = selected.seatCount;
+    }
     if (selected.imageUrl) {
       form.value.imageUrl = selected.imageUrl; 
     }
   }
 };
 
-watch(() => form.value.busType, () => {
-  updateTripImage();
+watch(() => form.value.busType, (newVal, oldVal) => {
+  // Nếu oldVal có giá trị, tức là người dùng vừa đổi select trên UI
+  updateTripImage(!!oldVal);
 });
 
 watch(() => form.value.departurePoint, (v) => { searchFrom(v); });

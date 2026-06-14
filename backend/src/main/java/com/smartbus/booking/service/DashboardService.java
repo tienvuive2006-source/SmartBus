@@ -48,12 +48,28 @@ public class DashboardService {
                 .filter(b -> "ĐANG CHẠY".equalsIgnoreCase(b.getStatus()))
                 .count();
 
+        // 5. Tính doanh thu theo ngày trong tuần hiện tại (Thứ 2 đến Chủ nhật)
+        double[] weeklyRevenue = new double[7]; // index 0 = T2, 6 = CN
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate monday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        
+        for (com.smartbus.booking.entity.Booking b : paidBookings) {
+            if (b.getCreatedAt() != null) {
+                java.time.LocalDate bookingDate = b.getCreatedAt().toLocalDate();
+                if (!bookingDate.isBefore(monday) && bookingDate.isBefore(monday.plusDays(7))) {
+                    int dayIndex = bookingDate.getDayOfWeek().getValue() - 1; // MONDAY = 1 -> index 0
+                    weeklyRevenue[dayIndex] += b.getTotalPrice();
+                }
+            }
+        }
+
         // Gói dữ liệu vàng chuyển cho Frontend
         stats.put("totalRevenue", realRevenue);
         stats.put("totalTickets", totalTicketsSold);
         stats.put("totalTrips", totalTrips);
         stats.put("totalBuses", totalBuses);
         stats.put("activeBuses", activeBuses);
+        stats.put("weeklyRevenue", weeklyRevenue);
         stats.put("lastUpdated", java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
 
         return stats;

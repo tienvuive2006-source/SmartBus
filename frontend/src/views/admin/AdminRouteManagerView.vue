@@ -103,6 +103,19 @@
             <!-- Left: Form Column -->
             <form @submit.prevent="saveRoute" class="w-1/2 p-8 space-y-6 overflow-y-auto border-r border-slate-100 bg-white relative">
               <div class="space-y-1.5 relative">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  <span>Tên tuyến đường (Tùy chọn)</span>
+                </label>
+                <div class="relative flex items-center">
+                  <input 
+                    v-model="form.name" 
+                    placeholder="VD: Tuyến Cao Nguyên, Tuyến Biển..." 
+                    class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all" 
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-1.5 relative">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
                   <span>Điểm khởi hành</span>
                   <span v-if="geocoding.departure" class="text-[#075955] animate-pulse text-[8px]">Đang lấy tọa độ...</span>
@@ -345,7 +358,7 @@ const fetchActualTrips = async () => {
 const routes = ref([]);
 const isModalOpen = ref(false);
 const editingIndex = ref(-1);
-const form = ref({ departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', imageUrl: '', routeData: '' });
+const form = ref({ name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', imageUrl: '', routeData: '' });
 const geocoding = ref({ departure: false, arrival: false });
 const lastGeocodeTarget = ref('departure');
 const mapLoading = ref(false);
@@ -400,7 +413,7 @@ const loadRoutes = async () => {
 
 const openAddModal = () => {
   editingIndex.value = -1;
-  form.value = { departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', imageUrl: '', routeData: '' };
+  form.value = { name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', imageUrl: '', routeData: '' };
   isModalOpen.value = true;
   initMap();
 };
@@ -408,7 +421,9 @@ const openAddModal = () => {
 const editRoute = (idx) => {
   editingIndex.value = idx;
   const route = routes.value[idx];
-  form.value = { ...route, imageUrl: route.imageUrl || '', routeData: route.routeData || '' };
+  // Filter out auto-generated names when editing
+  const initialName = route.name && !route.name.includes('➔') ? route.name : '';
+  form.value = { ...route, name: initialName, imageUrl: route.imageUrl || '', routeData: route.routeData || '' };
   isModalOpen.value = true;
   initMap();
 };
@@ -457,8 +472,10 @@ const saveRoute = async () => {
   const shortDep = form.value.departurePoint.split(',')[0].trim();
   const shortArr = form.value.arrivalPoint.split(',')[0].trim();
 
+  const finalName = form.value.name ? form.value.name.trim() : `${shortDep} ➔ ${shortArr}`;
+
   const newRoute = {
-    name: `${shortDep} ➔ ${shortArr}`,
+    name: finalName,
     departurePoint: form.value.departurePoint,
     arrivalPoint: form.value.arrivalPoint,
     departureLat: form.value.departureLat || 0,

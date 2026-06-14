@@ -63,6 +63,21 @@
           </button>
         </form>
 
+        <div class="mt-6">
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-slate-200"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white text-slate-500 font-bold uppercase tracking-wider">Hoặc đăng nhập bằng</span>
+            </div>
+          </div>
+          
+          <div class="mt-6 flex justify-center">
+            <GoogleLogin :callback="handleGoogleLogin" />
+          </div>
+        </div>
+
         <!-- Redirection -->
         <div class="mt-8 text-center border-t border-slate-100 pt-6">
           <p class="text-body-md font-bold text-slate-500">
@@ -90,6 +105,23 @@ const phone = ref('');
 const password = ref('');
 const loading = ref(false);
 const errorMsg = ref('');
+
+const handleGoogleLogin = async (response) => {
+  if (response.credential) {
+    errorMsg.value = '';
+    loading.value = true;
+    try {
+      await authStore.googleLogin(response.credential);
+      const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : (authStore.isInspector ? '/inspector' : '/'));
+      router.push(redirectTo);
+    } catch (error) {
+      console.error("Lỗi đăng nhập Google:", error);
+      errorMsg.value = error.response?.data || "Đăng nhập Google thất bại!";
+    } finally {
+      loading.value = false;
+    }
+  }
+};
 
 const handleLogin = async () => {
   errorMsg.value = '';

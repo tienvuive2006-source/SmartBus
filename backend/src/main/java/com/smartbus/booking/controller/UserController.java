@@ -17,15 +17,18 @@ public class UserController {
     private final com.smartbus.booking.repository.BookingRepository bookingRepository;
     private final com.smartbus.booking.repository.InspectorRepository inspectorRepository;
     private final com.smartbus.booking.repository.TripRepository tripRepository;
+    private final com.smartbus.booking.repository.ReviewRepository reviewRepository;
 
     public UserController(UserRepository userRepository, 
                           com.smartbus.booking.repository.BookingRepository bookingRepository, 
                           com.smartbus.booking.repository.InspectorRepository inspectorRepository,
-                          com.smartbus.booking.repository.TripRepository tripRepository) {
+                          com.smartbus.booking.repository.TripRepository tripRepository,
+                          com.smartbus.booking.repository.ReviewRepository reviewRepository) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.inspectorRepository = inspectorRepository;
         this.tripRepository = tripRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     // 1. Lấy toàn bộ danh sách Người dùng
@@ -72,6 +75,13 @@ public class UserController {
 
         if (!isAdmin && !existingUser.getPhone().equals(currentPhone)) {
             return ResponseEntity.status(403).body("Không có quyền cập nhật tài khoản của người khác!");
+        }
+
+        // Check if phone already exists
+        if (userUpdates.getPhone() != null && !userUpdates.getPhone().equals(existingUser.getPhone())) {
+            if (userRepository.findByPhone(userUpdates.getPhone()).isPresent()) {
+                return ResponseEntity.status(400).body(java.util.Map.of("message", "Số điện thoại này đã được sử dụng bởi một tài khoản khác. Vui lòng chọn số khác!"));
+            }
         }
 
         existingUser.setFullName(userUpdates.getFullName());
@@ -175,6 +185,22 @@ public class UserController {
         }
 
         List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(id);
+        
+        // Populate isReviewed flag and review content
+        for (com.smartbus.booking.entity.Booking b : userBookings) {
+            java.util.Optional<com.smartbus.booking.entity.Review> reviewOpt = reviewRepository.findByBookingId(b.getId());
+            if (reviewOpt.isPresent()) {
+                b.setReviewed(true);
+                // Prevent infinite recursion by nullifying booking and user within the transient Review
+                com.smartbus.booking.entity.Review r = reviewOpt.get();
+                r.setBooking(null);
+                r.setUser(null);
+                b.setUserReview(r);
+            } else {
+                b.setReviewed(false);
+            }
+        }
+        
         return ResponseEntity.ok(userBookings);
     }
 }

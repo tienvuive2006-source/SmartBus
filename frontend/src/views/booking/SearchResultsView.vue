@@ -48,7 +48,7 @@
 
     <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
       
-      <aside class="hidden lg:block space-y-4">
+      <aside class="hidden lg:block space-y-4 sticky top-28 self-start">
         <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
              <h3 class="text-sm font-bold text-gray-800">Sắp xếp</h3>
@@ -116,8 +116,12 @@
                   <span class="bg-[#075955] text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                      <span class="material-symbols-outlined text-[10px]">verified</span> Xác nhận tức thì
                   </span>
-                  <span v-if="trip.rating >= 4.8" class="bg-yellow-400 text-gray-900 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
-                     <span class="material-symbols-outlined text-[10px]">star</span> {{ trip.rating }}
+                  <span v-if="companyStats[trip.companyName + '|' + trip.busType]?.averageRating" class="bg-yellow-400 text-gray-900 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                     <span class="material-symbols-outlined text-[10px]">star</span> {{ companyStats[trip.companyName + '|' + trip.busType].averageRating.toFixed(1) }}
+                     <span class="text-[8px] font-medium ml-0.5 opacity-80">({{ companyStats[trip.companyName + '|' + trip.busType].totalReviews }})</span>
+                  </span>
+                  <span v-else class="bg-yellow-400 text-gray-900 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                     <span class="material-symbols-outlined text-[10px]">star</span> Mới
                   </span>
                </div>
             </div>
@@ -169,6 +173,12 @@
                             >
                               <span class="material-symbols-outlined text-xs">map</span> Xem lộ trình
                             </button>
+                             <button 
+                               @click="openReviewsModal(trip)"
+                               class="flex items-center gap-1 text-[11px] font-bold text-amber-500 hover:underline"
+                             >
+                               <span class="material-symbols-outlined text-xs">star</span> Xem đánh giá
+                             </button>
                          </div>
                          <span class="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                             <span class="material-symbols-outlined text-xs">sell</span> Giảm 10%
@@ -297,8 +307,99 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- ĐÁNH GIÁ MODAL -->
+    <Teleport to="body">
+      <div v-if="isReviewsModalOpen" class="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" @click.self="closeReviewsModal">
+        <div class="bg-slate-50 w-full max-w-3xl h-[75vh] rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex flex-col relative animate-scale-up">
+          
+          <!-- Premium Header -->
+          <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 flex justify-between items-center relative overflow-hidden shrink-0">
+            <!-- Decorative circle -->
+            <div class="absolute -right-10 -top-10 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+            <div class="absolute -left-10 -bottom-10 w-24 h-24 bg-amber-300 opacity-20 rounded-full blur-xl"></div>
+            
+            <div class="relative z-10 flex items-center gap-4">
+               <div class="flex items-center justify-center w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl text-white shadow-inner shrink-0">
+                 <span class="material-symbols-outlined text-[24px]">reviews</span>
+               </div>
+               <div>
+                 <h3 class="text-lg sm:text-xl font-black text-white tracking-tight leading-tight">
+                   Đánh giá Nhà xe <span class="text-amber-100">{{ currentReviewCompany }}</span>
+                   <span class="text-xs sm:text-sm font-medium opacity-80 ml-1">- {{ currentReviewBusType }}</span>
+                 </h3>
+                 <p class="text-[10px] font-bold text-amber-50/80 uppercase tracking-widest mt-1">
+                   Tổng hợp trải nghiệm từ khách hàng
+                 </p>
+               </div>
+            </div>
+            
+            <button @click="closeReviewsModal" class="relative z-10 w-8 h-8 rounded-full bg-black/10 hover:bg-black/20 text-white flex items-center justify-center transition-all backdrop-blur-md shrink-0 ml-4">
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+          
+          <!-- Reviews List -->
+          <div class="flex-1 overflow-y-auto p-6 md:p-8">
+            <div v-if="reviewsLoading" class="flex flex-col items-center justify-center h-full text-amber-500">
+               <div class="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg"></div>
+               <span class="text-sm font-bold uppercase tracking-widest text-slate-400">Đang tải dữ liệu...</span>
+            </div>
+            
+            <div v-else-if="currentReviews.length === 0" class="flex flex-col items-center justify-center h-full text-slate-400">
+               <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                 <span class="material-symbols-outlined text-5xl text-slate-300">speaker_notes_off</span>
+               </div>
+               <span class="text-base font-bold text-slate-600">Chưa có đánh giá nào!</span>
+               <span class="text-sm font-medium text-slate-400 mt-1">Nhà xe này hiện chưa nhận được phản hồi từ khách hàng.</span>
+            </div>
+            
+            <div v-else class="space-y-0 divide-y divide-slate-200 bg-white px-2">
+               <div v-for="review in currentReviews" :key="review.id" class="py-6 flex gap-4">
+                  
+                  <!-- Avatar -->
+                  <div class="w-10 h-10 rounded-full bg-blue-400 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                    {{ review.user?.fullName?.charAt(0).toUpperCase() || 'U' }}
+                  </div>
+                  
+                  <!-- Content -->
+                  <div class="flex-1">
+                     <div class="flex items-center flex-wrap gap-x-2 gap-y-1 mb-1">
+                        <span class="font-semibold text-slate-800 text-[15px] uppercase">{{ review.user?.fullName || 'Người dùng ẩn danh' }}</span>
+                        <div class="flex items-center text-emerald-600 text-[13px] font-medium gap-1">
+                           <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                           Đã đi • {{ formatDateDisplay(review.createdAt) }}
+                        </div>
+                     </div>
+                     
+                     <div class="flex items-center gap-0.5 mb-2">
+                        <span v-for="s in 5" :key="s" class="material-symbols-outlined text-[18px]" :class="s <= review.rating ? 'text-amber-400' : 'text-slate-200'" style="font-variation-settings: 'FILL' 1;">star</span>
+                     </div>
+                     
+                     <p class="text-[14px] text-slate-800 leading-relaxed mb-3">
+                       {{ review.comment || 'Khách hàng không để lại bình luận.' }}
+                     </p>
+
+                     <div class="flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-slate-400 mb-4 font-medium">
+                        <span>Loại xe: {{ review.busType || currentReviewBusType }}</span>
+                        <span>Nhà xe: {{ review.companyName || currentReviewCompany }}</span>
+                     </div>
+                     
+                     <!-- Hiển thị phản hồi của Admin -->
+                     <div v-if="review.adminReply" class="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                       <div class="font-bold text-slate-800 mb-1.5 text-[14px]">Phản hồi của nhà xe</div>
+                       <p class="text-[14px] text-slate-600 leading-relaxed">{{ review.adminReply }}</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
+
 
 <script setup>
 // Giữ nguyên toàn bộ phần <script setup> của bạn
@@ -316,9 +417,18 @@ const authStore = useAuthStore();
 const allTrips = ref([]);
 const allBuses = ref([]);
 const allBusTypes = ref([]);
+const companyStats = ref({});
 const loading = ref(true);
-const currentSort = ref('default');
+const currentSort = ref(route.query.sort || 'default');
 const selectedTimeSlots = ref([]);
+
+watch(() => route.query.sort, (newSort) => {
+  if (newSort) {
+    currentSort.value = newSort;
+  } else {
+    currentSort.value = 'default';
+  }
+});
 
 const handleDateChange = (e) => {
   const newDate = e.target.value;
@@ -412,9 +522,27 @@ const filteredTrips = computed(() => {
     // 0. Bỏ qua các chuyến đã bị ẩn
     if (t.isVisible === false) return false;
 
+    // AI DIRECT NAVIGATION: Nếu có tripId, BỎ QUA mọi bộ lọc khác và chỉ hiện chuyến này
+    const tripIdQuery = route.query.tripId;
+    if (tripIdQuery) {
+        return t.id.toString() === tripIdQuery.toString();
+    }
+
     // 0.5. Lọc theo hãng xe (nếu được truyền)
     if (company && company !== 'all') {
       if (t.companyName !== company) return false;
+    }
+
+    // 0.6. Lọc theo loại xe (AI gửi sang)
+    const busTypeQuery = route.query.busType || '';
+    if (busTypeQuery && busTypeQuery !== 'all') {
+      const dbType = t.busType.toLowerCase();
+      const queryType = busTypeQuery.toLowerCase();
+      if (queryType === 'premium') {
+         if (!dbType.includes('premium') && !dbType.includes('prenium')) return false;
+      } else {
+         if (!dbType.includes(queryType)) return false;
+      }
     }
 
     // 1. Lọc theo ngày
@@ -448,7 +576,7 @@ const filteredTrips = computed(() => {
   else if (currentSort.value === 'price_desc') results.sort((a, b) => b.price - a.price);
   else if (currentSort.value === 'time_asc') results.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
   else if (currentSort.value === 'time_desc') results.sort((a, b) => b.departureTime.localeCompare(a.departureTime));
-  else if (currentSort.value === 'rating_desc') results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else if (currentSort.value === 'rating_desc') results.sort((a, b) => (companyStats.value[b.companyName + '|' + b.busType]?.averageRating || 0) - (companyStats.value[a.companyName + '|' + a.busType]?.averageRating || 0));
 
   return results;
 });
@@ -471,12 +599,14 @@ const fetchTrips = async () => {
 
 const fetchAdditionalInfo = async () => {
   try {
-    const [busesRes, busTypesRes] = await Promise.all([
+    const [busesRes, busTypesRes, statsRes] = await Promise.all([
       api.get('/buses'),
-      api.get('/bus-types')
+      api.get('/bus-types'),
+      api.get('/reviews/stats/all')
     ]);
     allBuses.value = busesRes.data;
     allBusTypes.value = busTypesRes.data;
+    companyStats.value = statsRes.data || {};
   } catch (err) {
     console.error("Lỗi fetch additional info:", err);
   }
@@ -735,6 +865,36 @@ const closeMapModal = () => {
     leafletMap = null;
   }
 };
+
+// ─── REVIEWS MODAL STATE ─────────────────────────────────────────────────────
+const isReviewsModalOpen = ref(false);
+const reviewsLoading = ref(false);
+const currentReviews = ref([]);
+const currentReviewCompany = ref('');
+const currentReviewBusType = ref('');
+
+const openReviewsModal = async (trip) => {
+  currentReviewCompany.value = trip.companyName;
+  currentReviewBusType.value = trip.busType;
+  isReviewsModalOpen.value = true;
+  reviewsLoading.value = true;
+  try {
+    const res = await api.get(`/reviews/company/${trip.companyName}`, {
+      params: { busType: trip.busType }
+    });
+    currentReviews.value = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } catch (e) {
+    console.error("Lỗi lấy danh sách đánh giá:", e);
+  } finally {
+    reviewsLoading.value = false;
+  }
+};
+
+const closeReviewsModal = () => {
+  isReviewsModalOpen.value = false;
+};
+
+
 
 const clearFilters = () => {
   currentSort.value = 'default';
