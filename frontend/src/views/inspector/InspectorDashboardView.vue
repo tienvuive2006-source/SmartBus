@@ -135,8 +135,8 @@ const fetchTripsAndBuses = async () => {
     
     // Gọi song song API lấy danh sách chuyến xe và danh sách xe
     const [tripRes, busRes] = await Promise.all([
-       axios.get(`http://localhost:8080/api/inspector/trips/${inspectorId}`, authStore.authHeader),
-       axios.get(`http://localhost:8080/api/buses`)
+       axios.get(`https://smartbus-6uf5.onrender.com/api/inspector/trips/${inspectorId}`, authStore.authHeader),
+       axios.get(`https://smartbus-6uf5.onrender.com/api/buses`)
     ]);
     
     buses.value = busRes.data;

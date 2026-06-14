@@ -298,14 +298,14 @@ const fetchData = async () => {
   try {
     // Lấy thông tin chuyến (Lấy từ mảng trips phân công)
     const inspectorId = authStore.currentUser?.id;
-    const tripsRes = await axios.get(`http://localhost:8080/api/inspector/trips/${inspectorId}`, authStore.authHeader);
+    const tripsRes = await axios.get(`https://smartbus-6uf5.onrender.com/api/inspector/trips/${inspectorId}`, authStore.authHeader);
     trip.value = tripsRes.data.find(t => t.id == tripId);
 
     // Lấy song song bookings, seats, và buses
     const [bookingsRes, seatsRes, busRes] = await Promise.all([
-      axios.get(`http://localhost:8080/api/inspector/trips/${tripId}/bookings`, authStore.authHeader),
-      axios.get(`http://localhost:8080/api/trips/${tripId}/seats`),
-      axios.get(`http://localhost:8080/api/buses`)
+      axios.get(`https://smartbus-6uf5.onrender.com/api/inspector/trips/${tripId}/bookings`, authStore.authHeader),
+      axios.get(`https://smartbus-6uf5.onrender.com/api/trips/${tripId}/seats`),
+      axios.get(`https://smartbus-6uf5.onrender.com/api/buses`)
     ]);
 
     bookings.value = bookingsRes.data;
@@ -359,7 +359,7 @@ const isTimeValidToDepart = computed(() => {
 const updateStatus = async (newStatus) => {
   if(!confirm(`Xác nhận cập nhật trạng thái chuyến xe thành: ${getStatusText(newStatus)}?`)) return;
   try {
-    await axios.put(`http://localhost:8080/api/inspector/trips/${tripId}/status`, { status: newStatus }, authStore.authHeader);
+    await axios.put(`https://smartbus-6uf5.onrender.com/api/inspector/trips/${tripId}/status`, { status: newStatus }, authStore.authHeader);
     trip.value.status = newStatus;
   } catch (err) {
     alert("Cập nhật thất bại!");
@@ -375,7 +375,7 @@ const manualCheckIn = async (booking) => {
   }
   if(!confirm(msg)) return;
   try {
-    await axios.put(`http://localhost:8080/api/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);
+    await axios.put(`https://smartbus-6uf5.onrender.com/api/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);
     booking.status = 'CHECKED_IN';
   } catch (err) {
     alert("Cập nhật thất bại!");
