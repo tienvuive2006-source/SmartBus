@@ -23,7 +23,7 @@
               <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">call</span>
               <input 
                 v-model="phone" 
-                type="tel" 
+                type="text" 
                 placeholder="Nhập số điện thoại của bạn" 
                 required
                 class="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-body-md font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
