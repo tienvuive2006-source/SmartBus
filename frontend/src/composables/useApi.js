@@ -11,7 +11,7 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
-const API_BASE = 'http://localhost:8080/api'
+const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
 
 let apiInstance = null;
 
