@@ -51,10 +51,12 @@ public class Booking {
 
     @ManyToOne
     @JoinColumn(name = "trip_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Trip trip;
 
     @ManyToOne
     @JoinColumn(name = "user_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user; // Optional: If the user is logged in
 
     @Transient
