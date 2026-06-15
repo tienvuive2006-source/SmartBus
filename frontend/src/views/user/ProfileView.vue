@@ -254,7 +254,9 @@ const transactions = ref([]);
 
 const fetchTransactions = async () => {
     try {
-        const res = await api.get(`/users/${user.value.id}/bookings`);
+        // Thêm tham số time (t) để vô hiệu hóa cache của trình duyệt (browser cache)
+        // Giúp đảm bảo vé vừa mua xong sẽ hiển thị ngay lập tức
+        const res = await api.get(`/users/${user.value.id}/bookings?t=${new Date().getTime()}`);
         const history = [];
         res.data.forEach(b => {
              // Giao dịch mua vé
