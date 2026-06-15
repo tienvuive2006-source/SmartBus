@@ -438,7 +438,7 @@ const loadHistory = async () => {
       ]);
       allBuses.value = busesRes.data;
       if (response.data && Array.isArray(response.data)) {
-        allTickets.value = response.data.map(b => {
+        const mappedServerTickets = response.data.map(b => {
           const bus = allBuses.value.find(bus => bus.licensePlate === b.trip.assignedLicensePlate);
           return {
             id: b.id,
@@ -458,13 +458,17 @@ const loadHistory = async () => {
             userReview: b.userReview || null
           };
         });
+        
+        // NẾU ĐÃ ĐĂNG NHẬP -> CHỈ DÙNG DỮ LIỆU TỪ SERVER (để đảm bảo đủ trạng thái, hình ảnh, v.v.)
+        allTickets.value = mappedServerTickets;
+        return; // Dừng tại đây, không cần merge local
       }
     } catch (err) {
       console.error("Lỗi lấy lịch sử từ server:", err);
     }
   }
 
-  // Lấy lịch sử từ bộ nhớ tạm (cho khách vãng lai hoặc vé chưa đồng bộ)
+  // CHỈ DÙNG LOCAL STORAGE NẾU LÀ KHÁCH VÃNG LAI (CHƯA ĐĂNG NHẬP)
   let localTickets = [];
   const stored = localStorage.getItem('trungnam_history') || localStorage.getItem('saomaifly_history') || localStorage.getItem('skybus_history');
   if (stored) {
@@ -475,11 +479,7 @@ const loadHistory = async () => {
     }
   }
   
-  // Gộp lịch sử local vào lịch sử server (Loại bỏ trùng lặp theo ID)
-  const merged = [...allTickets.value, ...localTickets];
-  const uniqueTickets = Array.from(new Map(merged.map(item => [item.id, item])).values());
-  
-  allTickets.value = uniqueTickets;
+  allTickets.value = localTickets;
 };
 
 const openQrModal = (ticket) => {
