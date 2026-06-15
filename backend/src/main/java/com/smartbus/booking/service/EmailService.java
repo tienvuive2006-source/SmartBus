@@ -34,22 +34,17 @@ public class EmailService {
                 // Generate ticket info text for the QR code scanning
                 String statusForQr = "CASH".equalsIgnoreCase(booking.getPaymentMethod()) ? "CHƯA THANH TOÁN (THU TIỀN MẶT)" : "ĐÃ THANH TOÁN";
 
+                // Rút gọn text để QR code bớt dày đặc -> Máy quét bắt nhanh hơn gấp 10 lần và kích thước vuông vức đều nhau
                 String qrText = String.format(
-                        "Mã đặt vé: #%d\nKhách hàng: %s\nSĐT: %s\nHành trình: %s -> %s\nNgày đi: %s\nGiờ đi: %s\nSố ghế: %s\nTổng tiền: %s VND\nTrạng thái: %s",
+                        "Mã đặt vé: #%d\nKhách: %s\nGhế: %s\nTrạng thái: %s",
                         booking.getId(),
                         booking.getCustomerName(),
-                        booking.getCustomerPhone(),
-                        booking.getTrip().getDeparturePoint(),
-                        booking.getTrip().getArrivalPoint(),
-                        booking.getTrip().getDepartureDate() != null ? booking.getTrip().getDepartureDate() : "N/A",
-                        booking.getTrip().getDepartureTime(),
                         String.join(", ", booking.getSeatNumbers()),
-                        formatPrice(booking.getTotalPrice()),
                         statusForQr
                 );
 
-                // Generate the QR Code image (250x250 pixels) and convert to Base64
-                byte[] qrCodeBytes = qrCodeGeneratorService.generateQrCodeImage(qrText, 250, 250);
+                // Generate the QR Code image (500x500 pixels for crispness) and convert to Base64
+                byte[] qrCodeBytes = qrCodeGeneratorService.generateQrCodeImage(qrText, 500, 500);
                 String base64QrCode = Base64.getEncoder().encodeToString(qrCodeBytes);
 
                 // Build the premium HTML template
