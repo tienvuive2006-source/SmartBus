@@ -69,7 +69,7 @@ public class TripService {
         Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với mã ID: " + id));
         
-        Integer requestedTotalSeats = updatedDetails.getAvailableSeats();
+        Integer requestedTotalSeats = updatedDetails.getTotalSeats();
         boolean seatCountChanged = false;
         
         if (requestedTotalSeats != null && !requestedTotalSeats.equals(trip.getTotalSeats())) {

@@ -265,12 +265,19 @@
                     <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] rotate-90 my-10">Lối đi chung</span>
                  </div>
               </div>
-            </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </Teleport>
+
+      <QRScannerModal 
+        :isOpen="showQRScanner"
+        :feedback="qrFeedback"
+        @close="showQRScanner = false"
+        @scan="onScanSuccess"
+      />
 
     </template>
   </div>
@@ -281,6 +288,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
+import QRScannerModal from '@/components/inspector/QRScannerModal.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -292,6 +300,9 @@ const buses = ref([]);
 const bookings = ref([]);
 const seats = ref([]);
 const showSeatMap = ref(false);
+
+const showQRScanner = ref(false);
+const qrFeedback = ref(null);
 
 const fetchData = async () => {
   loading.value = true;
@@ -383,7 +394,87 @@ const manualCheckIn = async (booking) => {
 };
 
 const openQRScanner = () => {
-  alert("Tính năng Camera quét QR đang được phát triển. Vui lòng Check-in thủ công bên dưới.");
+  showQRScanner.value = true;
+  qrFeedback.value = null;
+};
+
+// Cờ chống quét liên tục cùng 1 vé
+let isProcessingQR = false;
+
+const onScanSuccess = async (decodedText) => {
+  if (isProcessingQR) return;
+  isProcessingQR = true;
+
+  try {
+    const idMatch = decodedText.match(/Mã đặt vé: #(\d+)/);
+    let qrBookingId = null;
+    
+    if (idMatch && idMatch[1]) {
+      qrBookingId = parseInt(idMatch[1]);
+    } else {
+      const num = parseInt(decodedText);
+      if (!isNaN(num)) qrBookingId = num;
+    }
+
+    if (!qrBookingId) {
+      qrFeedback.value = { type: 'error', message: '❌ Mã QR không hợp lệ hoặc không phải vé xe!' };
+      return;
+    }
+
+    const booking = bookings.value.find(b => b.id === qrBookingId);
+    
+    if (!booking) {
+      qrFeedback.value = { type: 'error', message: `❌ Vé #${qrBookingId} KHÔNG thuộc chuyến xe này!` };
+      playBeep(false);
+      return;
+    }
+
+    if (booking.status === 'CHECKED_IN') {
+      qrFeedback.value = { type: 'error', message: `⚠️ CẢNH BÁO: Vé #${qrBookingId} ĐÃ ĐƯỢC QUÉT TRƯỚC ĐÓ!` };
+      playBeep(false);
+      return;
+    }
+
+    await axios.put(`https://smartbus-6uf5.onrender.com/api/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);
+    booking.status = 'CHECKED_IN';
+    
+    qrFeedback.value = { type: 'success', message: `✅ Check-in thành công: ${booking.customerName}` };
+    playBeep(true);
+
+  } catch (error) {
+    console.error(error);
+    qrFeedback.value = { type: 'error', message: '❌ Máy chủ từ chối Check-in. Vui lòng thử lại!' };
+  } finally {
+    setTimeout(() => {
+      isProcessingQR = false;
+    }, 2500);
+  }
+};
+
+const playBeep = (isSuccess) => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = isSuccess ? 'sine' : 'sawtooth';
+    osc.frequency.setValueAtTime(isSuccess ? 800 : 300, ctx.currentTime);
+    if (isSuccess) {
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+    }
+    
+    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {
+    console.warn("Trình duyệt không hỗ trợ Web Audio API");
+  }
 };
 
 const handleBuyOffline = () => {

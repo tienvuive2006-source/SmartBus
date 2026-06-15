@@ -304,6 +304,7 @@ const updateTripImage = (isManualChange = false) => {
     // Chỉ cập nhật số ghế nếu là tạo mới HOẶC người dùng thực sự đổi dòng xe trong lúc chỉnh sửa
     if (!isEditMode.value || isManualChange) {
       form.value.availableSeats = selected.seatCount;
+      form.value.totalSeats = selected.seatCount;
     }
     if (selected.imageUrl) {
       form.value.imageUrl = selected.imageUrl; 
