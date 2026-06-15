@@ -424,7 +424,7 @@ const onScanSuccess = async (decodedText) => {
     const booking = bookings.value.find(b => b.id === qrBookingId);
     
     if (!booking) {
-      qrFeedback.value = { type: 'error', message: `❌ Vé #${qrBookingId} KHÔNG thuộc chuyến xe này!` };
+      qrFeedback.value = { type: 'error', message: `❌ Vé #${qrBookingId} KHÔNG HỢP LỆ (Không đúng chuyến hoặc ĐÃ BỊ HỦY)!` };
       playBeep(false);
       return;
     }
@@ -435,13 +435,16 @@ const onScanSuccess = async (decodedText) => {
       return;
     }
 
-    if (booking.status === 'PENDING') {
-      const msg = `⚠️ CẢNH BÁO CHƯA THANH TOÁN!\nKhách hàng ${booking.customerName} chọn thanh toán tiền mặt.\n\nYÊU CẦU THU: ${booking.totalPrice?.toLocaleString() || 0}đ\n\nXác nhận bạn ĐÃ THU TIỀN và cho khách lên xe?`;
-      if(!confirm(msg)) {
-         qrFeedback.value = { type: 'error', message: `❌ Đã hủy check-in. Vui lòng thu tiền khách!` };
-         playBeep(false);
-         return;
-      }
+    const wasPending = booking.status === 'PENDING';
+
+    if (wasPending) {
+      // Show warning directly on the scanner UI and DO NOT check in automatically
+      qrFeedback.value = { 
+        type: 'warning', 
+        message: `⚠️ CHƯA THANH TOÁN: Cần thu ${booking.totalPrice?.toLocaleString() || 0}đ\nKhách: ${booking.customerName}. Vui lòng thu tiền rồi Check-in thủ công ở danh sách bên dưới!` 
+      };
+      playBeep(false);
+      return;
     }
 
     await axios.put(`https://smartbus-6uf5.onrender.com/api/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);

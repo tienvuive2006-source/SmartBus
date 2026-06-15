@@ -32,6 +32,8 @@ public class EmailService {
         CompletableFuture.runAsync(() -> {
             try {
                 // Generate ticket info text for the QR code scanning
+                String statusForQr = "CASH".equalsIgnoreCase(booking.getPaymentMethod()) ? "CHƯA THANH TOÁN (THU TIỀN MẶT)" : "ĐÃ THANH TOÁN";
+
                 String qrText = String.format(
                         "Mã đặt vé: #%d\nKhách hàng: %s\nSĐT: %s\nHành trình: %s -> %s\nNgày đi: %s\nGiờ đi: %s\nSố ghế: %s\nTổng tiền: %s VND\nTrạng thái: %s",
                         booking.getId(),
@@ -43,7 +45,7 @@ public class EmailService {
                         booking.getTrip().getDepartureTime(),
                         String.join(", ", booking.getSeatNumbers()),
                         formatPrice(booking.getTotalPrice()),
-                        booking.getStatus()
+                        statusForQr
                 );
 
                 // Generate the QR Code image (250x250 pixels) and convert to Base64
