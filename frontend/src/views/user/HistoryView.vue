@@ -432,7 +432,8 @@ const loadHistory = async () => {
   if (authStore.isLoggedIn) {
     try {
       const [response, busesRes] = await Promise.all([
-        api.get('/auth/me/bookings'),
+        // Thêm timestamp để chống cache trình duyệt giống hệt ProfileView
+        api.get(`/auth/me/bookings?t=${new Date().getTime()}`),
         api.get('/buses').catch(() => ({ data: [] }))
       ]);
       allBuses.value = busesRes.data;
