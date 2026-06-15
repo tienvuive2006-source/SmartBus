@@ -46,9 +46,10 @@ watch(() => props.isOpen, (newVal) => {
       html5QrCode.start(
         { facingMode: "environment" }, // Bắt buộc dùng camera sau
         {
-          fps: 30,    // Tăng tốc độ quét (30 khung hình/giây)
-          qrbox: { width: 250, height: 250 },
+          fps: 10,    // Tối ưu hóa FPS (10 là chuẩn nhất để không gây lag máy)
+          // Bỏ giới hạn qrbox để quét TOÀN MÀN HÌNH Camera, bắt siêu nhạy không cần căn chuẩn!
           aspectRatio: 1.0,
+          disableFlip: false, // Quét được cả mã bị ngược
           formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // CHỈ ƯU TIÊN QUÉT QR CODE -> NHANH GẤP 10 LẦN
         },
         onScanSuccess,

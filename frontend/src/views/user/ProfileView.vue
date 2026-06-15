@@ -284,16 +284,19 @@ const fetchTransactions = async () => {
              }
         });
 
-        const getTimestamp = (dateVal) => {
-            if (!dateVal) return 0;
-            if (Array.isArray(dateVal)) {
-                return new Date(dateVal[0], dateVal[1] - 1, dateVal[2], dateVal[3] || 0, dateVal[4] || 0, dateVal[5] || 0).getTime();
+        // Sắp xếp giảm dần theo ID vé (Mới nhất lên đầu)
+        transactions.value = history.sort((a, b) => {
+            const idA = parseInt(a.id.split('_')[0]);
+            const idB = parseInt(b.id.split('_')[0]);
+            
+            if (idA === idB) {
+                // Nếu cùng 1 vé có cả giao dịch Mua và Hủy, thì Hủy (refund) xếp trên Mua (buy)
+                if (a.id.includes('refund')) return -1;
+                if (b.id.includes('refund')) return 1;
+                return 0;
             }
-            return new Date(dateVal).getTime();
-        };
-
-        // Sắp xếp giảm dần theo thời gian (mới nhất lên đầu)
-        transactions.value = history.sort((a, b) => getTimestamp(b.date) - getTimestamp(a.date));
+            return idB - idA;
+        });
     } catch (e) {
         console.error("Lỗi lấy lịch sử giao dịch", e);
     }
