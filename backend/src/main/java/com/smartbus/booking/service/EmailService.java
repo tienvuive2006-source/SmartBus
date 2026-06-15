@@ -192,7 +192,7 @@ public class EmailService {
                 "            " +
                 "            <div class='qr-section'>" +
                 "                <div class='qr-title'>MÃ SỐ VÉ ĐIỆN TỬ (QR CODE)</div>" +
-                "                <img src='cid:qrcode.png' class='qr-img' alt='Mã QR Vé Xe' width='200' height='200'>" +
+                "                <img src=\"cid:qrcode.png\" class=\"qr-img\" alt=\"Mã QR Vé Xe\" width=\"200\" height=\"200\">" +
                 "                <div class='qr-desc'>Vui lòng xuất trình mã QR này cho tài xế hoặc nhân viên soát vé khi lên xe để xác thực thông tin nhanh chóng.</div>" +
                 "            </div>" +
                 "        </div>" +
