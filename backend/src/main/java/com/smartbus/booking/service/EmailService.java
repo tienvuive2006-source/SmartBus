@@ -114,6 +114,14 @@ public class EmailService {
             ? "Cảm ơn bạn đã đặt vé. Yêu cầu đặt vé của bạn đã được ghi nhận thành công. Vui lòng <b>thanh toán trực tiếp cho nhân viên khi lên xe</b>. Dưới đây là thông tin chi tiết vé xe của bạn:"
             : "Cảm ơn bạn đã tin tưởng lựa chọn dịch vụ đặt vé của chúng tôi. Yêu cầu đặt vé của bạn đã được thanh toán và xác nhận thành công. Dưới đây là thông tin chi tiết vé xe của bạn:";
 
+        String paymentStatusStr = "CASH".equalsIgnoreCase(booking.getPaymentMethod()) 
+                ? "<span style='color: #e11d48; font-weight: 900; background: #ffe4e6; padding: 4px 10px; border-radius: 6px; border: 1px solid #fda4af;'>CHƯA THANH TOÁN</span>" 
+                : "<span style='color: #059669; font-weight: 900; background: #d1fae5; padding: 4px 10px; border-radius: 6px; border: 1px solid #6ee7b7;'>ĐÃ THANH TOÁN</span>";
+
+        String paymentMethodStr = "CASH".equalsIgnoreCase(booking.getPaymentMethod()) 
+                ? "Thanh toán khi lên xe (Tiền mặt)" 
+                : ("QR".equalsIgnoreCase(booking.getPaymentMethod()) ? "Chuyển khoản QR Code" : booking.getPaymentMethod());
+
         return "<!DOCTYPE html>" +
                 "<html>" +
                 "<head>" +
@@ -185,8 +193,12 @@ public class EmailService {
                 "                    <div class='ticket-cell ticket-value' style='color: #10b981; font-size: 16px;'>" + formattedPrice + " VND</div>" +
                 "                </div>" +
                 "                <div class='ticket-row'>" +
+                "                    <div class='ticket-cell ticket-label'>Trạng thái:</div>" +
+                "                    <div class='ticket-cell ticket-value'>" + paymentStatusStr + "</div>" +
+                "                </div>" +
+                "                <div class='ticket-row'>" +
                 "                    <div class='ticket-cell ticket-label'>Hình thức:</div>" +
-                "                    <div class='ticket-cell ticket-value'>" + booking.getPaymentMethod() + "</div>" +
+                "                    <div class='ticket-cell ticket-value' style='font-weight: bold;'>" + paymentMethodStr + "</div>" +
                 "                </div>" +
                 "            </div>" +
                 "            " +

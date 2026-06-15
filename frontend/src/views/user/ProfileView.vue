@@ -284,8 +284,16 @@ const fetchTransactions = async () => {
              }
         });
 
+        const getTimestamp = (dateVal) => {
+            if (!dateVal) return 0;
+            if (Array.isArray(dateVal)) {
+                return new Date(dateVal[0], dateVal[1] - 1, dateVal[2], dateVal[3] || 0, dateVal[4] || 0, dateVal[5] || 0).getTime();
+            }
+            return new Date(dateVal).getTime();
+        };
+
         // Sắp xếp giảm dần theo thời gian (mới nhất lên đầu)
-        transactions.value = history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        transactions.value = history.sort((a, b) => getTimestamp(b.date) - getTimestamp(a.date));
     } catch (e) {
         console.error("Lỗi lấy lịch sử giao dịch", e);
     }
