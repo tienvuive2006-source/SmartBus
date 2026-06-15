@@ -286,7 +286,7 @@
           
           <div class="bg-gray-50 p-5 rounded-3xl border border-gray-200 mb-4 inline-block shadow-inner relative group">
             <img 
-              :src="`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent('BOOKING:' + selectedTicket.id + '|SEATS:' + selectedTicket.seats + '|FROM:' + selectedTicket.from)}&color=075955&bgcolor=f8fafc`" 
+              :src="`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent('Mã đặt vé: #' + selectedTicket.id + '\nKhách: ' + (authStore.currentUser?.fullName || 'Quý khách') + '\nGhế: ' + selectedTicket.seats + '\nTrạng thái: ' + (selectedTicket.method === 'CASH' ? 'CHƯA THANH TOÁN (THU TIỀN MẶT)' : 'ĐÃ THANH TOÁN'))}&color=075955&bgcolor=f8fafc`" 
               alt="Modal QR" 
               class="w-44 h-44 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
             />
