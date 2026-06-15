@@ -1,42 +1,36 @@
 package com.smartbus.booking.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartbus.booking.entity.Booking;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.text.NumberFormat;
-import java.util.Locale;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @Service
 public class EmailService {
 
     @Autowired
-    private JavaMailSender mailSender;
-
-    @Autowired
     private QrCodeGeneratorService qrCodeGeneratorService;
 
+    // Brevo API credentials
+    private final String BREVO_API_KEY = "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";
+    private final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
     /**
-     * Sends a booking confirmation email with an embedded QR code asynchronously.
+     * Sends a booking confirmation email with an embedded QR code asynchronously using Brevo HTTP API.
      *
      * @param booking The booking entity.
      */
     public void sendBookingConfirmation(Booking booking) {
         CompletableFuture.runAsync(() -> {
             try {
-                MimeMessage message = mailSender.createMimeMessage();
-                
-                // Set true to indicate multi-part message (for HTML and inline resources)
-                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-                helper.setTo(booking.getCustomerEmail());
-                helper.setSubject("🎫 Xác nhận đặt vé xe thành công - Mã vé #" + booking.getId());
-
                 // Generate ticket info text for the QR code scanning
                 String qrText = String.format(
                         "Mã đặt vé: #%d\nKhách hàng: %s\nSĐT: %s\nHành trình: %s -> %s\nNgày đi: %s\nGiờ đi: %s\nSố ghế: %s\nTổng tiền: %s VND\nTrạng thái: %s",
@@ -52,21 +46,48 @@ public class EmailService {
                         booking.getStatus()
                 );
 
-                // Generate the QR Code image (250x250 pixels)
+                // Generate the QR Code image (250x250 pixels) and convert to Base64
                 byte[] qrCodeBytes = qrCodeGeneratorService.generateQrCodeImage(qrText, 250, 250);
+                String base64QrCode = Base64.getEncoder().encodeToString(qrCodeBytes);
 
                 // Build the premium HTML template
                 String htmlBody = buildHtmlTemplate(booking);
-                helper.setText(htmlBody, true);
 
-                // Embed the QR Code image inline (CID matching 'qrcodeImage')
-                helper.addInline("qrcodeImage", new ByteArrayResource(qrCodeBytes), "image/png");
+                // Construct JSON Payload for Brevo
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("sender", Map.of("name", "Smart Bus Booking", "email", "tienvuive2006@gmail.com"));
+                payload.put("to", List.of(Map.of("email", booking.getCustomerEmail(), "name", booking.getCustomerName())));
+                payload.put("subject", "🎫 Xác nhận đặt vé xe thành công - Mã vé #" + booking.getId());
+                payload.put("htmlContent", htmlBody);
+                payload.put("attachment", List.of(
+                    Map.of(
+                        "name", "qrcode.png",
+                        "content", base64QrCode
+                    )
+                ));
 
-                // Send the email
-                mailSender.send(message);
-                System.out.println("📧 [EmailService] Gửi email xác nhận thành công cho: " + booking.getCustomerEmail());
+                ObjectMapper mapper = new ObjectMapper();
+                String jsonBody = mapper.writeValueAsString(payload);
+
+                // Make HTTP POST request to Brevo
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(BREVO_API_URL))
+                        .header("accept", "application/json")
+                        .header("api-key", BREVO_API_KEY)
+                        .header("content-type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
+
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    System.out.println("📧 [EmailService] Gửi email qua Brevo thành công cho: " + booking.getCustomerEmail());
+                } else {
+                    System.err.println("❌ [EmailService] Brevo API lỗi: " + response.statusCode() + " - " + response.body());
+                }
             } catch (Exception e) {
-                System.err.println("❌ [EmailService] Gửi email thất bại: " + e.getMessage());
+                System.err.println("❌ [EmailService] Gửi email qua Brevo thất bại: " + e.getMessage());
                 e.printStackTrace();
             }
         });
@@ -171,7 +192,7 @@ public class EmailService {
                 "            " +
                 "            <div class='qr-section'>" +
                 "                <div class='qr-title'>MÃ SỐ VÉ ĐIỆN TỬ (QR CODE)</div>" +
-                "                <img src='cid:qrcodeImage' class='qr-img' alt='Mã QR Vé Xe' width='200' height='200'>" +
+                "                <img src='cid:qrcode.png' class='qr-img' alt='Mã QR Vé Xe' width='200' height='200'>" +
                 "                <div class='qr-desc'>Vui lòng xuất trình mã QR này cho tài xế hoặc nhân viên soát vé khi lên xe để xác thực thông tin nhanh chóng.</div>" +
                 "            </div>" +
                 "        </div>" +
