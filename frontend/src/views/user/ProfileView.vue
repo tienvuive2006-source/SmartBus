@@ -260,7 +260,7 @@ const fetchTransactions = async () => {
              // Giao dịch mua vé
              history.push({
                  id: b.id + '_buy',
-                 title: 'Thanh toán vé xe',
+                 title: `Thanh toán vé #${b.id}`,
                  description: `Chuyến: ${b.trip.departurePoint} - ${b.trip.arrivalPoint}`,
                  date: b.createdAt,
                  amount: -b.totalPrice,

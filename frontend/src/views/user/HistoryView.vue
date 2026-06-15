@@ -42,7 +42,7 @@
           :class="['flex-1 py-3 rounded-xl text-body-md font-black transition-all duration-200 flex items-center justify-center gap-1.5', activeTab === 'completed' ? 'bg-[#075955] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']"
         >
           <span class="material-symbols-outlined text-[18px]">done_all</span>
-          ĐÃ QUA (0)
+          ĐÃ QUA ({{ completedTickets.length }})
         </button>
       </div>
 
@@ -177,10 +177,100 @@
         </div>
       </div>
 
-      <div v-else class="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm text-center px-6 animate-fade-in">
-        <span class="material-symbols-outlined text-6xl text-gray-300 mb-4 animate-pulse">history_toggle_off</span>
-        <h3 class="text-headline-sm font-black text-gray-800">Không có dữ liệu quá khứ</h3>
-        <p class="text-body-md text-gray-500 mt-1">Các chuyến đi sau khi hoàn thành lộ trình sẽ tự động lưu tại đây.</p>
+      <div class="flex flex-col gap-6" v-else-if="activeTab === 'completed'">
+        <div v-if="completedTickets.length === 0" class="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm text-center px-6 animate-fade-in">
+          <span class="material-symbols-outlined text-6xl text-gray-300 mb-4 animate-pulse">history_toggle_off</span>
+          <h3 class="text-headline-sm font-black text-gray-800">Không có dữ liệu quá khứ</h3>
+          <p class="text-body-md text-gray-500 mt-1">Các chuyến đi sau khi hoàn thành lộ trình sẽ tự động lưu tại đây.</p>
+        </div>
+        <div 
+          v-for="(ticket, index) in completedTickets" 
+          :key="ticket.id || index"
+          class="bg-white/80 rounded-3xl shadow-sm overflow-hidden border border-gray-200 relative group animate-slide-up transition-all duration-300 opacity-90 hover:opacity-100"
+          :style="`animation-delay: ${index * 0.1}s`"
+        >
+          <div class="h-1.5 w-full bg-gray-400"></div>
+
+          <div class="p-6 relative">
+            <div class="flex justify-between items-start mb-5">
+              <div class="flex flex-col">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-rose-100/50 shadow-sm" v-if="ticket.status === 'CANCELLED'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    ĐÃ HỦY
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-blue-100/50 shadow-sm" v-else-if="ticket.status === 'CHECKED_IN'">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    ĐÃ LÊN XE
+                  </span>
+                  <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-emerald-100/50 shadow-sm" v-else>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    HOÀN THÀNH
+                  </span>
+                  <span class="text-[11px] font-bold text-gray-400">#{{ ticket.id }}</span>
+                </div>
+                <h2 class="text-headline-sm font-black text-gray-800 flex items-center gap-2 leading-tight">
+                  {{ ticket.from }} 
+                  <span class="material-symbols-outlined text-gray-400 text-[20px]">east</span> 
+                  {{ ticket.to }}
+                </h2>
+              </div>
+
+              <div class="flex gap-2">
+                <button 
+                  v-if="!ticket.isReviewed && ticket.status !== 'CANCELLED'"
+                  @click="openReviewModal(ticket)"
+                  class="p-3 bg-amber-50 border border-amber-100 rounded-2xl text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
+                >
+                  <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">star</span>
+                  <span class="text-[9px] font-black tracking-widest">ĐÁNH GIÁ</span>
+                </button>
+                <div 
+                  v-else-if="ticket.isReviewed && ticket.status !== 'CANCELLED'"
+                  class="p-3 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 flex flex-col items-center gap-0.5 cursor-not-allowed opacity-70"
+                >
+                  <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                  <span class="text-[9px] font-black tracking-widest">ĐÃ ĐÁNH GIÁ</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-dashed border-gray-300 my-4"></div>
+
+            <div class="flex justify-between items-end">
+              <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+                <div>
+                  <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Giờ khởi hành</p>
+                  <p class="text-body-md font-black text-gray-800 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-gray-500">schedule</span>
+                    {{ ticket.time }} ({{ ticket.date }})
+                  </p>
+                </div>
+                <div>
+                  <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Vị trí Ghế</p>
+                  <p class="text-body-md font-black text-gray-600 uppercase flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">chair</span>
+                    {{ ticket.seats }}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right border-l border-gray-100 pl-4">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Đã trả qua {{ ticket.method || 'Ví MoMo' }}</p>
+                <p class="text-headline-sm font-black text-gray-600 tracking-tight" :class="{'line-through text-gray-400': ticket.status === 'CANCELLED'}">{{ parseFloat(ticket.total).toLocaleString('vi-VN') }}đ</p>
+              </div>
+            </div>
+            
+            <div v-if="ticket.userReview" class="mt-4 p-4 bg-amber-50/50 rounded-2xl border border-amber-100/50 flex flex-col gap-2">
+              <div class="flex items-center gap-1.5 mb-1">
+                <span class="text-[10px] font-black uppercase tracking-widest text-amber-600/70">Đánh giá của bạn</span>
+                <div class="flex">
+                  <span v-for="star in ticket.userReview.rating" :key="star" class="material-symbols-outlined text-[14px] text-amber-400" style="font-variation-settings: 'FILL' 1;">star</span>
+                </div>
+              </div>
+              <p v-if="ticket.userReview.comment" class="text-sm font-semibold text-gray-700 italic">"{{ ticket.userReview.comment }}"</p>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -317,12 +407,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/composables/useApi';
 
 const activeTab = ref('upcoming');
-const upcomingTickets = ref([]);
+const allTickets = ref([]);
+
+const upcomingTickets = computed(() => {
+  return allTickets.value.filter(t => t.status === 'PAID' || t.status === 'PENDING').sort((a,b) => Number(b.id) - Number(a.id));
+});
+
+const completedTickets = computed(() => {
+  return allTickets.value.filter(t => t.status === 'CHECKED_IN' || t.status === 'COMPLETED' || t.status === 'CANCELLED').sort((a,b) => Number(b.id) - Number(a.id));
+});
 const isModalOpen = ref(false);
 const selectedTicket = ref(null);
 const allBuses = ref([]);
@@ -339,7 +437,7 @@ const loadHistory = async () => {
       ]);
       allBuses.value = busesRes.data;
       if (response.data && Array.isArray(response.data)) {
-        upcomingTickets.value = response.data.map(b => {
+        allTickets.value = response.data.map(b => {
           const bus = allBuses.value.find(bus => bus.licensePlate === b.trip.assignedLicensePlate);
           return {
             id: b.id,
@@ -359,25 +457,28 @@ const loadHistory = async () => {
             userReview: b.userReview || null
           };
         });
-        return;
       }
     } catch (err) {
       console.error("Lỗi lấy lịch sử từ server:", err);
     }
   }
 
-  // Fallback (cho khách vãng lai hoặc khi lỗi API)
+  // Lấy lịch sử từ bộ nhớ tạm (cho khách vãng lai hoặc vé chưa đồng bộ)
+  let localTickets = [];
   const stored = localStorage.getItem('trungnam_history') || localStorage.getItem('saomaifly_history') || localStorage.getItem('skybus_history');
   if (stored) {
     try {
-      upcomingTickets.value = JSON.parse(stored);
+      localTickets = JSON.parse(stored);
     } catch (err) {
-      console.error("Lỗi nạp lịch sử:", err);
-      upcomingTickets.value = [];
+      console.error("Lỗi nạp lịch sử local:", err);
     }
-  } else {
-    upcomingTickets.value = [];
   }
+  
+  // Gộp lịch sử local vào lịch sử server (Loại bỏ trùng lặp theo ID)
+  const merged = [...allTickets.value, ...localTickets];
+  const uniqueTickets = Array.from(new Map(merged.map(item => [item.id, item])).values());
+  
+  allTickets.value = uniqueTickets;
 };
 
 const openQrModal = (ticket) => {
