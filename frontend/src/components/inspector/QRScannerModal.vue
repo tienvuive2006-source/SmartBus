@@ -28,7 +28,7 @@
 
 <script setup>
 import { watch, nextTick, onBeforeUnmount } from 'vue';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -37,17 +37,24 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'scan']);
 
-let html5QrcodeScanner = null;
+let html5QrCode = null;
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     nextTick(() => {
-      html5QrcodeScanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: { width: 250, height: 250 }, supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] },
-        false
-      );
-      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+      html5QrCode = new Html5Qrcode("qr-reader");
+      html5QrCode.start(
+        { facingMode: "environment" }, // Bắt buộc dùng camera sau
+        {
+          fps: 30,    // Tăng tốc độ quét (30 khung hình/giây)
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0
+        },
+        onScanSuccess,
+        onScanFailure
+      ).catch(err => {
+        console.error("Lỗi khởi động Camera:", err);
+      });
     });
   } else {
     stopScanner();
@@ -55,9 +62,11 @@ watch(() => props.isOpen, (newVal) => {
 });
 
 const stopScanner = () => {
-  if (html5QrcodeScanner) {
-    html5QrcodeScanner.clear().catch(console.error);
-    html5QrcodeScanner = null;
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      html5QrCode.clear();
+      html5QrCode = null;
+    }).catch(console.error);
   }
 };
 
