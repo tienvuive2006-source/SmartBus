@@ -67,6 +67,7 @@
               <th class="px-6 py-4 whitespace-nowrap">Liên hệ</th>
               <th class="px-6 py-4 whitespace-nowrap">Số vé đã mua</th>
               <th class="px-6 py-4 whitespace-nowrap">Quyền hạn (Role)</th>
+              <th class="px-6 py-4 whitespace-nowrap text-center">Nguồn (Auth)</th>
               <th class="px-6 py-4 text-right">Số dư Ví SkyPay</th>
               <th class="px-6 py-4 text-center">Thao tác</th>
             </tr>
@@ -119,6 +120,20 @@
                 >
                   {{ user.role }}
                 </span>
+              </td>
+
+              <!-- Auth Provider Badge -->
+              <td class="px-6 py-4">
+                <div class="flex justify-center">
+                  <span v-if="user.authProvider === 'GOOGLE'" class="px-3 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-red-50 text-red-600 border-red-100">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-3 h-3" />
+                    GOOGLE
+                  </span>
+                  <span v-else class="px-3 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-slate-50 text-slate-600 border-slate-200">
+                    <span class="material-symbols-outlined text-[12px]">password</span>
+                    LOCAL
+                  </span>
+                </div>
               </td>
 
               <!-- Wallet -->
