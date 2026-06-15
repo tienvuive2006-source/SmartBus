@@ -435,6 +435,15 @@ const onScanSuccess = async (decodedText) => {
       return;
     }
 
+    if (booking.status === 'PENDING') {
+      const msg = `⚠️ CẢNH BÁO CHƯA THANH TOÁN!\nKhách hàng ${booking.customerName} chọn thanh toán tiền mặt.\n\nYÊU CẦU THU: ${booking.totalPrice?.toLocaleString() || 0}đ\n\nXác nhận bạn ĐÃ THU TIỀN và cho khách lên xe?`;
+      if(!confirm(msg)) {
+         qrFeedback.value = { type: 'error', message: `❌ Đã hủy check-in. Vui lòng thu tiền khách!` };
+         playBeep(false);
+         return;
+      }
+    }
+
     await axios.put(`https://smartbus-6uf5.onrender.com/api/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);
     booking.status = 'CHECKED_IN';
     

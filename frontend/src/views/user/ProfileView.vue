@@ -285,7 +285,7 @@ const fetchTransactions = async () => {
         });
 
         // Sắp xếp giảm dần theo thời gian (mới nhất lên đầu)
-        transactions.value = history.sort((a, b) => new Date(b.date) - new Date(a.date));
+        transactions.value = history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     } catch (e) {
         console.error("Lỗi lấy lịch sử giao dịch", e);
     }
