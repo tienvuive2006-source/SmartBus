@@ -21,4 +21,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     boolean existsByBookingId(Long bookingId);
     
     java.util.Optional<Review> findByBookingId(Long bookingId);
+    
+    List<Review> findByBookingIdIn(List<Long> bookingIds);
 }

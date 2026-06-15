@@ -3,6 +3,7 @@ package com.smartbus.booking.controller;
 import com.smartbus.booking.entity.User;
 import com.smartbus.booking.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,17 +19,20 @@ public class UserController {
     private final com.smartbus.booking.repository.InspectorRepository inspectorRepository;
     private final com.smartbus.booking.repository.TripRepository tripRepository;
     private final com.smartbus.booking.repository.ReviewRepository reviewRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public UserController(UserRepository userRepository, 
                           com.smartbus.booking.repository.BookingRepository bookingRepository, 
                           com.smartbus.booking.repository.InspectorRepository inspectorRepository,
                           com.smartbus.booking.repository.TripRepository tripRepository,
-                          com.smartbus.booking.repository.ReviewRepository reviewRepository) {
+                          com.smartbus.booking.repository.ReviewRepository reviewRepository,
+                          PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.inspectorRepository = inspectorRepository;
         this.tripRepository = tripRepository;
         this.reviewRepository = reviewRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // 1. Lấy toàn bộ danh sách Người dùng
@@ -36,14 +40,17 @@ public class UserController {
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userRepository.findAll();
         List<com.smartbus.booking.entity.Booking> allBookings = bookingRepository.findAll();
-        for (User user : users) {
-            int count = 0;
-            for (com.smartbus.booking.entity.Booking b : allBookings) {
-                if (b.getUser() != null && b.getUser().getId().equals(user.getId()) && !"CANCELLED".equals(b.getStatus())) {
-                    count += b.getSeatNumbers().size();
-                }
+        
+        java.util.Map<Long, Integer> userTicketCounts = new java.util.HashMap<>();
+        for (com.smartbus.booking.entity.Booking b : allBookings) {
+            if (b.getUser() != null && !"CANCELLED".equals(b.getStatus())) {
+                Long userId = b.getUser().getId();
+                userTicketCounts.put(userId, userTicketCounts.getOrDefault(userId, 0) + b.getSeatNumbers().size());
             }
-            user.setTicketCount(count);
+        }
+        
+        for (User user : users) {
+            user.setTicketCount(userTicketCounts.getOrDefault(user.getId(), 0));
         }
         return ResponseEntity.ok(users);
     }
@@ -97,7 +104,7 @@ public class UserController {
         
         // Nếu có đổi mật khẩu mới (không trống)
         if (userUpdates.getPassword() != null && !userUpdates.getPassword().trim().isEmpty()) {
-            existingUser.setPassword(userUpdates.getPassword()); // Trong thực tế cần dùng PasswordEncoder
+            existingUser.setPassword(passwordEncoder.encode(userUpdates.getPassword()));
         }
 
         User savedUser = userRepository.save(existingUser);

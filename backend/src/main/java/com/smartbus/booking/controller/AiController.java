@@ -16,7 +16,9 @@ public class AiController {
     private final AiService aiService;
 
     @PostMapping("/chat")
-    public ResponseEntity<?> processChat(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<?> processChat(
+            @RequestBody Map<String, String> payload,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         String message = payload.get("message");
         String sessionId = payload.getOrDefault("sessionId", "default_session");
         
@@ -24,7 +26,7 @@ public class AiController {
             return ResponseEntity.badRequest().body(Map.of("error", "Message is required"));
         }
         
-        Map<String, Object> response = aiService.processMessage(message, sessionId);
+        Map<String, Object> response = aiService.processMessage(message, sessionId, authHeader);
         return ResponseEntity.ok(response);
     }
 }

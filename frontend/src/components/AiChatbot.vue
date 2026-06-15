@@ -38,7 +38,7 @@
             ]"
           >
             <!-- Nếu có nội dung text -->
-            <p v-if="msg.text" class="leading-relaxed whitespace-pre-wrap">{{ msg.text }}</p>
+            <p v-if="msg.text" class="leading-relaxed whitespace-pre-wrap" v-html="formatText(msg.text)"></p>
             
             <!-- Hiển thị Preview Chuyến xe -->
             <div v-if="msg.tripsPreview && msg.tripsPreview.length > 0" class="mt-3 space-y-2">
@@ -65,6 +65,15 @@
                  Xem tất cả chuyến xe & Đặt vé
                </button>
             </div>
+
+            <!-- Nếu có action tùy chỉnh -->
+            <button 
+              v-if="msg.action === 'navigate_history'"
+              @click="router.push('/history'); isOpen = false;"
+              class="w-full mt-2 py-2 bg-rose-50 text-rose-600 border border-rose-100 text-xs font-bold rounded-lg hover:bg-rose-500 hover:text-white transition-colors"
+            >
+              Đi đến Lịch sử giao dịch
+            </button>
 
             <!-- Nếu là suggest buttons -->
             <div v-if="msg.suggestions" class="mt-2 flex flex-wrap gap-2">
@@ -193,6 +202,15 @@ onMounted(async () => {
   loadSuggestions();
 });
 
+const formatText = (text) => {
+  if (!text) return '';
+  // Format bold
+  let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Format image: ![alt](url)
+  html = html.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="w-44 h-44 mx-auto my-2 rounded-xl shadow-sm border border-gray-200" />');
+  return html;
+};
+
 const resetToWelcome = () => {
   messages.value = [{ 
     isBot: true, 
@@ -222,30 +240,65 @@ const loadSuggestions = async () => {
         const routeKey = fromCity + '-' + toCity;
         if (!seen.has(routeKey)) {
           seen.add(routeKey);
-          uniqueRoutes.push({
-            from: fromCity,
-            to: toCity
-          });
+          uniqueRoutes.push({ from: fromCity, to: toCity });
         }
       });
       
       // Xáo trộn mảng (Shuffle)
       uniqueRoutes.sort(() => 0.5 - Math.random());
       
-      // Lấy 3 tuyến đường đầu tiên sau khi xáo trộn
-      const topRoutes = uniqueRoutes.slice(0, 3);
-      
       const promptTemplates = [
-        (r) => `Tìm vé ${r.from} đi ${r.to} rẻ nhất`,
+        (r) => `Tìm vé ${r.from} đi ${r.to}`,
         (r) => `Có chuyến ${r.from} đi ${r.to} ngày mai không?`,
-        (r) => `Từ ${r.from} đi ${r.to} xe xịn nhất`
+        (r) => `Từ ${r.from} đi ${r.to} xe giường nằm`,
+        (r) => `Giá vé đi ${r.to} rẻ nhất`,
+        (r) => `Tìm chuyến sớm nhất đi ${r.to}`
       ];
       
-      const dynamicSuggestions = topRoutes.map((r, i) => promptTemplates[i % promptTemplates.length](r));
+      let allSuggestions = [];
+      
+      // 1. Tạo 4 gợi ý tìm tuyến đường từ DB
+      uniqueRoutes.slice(0, 4).forEach(r => {
+        const template = promptTemplates[Math.floor(Math.random() * promptTemplates.length)];
+        allSuggestions.push(template(r));
+      });
+      
+      // 2. Tạo 2 gợi ý động dựa vào Hãng xe và Loại xe thực tế trong DB
+      const uniqueCompanies = [...new Set(res.data.map(t => t.companyName))].filter(Boolean);
+      const uniqueBusTypes = [...new Set(res.data.map(t => t.busType))].filter(Boolean);
+      
+      if (uniqueCompanies.length > 0) {
+        uniqueCompanies.sort(() => 0.5 - Math.random());
+        const targetCity = uniqueRoutes[0]?.to || "Hồ Chí Minh";
+        allSuggestions.push(`Vé đi ${targetCity} của nhà xe ${uniqueCompanies[0]}`);
+      }
+      
+      if (uniqueBusTypes.length > 0) {
+        uniqueBusTypes.sort(() => 0.5 - Math.random());
+        const targetCity = uniqueRoutes[0]?.to || "Hồ Chí Minh";
+        allSuggestions.push(`Tìm vé đi ${targetCity} bằng xe ${uniqueBusTypes[0]}`);
+      }
+      
+      // 3. Thêm 2 gợi ý tính năng cá nhân/FAQ
+      if (authStore.isAuthenticated) {
+        const userActions = ["Gửi mã vé xe sắp tới", "Xe của tôi bao giờ chạy?", "Tôi muốn hủy vé", "Vé của tôi đâu"];
+        userActions.sort(() => 0.5 - Math.random());
+        allSuggestions.push(userActions[0], userActions[1]);
+      } else {
+        const faqs = ["Quy định hành lý tối đa", "Nhà xe có các loại xe nào?", "Chính sách hủy vé ra sao?", "Hướng dẫn thanh toán"];
+        faqs.sort(() => 0.5 - Math.random());
+        allSuggestions.push(faqs[0], faqs[1]);
+      }
+      
+      // Xáo trộn lại toàn bộ 8 gợi ý
+      allSuggestions.sort(() => 0.5 - Math.random());
+      
+      // Giới hạn hiển thị 8 gợi ý
+      allSuggestions = allSuggestions.slice(0, 8);
       
       if (messages.value.length === 1 && messages.value[0].isBot) {
-        messages.value[0].text = 'Xin chào! Tôi là trợ lý AI của SmartBus Trung Nam. Bạn cần tìm vé xe đi đâu?';
-        messages.value[0].suggestions = dynamicSuggestions;
+        messages.value[0].text = 'Xin chào! Tôi là trợ lý AI của SmartBus Trung Nam. Tôi có thể giúp gì cho bạn?';
+        messages.value[0].suggestions = allSuggestions;
         saveMessages();
       }
     }
@@ -357,7 +410,8 @@ const sendMessage = async () => {
       isBot: true, 
       text: response.data.text,
       tripsPreview: response.data.tripsPreview,
-      params: response.data.params
+      params: response.data.params,
+      action: response.data.action
     });
     saveMessages();
     

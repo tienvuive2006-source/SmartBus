@@ -215,12 +215,28 @@ public class AuthController {
             User user = userOpt.get();
             List<com.smartbus.booking.entity.Booking> bookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
             
+            // Extract all booking IDs
+            List<Long> bookingIds = bookings.stream().map(com.smartbus.booking.entity.Booking::getId).collect(java.util.stream.Collectors.toList());
+            
+            // Fetch all reviews for these bookings in a single query
+            List<com.smartbus.booking.entity.Review> reviews = java.util.Collections.emptyList();
+            if (!bookingIds.isEmpty()) {
+                reviews = reviewRepository.findByBookingIdIn(bookingIds);
+            }
+            
+            // Map reviews to bookings
+            java.util.Map<Long, com.smartbus.booking.entity.Review> reviewMap = new java.util.HashMap<>();
+            for (com.smartbus.booking.entity.Review r : reviews) {
+                if (r.getBooking() != null) {
+                    reviewMap.put(r.getBooking().getId(), r);
+                }
+            }
+            
             // Populate isReviewed flag and review content
             for (com.smartbus.booking.entity.Booking b : bookings) {
-                java.util.Optional<com.smartbus.booking.entity.Review> reviewOpt = reviewRepository.findByBookingId(b.getId());
-                if (reviewOpt.isPresent()) {
+                com.smartbus.booking.entity.Review r = reviewMap.get(b.getId());
+                if (r != null) {
                     b.setReviewed(true);
-                    com.smartbus.booking.entity.Review r = reviewOpt.get();
                     r.setBooking(null);
                     r.setUser(null);
                     b.setUserReview(r);

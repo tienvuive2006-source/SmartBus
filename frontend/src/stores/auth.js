@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 
 const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
+// const API_BASE = 'http://localhost:8080/api'
 
 export const useAuthStore = defineStore('auth', () => {
   // ─── STATE ────────────────────────────────────────────────────────

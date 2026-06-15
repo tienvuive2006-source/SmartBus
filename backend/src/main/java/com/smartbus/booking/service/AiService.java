@@ -1,5 +1,6 @@
 package com.smartbus.booking.service;
 
+import com.smartbus.booking.config.JwtService;
 import com.smartbus.booking.entity.Trip;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,9 @@ import java.util.regex.Pattern;
 public class AiService {
 
     private final TripService tripService;
+    private final com.smartbus.booking.repository.UserRepository userRepository;
+    private final com.smartbus.booking.repository.BookingRepository bookingRepository;
+    private final JwtService jwtService;
 
     private String removeAccents(String text) {
         if (text == null) return "";
@@ -39,7 +43,7 @@ public class AiService {
 
     private final Map<String, ChatContext> activeSessions = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public Map<String, Object> processMessage(String message, String sessionId) {
+    public Map<String, Object> processMessage(String message, String sessionId, String authHeader) {
         String lowerMsg = message.toLowerCase();
         String nonAccentMsg = removeAccents(lowerMsg); // Loại bỏ hoàn toàn dấu tiếng Việt để so khớp dễ hơn
         Map<String, Object> response = new HashMap<>();
@@ -47,6 +51,57 @@ public class AiService {
         ChatContext ctx = activeSessions.computeIfAbsent(sessionId, k -> new ChatContext());
         ctx.lastUpdated = System.currentTimeMillis();
         
+        // ==============================================================
+        // TÍNH NĂNG MỚI: TRỢ LÝ GIAO DỊCH (KIỂM TRA VÉ, HỦY VÉ, LẤY MÃ QR)
+        // ==============================================================
+        boolean isRequestingTransaction = nonAccentMsg.contains("huy ve") || 
+                                          nonAccentMsg.contains("ve cua toi") || 
+                                          nonAccentMsg.contains("bao gio chay") || 
+                                          nonAccentMsg.contains("kiem tra ve") ||
+                                          nonAccentMsg.contains("ma qr") ||
+                                          nonAccentMsg.contains("gui ma") ||
+                                          nonAccentMsg.contains("lay ma") ||
+                                          nonAccentMsg.contains("gui lai ma");
+                                          
+        // ==============================================================
+        // TÍNH NĂNG MỚI: HỎI ĐÁP FAQ TỪ DATABASE & CHÍNH SÁCH
+        // ==============================================================
+        if (nonAccentMsg.contains("cac loai xe") || nonAccentMsg.contains("nhung loai xe") || nonAccentMsg.contains("co loai xe nao") || nonAccentMsg.contains("nhung dong xe")) {
+            List<com.smartbus.booking.entity.Trip> allTrips = tripService.getAllTrips();
+            java.util.Set<String> busTypes = new java.util.HashSet<>();
+            for (com.smartbus.booking.entity.Trip t : allTrips) {
+                if (t.getBusType() != null && !t.getBusType().trim().isEmpty()) {
+                    busTypes.add(t.getBusType());
+                }
+            }
+            if (!busTypes.isEmpty()) {
+                response.put("text", "Hiện tại hệ thống nhà xe đang phục vụ các dòng xe chất lượng cao sau:\n\n- **" + String.join("**\n- **", busTypes) + "**\n\nBạn muốn trải nghiệm dòng xe nào cho chuyến đi sắp tới?");
+            } else {
+                response.put("text", "Hiện tại nhà xe chưa cập nhật thông tin loại xe trên hệ thống.");
+            }
+            response.put("action", "none");
+            return response;
+        }
+
+        if (nonAccentMsg.contains("hanh ly")) {
+            response.put("text", "🚌 **Quy định hành lý:**\n\nMỗi hành khách được mang theo tối đa **20kg** hành lý ký gửi và **1 kiện hành lý xách tay** (nhỏ gọn). Nếu hành lý vượt quá quy định, nhà xe sẽ thu thêm phụ phí tùy theo tuyến đường. Bạn nhớ đóng gói cẩn thận nhé!");
+            response.put("action", "none");
+            return response;
+        }
+
+        if (nonAccentMsg.contains("chinh sach huy") || nonAccentMsg.contains("doi ve") || nonAccentMsg.contains("tra ve") || nonAccentMsg.contains("huy ve ra sao")) {
+            response.put("text", "🔄 **Chính sách Đổi/Hủy vé:**\n\n- Hủy vé trước **24 tiếng**: Hoàn 100% tiền vé.\n- Hủy vé trước **12 tiếng**: Hoàn 50% tiền vé.\n- Dưới 12 tiếng hoặc sau khi xe chạy: Không hỗ trợ hoàn tiền.\n\n*Lưu ý: Tiền hoàn sẽ được cộng tự động vào Ví SkyPay của bạn để dùng cho các chuyến sau.*");
+            response.put("action", "none");
+            return response;
+        }
+        
+        if (nonAccentMsg.contains("thanh toan")) {
+            response.put("text", "💳 **Hướng dẫn thanh toán:**\n\nHệ thống SmartBus hỗ trợ 2 hình thức thanh toán chính:\n1. **Thanh toán qua Ví SkyPay:** Thanh toán tức thì bằng cách quét mã QR ngân hàng (Hệ thống tự động duyệt vé sau 1-3 phút).\n2. **Thanh toán Tiền mặt:** Đặt vé giữ chỗ và thanh toán trực tiếp cho tài xế khi lên xe.\n\nBạn có thể thoải mái lựa chọn hình thức phù hợp ở bước Thanh toán nhé!");
+            response.put("action", "none");
+            return response;
+        }
+        // ==============================================================
+
         String from = null;
         String to = null;
         String date = null;
@@ -131,6 +186,157 @@ public class AiService {
         }
         
         if (targetDate != null) date = targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        // ==============================================================
+        // TÍNH NĂNG MỚI: TRỢ LÝ GIAO DỊCH (KIỂM TRA VÉ, HỦY VÉ, LẤY MÃ QR)
+        // ==============================================================
+        if (isRequestingTransaction) {
+            com.smartbus.booking.entity.User currentUser = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                try {
+                    String token = authHeader.substring(7);
+                    String phone = jwtService.extractPhone(token);
+                    currentUser = userRepository.findByPhone(phone).orElse(null);
+                } catch (Exception e) {}
+            }
+            
+            if (currentUser == null) {
+                response.put("text", "Bạn cần **Đăng nhập** thì tôi mới có thể kiểm tra vé cho bạn được nhé! Hãy nhấn vào nút Đăng nhập ở góc trên cùng bên phải.");
+                response.put("action", "none");
+                return response;
+            }
+            
+            List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId());
+            if (userBookings.isEmpty()) {
+                response.put("text", "Tôi vừa kiểm tra hệ thống nhưng không thấy bạn có đặt chuyến xe nào cả. Bạn có muốn tìm vé xe mới không?");
+                response.put("action", "none");
+                return response;
+            }
+            
+            List<com.smartbus.booking.entity.Booking> matchingActiveBookings = new java.util.ArrayList<>();
+            
+            // 1. Tìm TẤT CẢ vé ĐANG HOẠT ĐỘNG khớp với thành phố (hoặc tất cả vé hoạt động nếu không chỉ định TP)
+            for (com.smartbus.booking.entity.Booking b : userBookings) {
+                if ("PENDING".equals(b.getStatus()) || "PAID".equals(b.getStatus())) {
+                    boolean matchCity = true;
+                    if (to != null && from != null) {
+                        matchCity = removeAccents(b.getTrip().getArrivalPoint().toLowerCase()).contains(removeAccents(to.toLowerCase())) &&
+                                    removeAccents(b.getTrip().getDeparturePoint().toLowerCase()).contains(removeAccents(from.toLowerCase()));
+                    } else if (to != null || from != null) {
+                        matchCity = (to != null && removeAccents(b.getTrip().getArrivalPoint().toLowerCase()).contains(removeAccents(to.toLowerCase()))) ||
+                                    (from != null && removeAccents(b.getTrip().getDeparturePoint().toLowerCase()).contains(removeAccents(from.toLowerCase())));
+                    }
+                    if (matchCity) {
+                        matchingActiveBookings.add(b);
+                    }
+                }
+            }
+            
+            // Sắp xếp vé để ưu tiên chuyến đi gần nhất lên trước
+            matchingActiveBookings.sort(java.util.Comparator.comparing(b -> b.getTrip().getDepartureDate() + " " + b.getTrip().getDepartureTime()));
+
+            com.smartbus.booking.entity.Booking targetBooking = null;
+            if (!matchingActiveBookings.isEmpty()) {
+                targetBooking = matchingActiveBookings.get(0);
+            } else {
+                // 2. Nếu không có vé hoạt động, tìm 1 vé BẤT KỲ khớp với thành phố
+                if (to != null || from != null) {
+                    for (com.smartbus.booking.entity.Booking b : userBookings) {
+                        boolean matchCity = (to != null && removeAccents(b.getTrip().getArrivalPoint().toLowerCase()).contains(removeAccents(to.toLowerCase()))) ||
+                                          (from != null && removeAccents(b.getTrip().getDeparturePoint().toLowerCase()).contains(removeAccents(from.toLowerCase())));
+                        if (matchCity) {
+                            targetBooking = b;
+                            break;
+                        }
+                    }
+                }
+                
+                // 3. Nếu vẫn không có, lấy đại vé đầu tiên trong lịch sử
+                if (targetBooking == null) {
+                    targetBooking = userBookings.get(0);
+                }
+            }
+            
+            String fromCity = targetBooking.getTrip().getDeparturePoint();
+            String toCity = targetBooking.getTrip().getArrivalPoint();
+            String dateStr = targetBooking.getTrip().getDepartureDate();
+            String timeStr = targetBooking.getTrip().getDepartureTime();
+            
+            if (nonAccentMsg.contains("huy ve")) {
+                if (matchingActiveBookings.size() > 1) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Tôi tìm thấy bạn đang có **").append(matchingActiveBookings.size()).append(" vé đang hoạt động** ");
+                    if (to != null) sb.append("đi **").append(to).append("**:\n\n");
+                    else sb.append(":\n\n");
+                    
+                    for (int i = 0; i < Math.min(3, matchingActiveBookings.size()); i++) {
+                        com.smartbus.booking.entity.Booking b = matchingActiveBookings.get(i);
+                        sb.append("- Chuyến đi **").append(b.getTrip().getArrivalPoint()).append("** lúc **")
+                          .append(b.getTrip().getDepartureTime()).append(" ngày ").append(b.getTrip().getDepartureDate()).append("**\n");
+                    }
+                    if (matchingActiveBookings.size() > 3) sb.append("- ... và ").append(matchingActiveBookings.size() - 3).append(" vé khác.\n");
+                    
+                    sb.append("\nBạn muốn hủy vé nào? Vui lòng vào phần **Lịch sử giao dịch** để chọn chính xác vé cần hủy nhé.");
+                    response.put("text", sb.toString());
+                    response.put("action", "navigate_history");
+                } else {
+                    if ("CANCELLED".equals(targetBooking.getStatus())) {
+                        response.put("text", "Chuyến xe đi " + toCity + " của bạn đã được hủy trước đó rồi nhé!");
+                    } else if ("COMPLETED".equals(targetBooking.getStatus()) || "CHECKED_IN".equals(targetBooking.getStatus())) {
+                        response.put("text", "Chuyến xe đi " + toCity + " của bạn đã hoàn thành hoặc bạn đã lên xe nên không thể hủy được nữa.");
+                    } else {
+                        response.put("text", "Tôi tìm thấy bạn đang có một vé đi **" + toCity + "** vào lúc **" + timeStr + " ngày " + dateStr + "**.\n\nBạn có chắc chắn muốn hủy vé này không? (Để hủy, vui lòng vào phần **Lịch sử giao dịch** và chọn nút Hủy nhé).");
+                        response.put("action", "navigate_history");
+                    }
+                }
+                return response;
+            }
+            
+            if (nonAccentMsg.contains("bao gio chay") || nonAccentMsg.contains("kiem tra ve") || nonAccentMsg.contains("ve cua toi")) {
+                if (matchingActiveBookings.size() > 1) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Bạn đang có **").append(matchingActiveBookings.size()).append(" chuyến xe sắp tới**:\n\n");
+                    for (int i = 0; i < Math.min(3, matchingActiveBookings.size()); i++) {
+                        com.smartbus.booking.entity.Booking b = matchingActiveBookings.get(i);
+                        sb.append("- Đi **").append(b.getTrip().getArrivalPoint()).append("**: **").append(b.getTrip().getDepartureTime()).append(" ngày ").append(b.getTrip().getDepartureDate()).append("** (Ghế ").append(String.join(", ", b.getSeatNumbers())).append(")\n");
+                    }
+                    if (matchingActiveBookings.size() > 3) sb.append("- ... và ").append(matchingActiveBookings.size() - 3).append(" vé khác.\n");
+                    sb.append("\nBạn có thể vào Lịch sử giao dịch để xem chi tiết tất cả các vé nhé.");
+                    response.put("text", sb.toString());
+                    response.put("action", "navigate_history");
+                } else {
+                    if ("CANCELLED".equals(targetBooking.getStatus())) {
+                        response.put("text", "Vé đi " + toCity + " của bạn đã bị hủy.");
+                    } else {
+                        response.put("text", "Chuyến xe đi **" + toCity + "** của bạn khởi hành lúc:\n\n⏰ **" + timeStr + " ngày " + dateStr + "**\n💺 **Ghế:** " + String.join(", ", targetBooking.getSeatNumbers()) + "\n\nBạn nhớ ra điểm đón trước 30 phút nhé!");
+                    }
+                    response.put("action", "none");
+                }
+                return response;
+            }
+            
+            if (nonAccentMsg.contains("ma qr") || nonAccentMsg.contains("gui lai ma") || nonAccentMsg.contains("gui ma") || nonAccentMsg.contains("lay ma")) {
+                if ("CANCELLED".equals(targetBooking.getStatus())) {
+                    response.put("text", "Vé đi " + toCity + " của bạn đã bị hủy nên mã QR không còn hiệu lực nữa.");
+                    response.put("action", "none");
+                } else {
+                    String qrData = "Mã đặt vé: #" + targetBooking.getId() + "\nKhách: " + currentUser.getFullName() + "\nGhế: " + String.join(", ", targetBooking.getSeatNumbers()) + "\nTrạng thái: " + (("CASH".equals(targetBooking.getPaymentMethod()) && "PENDING".equals(targetBooking.getStatus())) ? "CHƯA THANH TOÁN (THU TIỀN MẶT)" : "ĐÃ THANH TOÁN");
+                    String qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + java.net.URLEncoder.encode(qrData, java.nio.charset.StandardCharsets.UTF_8) + "&color=075955&bgcolor=f8fafc";
+                    
+                    String prefix = "";
+                    if (matchingActiveBookings.size() > 1) {
+                        prefix = "Tôi thấy bạn đang có tới **" + matchingActiveBookings.size() + " vé sắp tới**.\n\nĐây là mã QR cho chuyến xe **gần nhất** của bạn (Chuyến đi **" + toCity + "** ngày **" + dateStr + "**). Nếu bạn cần lấy mã của các vé khác, vui lòng vào **Lịch sử giao dịch** nhé!\n\n";
+                    } else {
+                        prefix = "Đây là mã QR lên xe của bạn (Chuyến đi **" + toCity + "** ngày **" + dateStr + "**).\n\nBạn hãy lưu mã này lại hoặc đưa thẳng cho tài xế quét nhé!\n\n";
+                    }
+                    
+                    response.put("text", prefix + "![Mã QR Lên Xe](" + qrUrl + ")");
+                    response.put("action", "none");
+                }
+                return response;
+            }
+        }
+
 
         // SUY LUẬN TỪ NGỮ CẢNH (CONTEXT-AWARE FLIP)
         if (from == null && to != null) {
