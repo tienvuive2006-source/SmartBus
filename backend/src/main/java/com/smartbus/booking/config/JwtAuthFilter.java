@@ -47,23 +47,33 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         try {
             final String token = authHeader.substring(7); // Cắt "Bearer "
-            final String phone = jwtService.extractPhone(token);
+            final Long userId = jwtService.extractUserId(token);
 
             // Nếu chưa được xác thực trong session hiện tại
-            if (phone != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 // Kiểm tra user tồn tại trong DB
-                userRepository.findByPhone(phone).ifPresent(user -> {
-                    if (jwtService.isTokenValid(token, phone)) {
-                        // Tạo Authentication object với role từ token
-                        String role = jwtService.extractRole(token);
-                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                phone,
-                                null,
-                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                java.util.Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    if (user.getIsLocked() != null && user.getIsLocked()) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"error\": \"ACCOUNT_LOCKED\", \"message\": \"Tài khoản của bạn đã bị khóa!\"}");
+                        return; // Chặn request đi tiếp
+                    }
+                    if (!jwtService.isTokenExpired(token)) {
+                        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                                new SimpleGrantedAuthority("ROLE_" + user.getRole())
                         );
+
+                        // Sử dụng userId làm principal (chuỗi String)
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                String.valueOf(user.getId()), null, authorities
+                        );
+
                         SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
-                });
+                }
             }
         } catch (Exception e) {
             // Token lỗi -> không set authentication -> Spring Security sẽ xử lý

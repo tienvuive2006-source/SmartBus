@@ -56,13 +56,23 @@
               </div>
               <h2 class="text-xl font-black text-gray-900">{{ user.fullName }}</h2>
               <p class="text-sm font-semibold text-gray-500 mb-4">
-                <span v-if="user.phone?.startsWith('GG_')" class="italic text-gray-400">Chưa cập nhật SĐT</span>
+                <span v-if="user.phone?.startsWith('GG_')" class="italic text-orange-500 font-mono text-xs">{{ user.phone }}</span>
                 <span v-else>{{ user.phone }}</span>
               </p>
-              
-              <span class="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-emerald-100">
-                {{ user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên VIP' }}
-              </span>
+              <div class="flex flex-col items-center gap-2">
+                <span class="bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-emerald-100 shadow-sm">
+                  {{ user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên VIP' }}
+                </span>
+                
+                <span v-if="user.authProvider === 'GOOGLE' || user.phone?.startsWith('GG_')" class="px-3 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1.5 border shadow-sm bg-red-50 text-red-600 border-red-100 mt-1">
+                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-3 h-3" />
+                  Đăng nhập bằng Google
+                </span>
+                <span v-else class="px-3 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1.5 border shadow-sm bg-slate-50 text-slate-600 border-slate-200 mt-1">
+                  <span class="material-symbols-outlined text-[12px]">password</span>
+                  Đăng ký Truyền thống
+                </span>
+              </div>
             </div>
           </div>
 
@@ -123,7 +133,7 @@
                   <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Số điện thoại</p>
                   <input v-if="isEditing" v-model="editForm.phone" type="text" class="w-full text-sm font-black text-gray-900 bg-white p-3 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
                   <p v-else class="text-sm font-black text-gray-900 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <span v-if="user.phone?.startsWith('GG_')" class="italic text-gray-400 font-normal">Chưa cập nhật SĐT</span>
+                    <span v-if="user.phone?.startsWith('GG_')" class="italic text-orange-500 font-mono font-normal">{{ user.phone }}</span>
                     <span v-else>{{ user.phone }}</span>
                   </p>
                 </div>
@@ -330,11 +340,17 @@ const saveProfile = async () => {
     };
     await api.put(`/users/${user.value.id}`, updatedUser);
     user.value = { ...user.value, ...updatedUser };
-    authStore.currentUser = user.value; // Đồng bộ với store
+    authStore.updateUser(user.value); // Gọi hàm mới trong store thay vì gán vào getter
     isEditing.value = false;
   } catch (error) {
     console.error("Lỗi khi lưu profile:", error);
-    alert("Có lỗi xảy ra khi cập nhật thông tin!");
+    if (error.response && error.response.data && error.response.data.message) {
+      alert(error.response.data.message);
+    } else if (error.response && error.response.data && typeof error.response.data === 'string') {
+      alert(error.response.data);
+    } else {
+      alert("Có lỗi xảy ra khi cập nhật thông tin!");
+    }
   }
 };
 

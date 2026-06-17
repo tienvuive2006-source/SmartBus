@@ -10,6 +10,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class User {
 
     @Id
@@ -40,4 +41,8 @@ public class User {
 
     @Transient
     private int ticketCount;
+
+    @Builder.Default
+    @Column(name = "is_locked")
+    private Boolean isLocked = false;
 }

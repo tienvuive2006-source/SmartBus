@@ -49,18 +49,21 @@ public class TripController {
     }
 
     // 4. TẠO MỚI CHUYẾN XE (CREATE)
+    @com.smartbus.booking.annotation.AuditAction(action = "CREATE_TRIP", entityName = "Trip")
     @PostMapping
     public ResponseEntity<Trip> createTrip(@RequestBody Trip trip) {
         return ResponseEntity.ok(tripService.saveTrip(trip));
     }
 
     // 5. CẬP NHẬT CHUYẾN XE (UPDATE)
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_TRIP", entityName = "Trip")
     @PutMapping("/{id}")
     public ResponseEntity<Trip> updateTrip(@PathVariable("id") Long id, @RequestBody Trip trip) {
         return ResponseEntity.ok(tripService.updateTrip(id, trip));
     }
 
     // 6. XÓA CHUYẾN XE (DELETE)
+    @com.smartbus.booking.annotation.AuditAction(action = "DELETE_TRIP", entityName = "Trip")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTrip(@PathVariable("id") Long id) {
         tripService.deleteTrip(id);
@@ -68,6 +71,7 @@ public class TripController {
     }
 
     // 7. BẬT/TẮT HIỂN THỊ CHUYẾN XE (TOGGLE VISIBILITY)
+    @com.smartbus.booking.annotation.AuditAction(action = "TOGGLE_TRIP_VISIBILITY", entityName = "Trip")
     @PatchMapping("/{id}/visibility")
     public ResponseEntity<Trip> toggleVisibility(@PathVariable("id") Long id) {
         return ResponseEntity.ok(tripService.toggleVisibility(id));

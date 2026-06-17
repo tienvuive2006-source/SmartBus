@@ -29,6 +29,7 @@ public class InspectorController {
     }
 
     // 0.5. Phân công lơ xe cho chuyến xe
+    @com.smartbus.booking.annotation.AuditAction(action = "ASSIGN_INSPECTOR", entityName = "Trip")
     @PutMapping("/assign-to-trip/{tripId}/{inspectorId}")
     public ResponseEntity<?> assignInspector(@PathVariable("tripId") Long tripId, @PathVariable("inspectorId") Long inspectorId) {
         return tripRepository.findById(tripId).map(trip -> {
@@ -41,6 +42,7 @@ public class InspectorController {
     }
 
     // 0.6. Hủy phân công lơ xe
+    @com.smartbus.booking.annotation.AuditAction(action = "UNASSIGN_INSPECTOR", entityName = "Trip")
     @PutMapping("/unassign-trip/{tripId}")
     public ResponseEntity<?> unassignInspector(@PathVariable("tripId") Long tripId) {
         return tripRepository.findById(tripId).map(trip -> {
@@ -57,6 +59,7 @@ public class InspectorController {
     }
 
     // 2. Cập nhật trạng thái chuyến xe (Bắt đầu, Kết thúc...)
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_TRIP_STATUS", entityName = "Trip")
     @PutMapping("/trips/{tripId}/status")
     public ResponseEntity<Trip> updateTripStatus(
             @PathVariable("tripId") Long tripId,
@@ -74,6 +77,7 @@ public class InspectorController {
     }
 
     // 4. Quét mã QR / Check-in vé (Cập nhật trạng thái vé thành CHECKED_IN)
+    @com.smartbus.booking.annotation.AuditAction(action = "CHECK_IN_BOOKING", entityName = "Booking")
     @PutMapping("/bookings/{bookingId}/checkin")
     public ResponseEntity<?> checkInBooking(@PathVariable("bookingId") Long bookingId) {
         return bookingRepository.findById(bookingId)

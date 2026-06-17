@@ -44,6 +44,7 @@ public class ReviewController {
         }
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "CREATE_REVIEW", entityName = "Review")
     @PostMapping("/create/{userId}")
     public ResponseEntity<?> createReviewWithUserId(@PathVariable("userId") Long userId, @RequestBody ReviewRequest request) {
         try {
@@ -140,9 +141,10 @@ public class ReviewController {
 
     @GetMapping("/all")
     public ResponseEntity<List<Review>> getAllReviewsForAdmin() {
-        return ResponseEntity.ok(reviewRepository.findAll());
+        return ResponseEntity.ok(reviewRepository.findAllWithDetails());
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "DELETE_REVIEW", entityName = "Review")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteReview(@PathVariable("id") Long id) {
         if (!reviewRepository.existsById(id)) {
@@ -152,6 +154,7 @@ public class ReviewController {
         return ResponseEntity.ok(Map.of("message", "Đã xóa đánh giá thành công."));
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "REPLY_REVIEW", entityName = "Review")
     @PutMapping("/{id}/reply")
     public ResponseEntity<?> replyToReview(@PathVariable("id") Long id, @RequestBody Map<String, String> payload) {
         Optional<Review> reviewOpt = reviewRepository.findById(id);
@@ -168,6 +171,6 @@ public class ReviewController {
         }
 
         reviewRepository.save(review);
-        return ResponseEntity.ok(review);
+        return ResponseEntity.ok(Map.of("message", "Đã gửi phản hồi thành công"));
     }
 }

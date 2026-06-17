@@ -40,6 +40,7 @@ public class BookingController {
         return bookingRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_BOOKING_STATUS", entityName = "Booking")
     @PostMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable("id") Long id, @RequestBody Map<String, String> payload) {
         return bookingRepository.findById(id)
@@ -91,6 +92,7 @@ public class BookingController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "CREATE_BOOKING", entityName = "Booking")
     @PostMapping("/create")
     public ResponseEntity<?> createBooking(@RequestBody Map<String, Object> payload) {
         try {
@@ -162,7 +164,11 @@ public class BookingController {
 
             // 3. GỬI EMAIL XÁC NHẬN KÈM MÃ QR
             try {
-                if (saved.getCustomerEmail() != null && !saved.getCustomerEmail().trim().isEmpty()) {
+                Boolean sendEmail = true;
+                if (payload.containsKey("sendEmail")) {
+                    sendEmail = Boolean.valueOf(payload.get("sendEmail").toString());
+                }
+                if (sendEmail && saved.getCustomerEmail() != null && !saved.getCustomerEmail().trim().isEmpty() && !saved.getCustomerEmail().equals("no-email@smartbus.com")) {
                     emailService.sendBookingConfirmation(saved);
                 }
             } catch (Exception ex) {

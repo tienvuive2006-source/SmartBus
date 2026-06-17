@@ -41,11 +41,19 @@ public class AuthController {
     // ============================================================
     // API ĐĂNG KÝ
     // ============================================================
+    @com.smartbus.booking.annotation.AuditAction(action = "REGISTER_USER", entityName = "User")
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User userRequest) {
         // Kiểm tra số điện thoại đã tồn tại chưa
         if (userRepository.findByPhone(userRequest.getPhone()).isPresent()) {
             return ResponseEntity.badRequest().body("Số điện thoại này đã được đăng ký tài khoản khác!");
+        }
+        
+        // Kiểm tra email đã tồn tại chưa (nếu có nhập)
+        if (userRequest.getEmail() != null && !userRequest.getEmail().trim().isEmpty()) {
+            if (userRepository.findByEmail(userRequest.getEmail()).isPresent()) {
+                return ResponseEntity.badRequest().body("Email này đã được sử dụng bởi tài khoản khác!");
+            }
         }
 
         // Tạo user mới với mật khẩu đã được BCrypt hash
@@ -53,6 +61,7 @@ public class AuthController {
                 .phone(userRequest.getPhone())
                 .password(passwordEncoder.encode(userRequest.getPassword()))
                 .fullName(userRequest.getFullName())
+                .email(userRequest.getEmail())
                 .role("USER")
                 .walletBalance(500000.0) // Khuyến mãi 500k vào ví mới tạo!
                 .build();
@@ -82,6 +91,10 @@ public class AuthController {
         }
 
         User user = userOpt.get();
+
+        if (user.getIsLocked() != null && user.getIsLocked()) {
+            return ResponseEntity.status(403).body("Tài khoản của bạn đã bị khóa! Vui lòng liên hệ tổng đài.");
+        }
 
         // Kiểm tra mật khẩu với BCrypt
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
@@ -126,6 +139,15 @@ public class AuthController {
 
                 if (userOpt.isPresent()) {
                     user = userOpt.get();
+                    if (user.getIsLocked() != null && user.getIsLocked()) {
+                        return ResponseEntity.status(403).body("Tài khoản của bạn đã bị khóa! Vui lòng liên hệ tổng đài.");
+                    }
+                    
+                    // Nâng cấp: Tự động cập nhật Nguồn thành GOOGLE nếu người dùng đăng nhập bằng Google
+                    if (!"GOOGLE".equals(user.getAuthProvider())) {
+                        user.setAuthProvider("GOOGLE");
+                        userRepository.save(user);
+                    }
                 } else {
                     // Chưa có thì tạo mới, sinh sđt ngẫu nhiên (hoặc đánh dấu là GG)
                     user = User.builder()
@@ -167,8 +189,8 @@ public class AuthController {
 
         try {
             String token = authHeader.substring(7);
-            String phone = jwtService.extractPhone(token);
-            Optional<User> userOpt = userRepository.findByPhone(phone);
+            Long userId = jwtService.extractUserId(token);
+            Optional<User> userOpt = userRepository.findById(userId);
 
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(404).body("Không tìm thấy người dùng!");
@@ -181,7 +203,8 @@ public class AuthController {
                     "fullName", user.getFullName(),
                     "role", user.getRole(),
                     "email", user.getEmail() != null ? user.getEmail() : "",
-                    "walletBalance", user.getWalletBalance()
+                    "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
+                    "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL"
             ));
         } catch (Exception e) {
             return ResponseEntity.status(401).body("Token đã hết hạn hoặc không hợp lệ!");
@@ -257,6 +280,7 @@ public class AuthController {
     @Autowired
     private com.smartbus.booking.service.SeatService seatService;
 
+    @com.smartbus.booking.annotation.AuditAction(action = "CANCEL_BOOKING", entityName = "Booking")
     @PostMapping("/me/bookings/{id}/cancel")
     public ResponseEntity<?> cancelMyBooking(@PathVariable("id") Long id, @RequestBody Map<String, String> payload, @RequestHeader("Authorization") String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -331,7 +355,8 @@ public class AuthController {
                 "fullName", user.getFullName(),
                 "role", user.getRole(),
                 "email", user.getEmail() != null ? user.getEmail() : "",
-                "walletBalance", user.getWalletBalance()
+                "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
+                "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL"
         );
     }
 }

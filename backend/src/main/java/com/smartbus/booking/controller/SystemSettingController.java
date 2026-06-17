@@ -27,6 +27,7 @@ public class SystemSettingController {
         }
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_SYSTEM_SETTING", entityName = "SystemSetting")
     @PutMapping("/{key}")
     public ResponseEntity<?> updateSetting(@PathVariable("key") String key, @RequestBody Map<String, String> payload) {
         String value = payload.get("value");

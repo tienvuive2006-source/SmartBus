@@ -118,6 +118,7 @@ const menuItems = [
   { name: 'Quản lý Loại xe', path: '/admin/bus-type', icon: 'directions_bus_filled' },
   { name: 'Trạng thái Đội xe', path: '/admin/fleet-status', icon: 'local_shipping' },
   { name: 'Quản lý Người dùng', path: '/admin/users', icon: 'manage_accounts' },
+  { name: 'Nhật ký Hoạt động', path: '/admin/audit-logs', icon: 'history' },
 ]
 </script>
 

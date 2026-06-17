@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-800">
     <nav class="bg-[#075955] text-white border-b border-[#05403d] sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between">
         
         <div class="flex items-center gap-8">
           <div class="flex items-center gap-2 cursor-pointer" @click="$router.push('/')">
@@ -28,7 +28,11 @@
           <div class="hidden md:flex items-center gap-2 text-yellow-400 font-bold text-lg">
             1900.59.99.97
           </div>
-          <button @click="$router.push('/profile')" class="flex items-center gap-2 text-sm font-semibold hover:text-yellow-300 transition-colors">
+
+          <!-- Component Chuông thông báo -->
+          <NotificationBell />
+
+          <button @click="$router.push('/profile')" class="flex items-center gap-2 text-sm font-semibold hover:text-yellow-300 transition-colors ml-2">
             <span class="material-symbols-outlined text-2xl">person_outline</span>
             {{ currentUser?.fullName || '' }}
           </button>
@@ -63,7 +67,7 @@
       </div>
     </header>
 
-    <div id="searchSection" class="max-w-6xl mx-auto px-4 mb-4 mt-10">
+    <div id="searchSection" class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 mb-4 mt-10">
       <!-- Section Header -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -148,7 +152,7 @@
       </div>
     </div>
 
-    <main v-if="popularRoutes.length > 0" class="max-w-6xl mx-auto px-4 pb-8">
+    <main v-if="popularRoutes.length > 0" class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 pb-8">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 gap-y-8 md:gap-8">
         <div v-for="route in popularRoutes" :key="route.id" @click="quickSearch(route.from, route.to, '')" class="group rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col shadow-md">
           <div class="relative h-56 sm:h-48 md:h-56 overflow-hidden bg-slate-200">
@@ -181,7 +185,7 @@
 
 
     <!-- Khu vực "Khách hàng nói gì về chúng tôi" -->
-    <div v-if="topReviews.length > 0" class="max-w-6xl mx-auto px-4 py-16">
+    <div v-if="topReviews.length > 0" class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 py-16">
       <div class="text-center mb-12">
         <h2 class="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Khách hàng nói gì về Trung Nam?</h2>
         <p class="text-slate-500 font-medium mt-2 text-sm md:text-base">Đánh giá chân thực từ những hành khách đã trải nghiệm dịch vụ</p>
@@ -377,8 +381,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useApi } from '../composables/useApi';
-import { useLocationSearch } from '../composables/useLocationSearch';
+import { useApi } from '@/composables/useApi';
+import AppFooter from '@/components/AppFooter.vue';
+import NotificationBell from '@/components/NotificationBell.vue';
+import { useLocationSearch } from '@/composables/useLocationSearch';
 import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 

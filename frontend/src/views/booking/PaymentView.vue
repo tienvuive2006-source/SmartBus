@@ -63,10 +63,20 @@
                 </div>
               </div>
               <div class="relative">
-                <label class="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Địa chỉ Email</label>
-                <div class="relative">
-                  <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">mail</span>
-                  <input v-model="customerEmail" type="email" placeholder="Email nhận vé điện tử" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#075955]/20 focus:border-[#075955] transition-all text-gray-800 placeholder:text-gray-400 placeholder:font-medium"/>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Địa chỉ Email</label>
+                  <label class="flex items-center gap-2 cursor-pointer group">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase group-hover:text-emerald-600 transition-colors">Nhận vé qua Email</span>
+                    <div class="relative inline-block w-8 h-4 transition duration-200 ease-in-out">
+                      <input type="checkbox" v-model="wantsEmail" class="peer absolute w-0 h-0 opacity-0" />
+                      <div class="block w-8 h-4 bg-gray-200 rounded-full peer-checked:bg-[#075955] transition-colors shadow-inner"></div>
+                      <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm"></div>
+                    </div>
+                  </label>
+                </div>
+                <div class="relative transition-all duration-300" :class="!wantsEmail ? 'opacity-40 grayscale pointer-events-none' : ''">
+                  <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2" :class="wantsEmail ? 'text-gray-400' : 'text-gray-300'">mail</span>
+                  <input v-model="customerEmail" type="email" placeholder="Bắt buộc để nhận vé điện tử" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#075955]/20 focus:border-[#075955] transition-all text-gray-800 placeholder:text-gray-400 placeholder:font-medium"/>
                 </div>
               </div>
             </div>
@@ -288,10 +298,12 @@ const customerName = ref('');
 const customerPhone = ref('');
 const customerEmail = ref('');
 
+const wantsEmail = ref(true);
+
 const isFormComplete = computed(() => {
   return customerName.value.trim() !== '' && 
          customerPhone.value.trim() !== '' && 
-         customerEmail.value.trim() !== '';
+         (!wantsEmail.value || customerEmail.value.trim() !== '');
 });
 
 const generateQrCode = () => {
@@ -323,14 +335,25 @@ const fetchTrip = async () => {
 };
 
 const processPayment = async () => {
-  if (!customerName.value || !customerPhone.value || !customerEmail.value) {
-    return alert('Vui lòng nhập đầy đủ thông tin hành khách (bao gồm cả Email để nhận vé và mã QR)!');
+  if (!customerName.value || !customerPhone.value) {
+    return alert('Vui lòng nhập đầy đủ họ tên và số điện thoại hành khách!');
   }
 
-  // 📧 KIỂM TRA ĐỊNH DẠNG EMAIL
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(customerEmail.value.trim())) {
-    return alert('Địa chỉ Email không đúng định dạng! Vui lòng kiểm tra lại để chắc chắn nhận được vé xe và mã QR.');
+  // 📧 KIỂM TRA ĐỊNH DẠNG EMAIL NẾU KHÁCH YÊU CẦU
+  if (wantsEmail.value) {
+    if (!customerEmail.value) {
+      return alert('Vui lòng nhập Email để nhận vé điện tử!');
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerEmail.value.trim())) {
+      return alert('Địa chỉ Email không đúng định dạng! Vui lòng kiểm tra lại.');
+    }
+  }
+
+  // 📱 KIỂM TRA SỐ ĐIỆN THOẠI (KHÔNG NHẬN MÃ GG VÀ YÊU CẦU LÀ SỐ)
+  const phoneRegex = /^[0-9]{10,11}$/;
+  if (!phoneRegex.test(customerPhone.value.trim())) {
+    return alert('Số điện thoại không hợp lệ! Vui lòng điền đúng 10-11 số thật của bạn để nhà xe liên hệ đón khách.');
   }
   
   // 🛡️ KIỂM TRA SỐ DƯ VÍ (NẾU CHỌN THANH TOÁN BẰNG VÍ)
@@ -347,7 +370,8 @@ const processPayment = async () => {
     const bookingData = {
       customerName: customerName.value,
       customerPhone: customerPhone.value,
-      customerEmail: customerEmail.value,
+      customerEmail: wantsEmail.value ? customerEmail.value : 'no-email@smartbus.com',
+      sendEmail: wantsEmail.value,
       seatNumbers: seatsArray.value,
       totalPrice: totalAmount.value,
       paymentMethod: selectedMethod.value,
@@ -476,7 +500,7 @@ watch(selectedMethod, () => {
 onMounted(() => {
   if (authStore.isLoggedIn) {
     customerName.value = authStore.currentUser?.fullName || '';
-    customerPhone.value = authStore.currentUser?.phone || '';
+    customerPhone.value = authStore.currentUser?.phone?.startsWith('GG_') ? '' : (authStore.currentUser?.phone || '');
     customerEmail.value = authStore.currentUser?.email || '';
     selectedMethod.value = 'WALLET';
   } else {

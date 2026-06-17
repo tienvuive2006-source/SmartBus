@@ -62,14 +62,15 @@
         <table class="w-full border-collapse text-left min-w-[800px]">
           <thead>
             <tr class="bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100">
-              <th class="px-6 py-4">ID</th>
-              <th class="px-6 py-4 whitespace-nowrap">Họ và Tên</th>
-              <th class="px-6 py-4 whitespace-nowrap">Liên hệ</th>
-              <th class="px-6 py-4 whitespace-nowrap">Số vé đã mua</th>
-              <th class="px-6 py-4 whitespace-nowrap">Quyền hạn (Role)</th>
-              <th class="px-6 py-4 whitespace-nowrap text-center">Nguồn (Auth)</th>
-              <th class="px-6 py-4 text-right">Số dư Ví SkyPay</th>
-              <th class="px-6 py-4 text-center">Thao tác</th>
+              <th class="px-3 py-4">ID</th>
+              <th class="px-3 py-4 whitespace-nowrap">Họ và Tên</th>
+              <th class="px-3 py-4">Liên hệ</th>
+              <th class="px-3 py-4 whitespace-nowrap">Số vé</th>
+              <th class="px-3 py-4 whitespace-nowrap">Quyền hạn</th>
+              <th class="px-3 py-4 text-center">Nguồn</th>
+              <th class="px-3 py-4 text-center">Trạng thái</th>
+              <th class="px-3 py-4 text-right">Số dư Ví SkyPay</th>
+              <th class="px-3 py-4 text-center">Thao tác</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-50">
@@ -79,40 +80,47 @@
               class="hover:bg-slate-50/50 transition-colors duration-150"
             >
               <!-- ID -->
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <span class="text-body-sm font-bold text-slate-400">#{{ user.id }}</span>
               </td>
 
               <!-- Avatar + Name -->
-              <td class="px-6 py-4">
-                <div class="flex items-center gap-3">
+              <td class="px-3 py-4">
+                <div class="flex items-center gap-2">
                   <img 
                     :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=f1f5f9&color=64748b&bold=true`" 
                     alt="Avatar" 
-                    class="w-9 h-9 rounded-full shadow-sm"
+                    class="w-8 h-8 rounded-full shadow-sm"
                   />
                   <span class="text-body-md font-black text-slate-800">{{ user.fullName }}</span>
                 </div>
               </td>
 
-              <!-- Phone -->
-              <td class="px-6 py-4">
-                <div class="text-body-md font-bold text-slate-600 flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[16px] text-slate-400">call</span>
-                  <span v-if="user.phone?.startsWith('GG_')" class="italic text-slate-400 font-normal">Chưa cập nhật SĐT</span>
-                  <span v-else>{{ user.phone }}</span>
+              <!-- Contact (Phone & Email) -->
+              <td class="px-3 py-4">
+                <div class="flex flex-col gap-1">
+                  <div class="text-body-md font-bold text-slate-600 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px] text-slate-400 shrink-0">call</span>
+                    <span v-if="user.phone?.startsWith('GG_')" class="italic text-orange-500 font-mono text-xs">{{ user.phone }}</span>
+                    <span v-else>{{ user.phone }}</span>
+                  </div>
+                  <div class="text-[12px] font-medium text-slate-500 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px] text-slate-400 shrink-0">mail</span>
+                    <span v-if="user.email" class="whitespace-nowrap">{{ user.email }}</span>
+                    <span v-else class="italic text-slate-400 font-normal">Chưa có Email</span>
+                  </div>
                 </div>
               </td>
               <!-- Tickets -->
-              <td class="px-6 py-4">
-                <span class="text-body-md font-bold text-slate-900 whitespace-nowrap">Đã mua: {{ user.ticketCount || 0 }} vé</span>
+              <td class="px-3 py-4">
+                <span class="text-body-md font-bold text-slate-900 whitespace-nowrap">{{ user.ticketCount || 0 }} vé</span>
               </td>
 
               <!-- Role Badge -->
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <span 
                   :class="[
-                    'px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase inline-block border shadow-sm',
+                    'px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-block border shadow-sm',
                     user.role === 'ADMIN' 
                       ? 'bg-red-50 text-red-700 border-red-100' 
                       : 'bg-blue-50 text-blue-700 border-blue-100'
@@ -123,35 +131,64 @@
               </td>
 
               <!-- Auth Provider Badge -->
-              <td class="px-6 py-4">
+              <td class="px-3 py-4">
                 <div class="flex justify-center">
-                  <span v-if="user.authProvider === 'GOOGLE'" class="px-3 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-red-50 text-red-600 border-red-100">
+                  <span v-if="user.authProvider === 'GOOGLE'" class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-red-50 text-red-600 border-red-100">
                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-3 h-3" />
-                    GOOGLE
+                    GG
                   </span>
-                  <span v-else class="px-3 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-slate-50 text-slate-600 border-slate-200">
+                  <span v-else class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-slate-50 text-slate-600 border-slate-200">
                     <span class="material-symbols-outlined text-[12px]">password</span>
                     LOCAL
                   </span>
                 </div>
               </td>
 
+              <!-- Status -->
+              <td class="px-3 py-4">
+                <div class="flex justify-center">
+                  <span v-if="user.isLocked" class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-red-50 text-red-600 border-red-200">
+                    <span class="material-symbols-outlined text-[12px]">lock</span>
+                    KHÓA
+                  </span>
+                  <span v-else class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-emerald-50 text-emerald-600 border-emerald-200">
+                    <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                    HĐ
+                  </span>
+                </div>
+              </td>
+
               <!-- Wallet -->
-              <td class="px-6 py-4 text-right">
+              <td class="px-3 py-4 text-right">
                 <span class="text-body-md font-black text-emerald-600">
                   {{ user.walletBalance ? user.walletBalance.toLocaleString('vi-VN') : '0' }} đ
                 </span>
               </td>
 
               <!-- Action Controls -->
-              <td class="px-6 py-4">
-                <div class="flex items-center justify-center gap-2">
+              <td class="px-3 py-4">
+                <div class="flex items-center justify-center gap-1">
+                  <button 
+                    @click="openHistoryModal(user)"
+                    class="p-2 bg-indigo-50 hover:bg-indigo-500 hover:text-white text-indigo-600 rounded-xl transition-all active:scale-90 shadow-sm"
+                    title="Xem lịch sử đặt vé"
+                  >
+                    <span class="material-symbols-outlined text-sm">receipt_long</span>
+                  </button>
                   <button 
                     @click="openEditModal(user)"
                     class="p-2 bg-slate-100 hover:bg-primary hover:text-white text-slate-600 rounded-xl transition-all active:scale-90 shadow-sm"
                     title="Sửa thông tin & Nạp tiền"
                   >
                     <span class="material-symbols-outlined text-sm">edit</span>
+                  </button>
+                  <button 
+                    v-if="user.role !== 'ADMIN'"
+                    @click="toggleLock(user)"
+                    :class="['p-2 rounded-xl transition-all active:scale-90 shadow-sm', user.isLocked ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-600']"
+                    :title="user.isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'"
+                  >
+                    <span class="material-symbols-outlined text-sm">{{ user.isLocked ? 'lock' : 'lock_open' }}</span>
                   </button>
                   <button 
                     v-if="user.role !== 'ADMIN' && (!user.ticketCount || user.ticketCount === 0)"
@@ -240,7 +277,8 @@
                   v-model="editForm.fullName" 
                   type="text" 
                   required
-                  class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all"
+                  :disabled="!isCreateMode"
+                  class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50"
                 />
               </div>
   
@@ -252,6 +290,16 @@
                   required
                   :disabled="!isCreateMode"
                   class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-mono disabled:opacity-50"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Địa chỉ Email (Tuỳ chọn)</label>
+                <input 
+                  v-model="editForm.email" 
+                  type="email" 
+                  :disabled="!isCreateMode"
+                  class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50"
                 />
               </div>
 
@@ -311,6 +359,81 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- 📜 HISTORY MODAL -->
+    <Teleport to="body">
+      <div v-if="isHistoryModalOpen" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div @click="closeHistoryModal" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in"></div>
+        
+        <!-- Modal Content -->
+        <div class="bg-white w-full max-w-3xl rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-scale-up relative flex flex-col max-h-[85vh]">
+          <!-- Header -->
+          <div class="bg-indigo-50/50 p-6 flex items-center justify-between border-b border-indigo-100">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
+                <span class="material-symbols-outlined text-2xl font-black">receipt_long</span>
+              </div>
+              <div>
+                <h3 class="text-xl font-black text-slate-800 tracking-tight">Lịch sử đặt vé</h3>
+                <p class="text-sm font-bold text-indigo-600/80">Khách hàng: {{ historyUser?.fullName }} - {{ historyUser?.phone }}</p>
+              </div>
+            </div>
+            <button @click="closeHistoryModal" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-colors shadow-sm">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- Body -->
+          <div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50">
+            <div v-if="loadingHistory" class="flex flex-col items-center justify-center py-12">
+              <span class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></span>
+              <span class="text-sm font-bold text-slate-500">Đang tải lịch sử...</span>
+            </div>
+            <div v-else-if="userBookings.length === 0" class="text-center py-12 bg-white rounded-3xl border border-slate-100 shadow-sm">
+              <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl">receipt_long</span>
+              </div>
+              <p class="text-body-md font-bold text-slate-500">Người dùng này chưa đặt chuyến xe nào.</p>
+            </div>
+            <div v-else class="space-y-4">
+              <div v-for="booking in userBookings" :key="booking.id" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                <div class="absolute left-0 top-0 w-1 h-full" :class="booking.status === 'CANCELLED' ? 'bg-red-500' : 'bg-emerald-500'"></div>
+                <div class="flex justify-between items-start mb-3">
+                  <div>
+                    <span class="text-xs font-black px-2 py-1 rounded-md uppercase tracking-wider mb-2 inline-block" :class="booking.status === 'CANCELLED' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'">
+                      {{ booking.status === 'CANCELLED' ? 'Đã hủy' : 'Thành công' }}
+                    </span>
+                    <h4 class="text-base font-black text-slate-800">
+                      {{ booking.trip?.departurePoint || 'N/A' }} 
+                      <span class="material-symbols-outlined text-sm align-middle mx-1 text-slate-400">arrow_forward</span> 
+                      {{ booking.trip?.arrivalPoint || 'N/A' }}
+                    </h4>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-lg font-black" :class="booking.status === 'CANCELLED' ? 'text-slate-400 line-through' : 'text-emerald-600'">
+                      {{ booking.totalPrice ? booking.totalPrice.toLocaleString('vi-VN') : '0' }}đ
+                    </p>
+                    <p class="text-xs font-bold text-slate-400">Mã vé: #{{ booking.id }}</p>
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div class="flex items-center gap-2 text-slate-600">
+                    <span class="material-symbols-outlined text-[16px] text-slate-400">event</span>
+                    <span class="font-medium">{{ booking.trip?.departureDate ? new Date(booking.trip.departureDate).toLocaleDateString('vi-VN') : 'N/A' }} - {{ booking.trip?.departureTime || 'N/A' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-slate-600">
+                    <span class="material-symbols-outlined text-[16px] text-slate-400">airline_seat_recline_normal</span>
+                    <span class="font-medium">Ghế: <strong class="text-slate-800 font-black">{{ booking.seatNumbers || 'Trống' }}</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -324,8 +447,13 @@ const loading = ref(true);
 const searchQuery = ref('');
 const activeTab = ref('users'); // 'users' or 'staff'
 const isModalOpen = ref(false);
-const submitting = ref(false);
 const isCreateMode = ref(false);
+const submitting = ref(false);
+
+const isHistoryModalOpen = ref(false);
+const historyUser = ref(null);
+const userBookings = ref([]);
+const loadingHistory = ref(false);
 
 // State Delete Modal
 const userToDelete = ref(null);
@@ -336,6 +464,7 @@ const editForm = ref({
   id: null,
   fullName: '',
   phone: '',
+  email: '',
   password: '',
   role: 'USER',
   walletBalance: 0
@@ -372,13 +501,38 @@ const filteredUsers = computed(() => {
     );
   }
 
+  // 3. Sắp xếp theo ID giảm dần (Mới nhất lên đầu)
+  list = list.sort((a, b) => b.id - a.id);
+
   return list;
 });
 
 const openEditModal = (user) => {
   isCreateMode.value = false;
-  editForm.value = { ...user, phone: user.phone?.startsWith('GG_') ? '' : user.phone, password: '' };
+  editForm.value = { ...user, phone: user.phone?.startsWith('GG_') ? '' : user.phone, password: '', email: user.email || '' };
   isModalOpen.value = true;
+};
+
+const openHistoryModal = async (user) => {
+  historyUser.value = user;
+  isHistoryModalOpen.value = true;
+  loadingHistory.value = true;
+  userBookings.value = [];
+  try {
+    const res = await api.get(`/users/${user.id}/bookings`);
+    userBookings.value = res.data.sort((a, b) => b.id - a.id); // Sắp xếp theo ID giảm dần
+  } catch (error) {
+    console.error("Lỗi lấy lịch sử vé", error);
+    alert("Không thể tải lịch sử mua vé");
+  } finally {
+    loadingHistory.value = false;
+  }
+};
+
+const closeHistoryModal = () => {
+  isHistoryModalOpen.value = false;
+  historyUser.value = null;
+  userBookings.value = [];
 };
 
 const openCreateModal = () => {
@@ -387,6 +541,7 @@ const openCreateModal = () => {
     id: null,
     fullName: '',
     phone: '',
+    email: '',
     password: '',
     role: 'USER',
     walletBalance: 0
@@ -405,6 +560,7 @@ const submitEdit = async () => {
       await api.post('/auth/register', {
         fullName: editForm.value.fullName,
         phone: editForm.value.phone,
+        email: editForm.value.email,
         password: editForm.value.password || '123456'
       });
       const response = await api.get('/users');
@@ -450,6 +606,19 @@ const confirmDelete = async () => {
     alert(error.response?.data?.message || "Không thể xoá người dùng! Vui lòng thử lại.");
   } finally {
     isDeleting.value = false;
+  }
+};
+
+const toggleLock = async (user) => {
+  const action = user.isLocked ? 'mở khóa' : 'khóa';
+  if (!confirm(`Xác nhận ${action} tài khoản ${user.fullName}?`)) return;
+  try {
+    await api.put(`/users/${user.id}/lock`);
+    await fetchUsers();
+    alert(`${action.charAt(0).toUpperCase() + action.slice(1)} tài khoản thành công!`);
+  } catch (error) {
+    console.error("Lỗi khóa tài khoản:", error);
+    alert(error.response?.data?.message || `Không thể ${action} tài khoản!`);
   }
 };
 

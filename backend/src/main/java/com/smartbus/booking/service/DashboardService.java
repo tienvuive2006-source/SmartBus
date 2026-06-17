@@ -24,10 +24,8 @@ public class DashboardService {
     public Map<String, Object> getLiveStats() {
         Map<String, Object> stats = new HashMap<>();
 
-        // Lấy tất cả bookings đã thanh toán hoặc đã lên xe
-        List<com.smartbus.booking.entity.Booking> paidBookings = bookingRepository.findAll().stream()
-                .filter(b -> "PAID".equals(b.getStatus()) || "CHECKED_IN".equals(b.getStatus()))
-                .toList();
+        // Lấy tất cả bookings đã thanh toán hoặc đã lên xe BẰNG 1 CÂU QUERY TỐI ƯU (Tránh N+1)
+        List<com.smartbus.booking.entity.Booking> paidBookings = bookingRepository.findByStatusIn(List.of("PAID", "CHECKED_IN"));
 
         // 1. Tính tổng số vé đã bán thành công
         long totalTicketsSold = paidBookings.stream()
@@ -42,11 +40,9 @@ public class DashboardService {
         // 3. Thống kê Chuyến xe
         long totalTrips = tripRepository.count();
 
-        // 4. Thống kê Hạm đội xe thực tế
+        // 4. Thống kê Hạm đội xe thực tế bằng Query đếm trực tiếp
         long totalBuses = busRepository.count();
-        long activeBuses = busRepository.findAll().stream()
-                .filter(b -> "ĐANG CHẠY".equalsIgnoreCase(b.getStatus()))
-                .count();
+        long activeBuses = busRepository.countByStatusIgnoreCase("ĐANG CHẠY");
 
         // 5. Tính doanh thu theo ngày trong tuần hiện tại (Thứ 2 đến Chủ nhật)
         double[] weeklyRevenue = new double[7]; // index 0 = T2, 6 = CN

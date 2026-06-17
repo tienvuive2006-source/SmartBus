@@ -23,18 +23,21 @@ public class BusController {
     }
 
     // 2. Khởi tạo xe mới
+    @com.smartbus.booking.annotation.AuditAction(action = "CREATE_BUS", entityName = "Bus")
     @PostMapping
     public ResponseEntity<Bus> createBus(@RequestBody Bus bus) {
         return ResponseEntity.ok(busService.saveBus(bus));
     }
 
     // 3. Cập nhật thông tin xe (Bọc explicit path variable cho Spring Boot 3.2)
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_BUS", entityName = "Bus")
     @PutMapping("/{id}")
     public ResponseEntity<Bus> updateBus(@PathVariable("id") Long id, @RequestBody Bus bus) {
         return ResponseEntity.ok(busService.updateBus(id, bus));
     }
 
     // 4. Xóa sổ xe khỏi kho (Bọc explicit path variable cho Spring Boot 3.2)
+    @com.smartbus.booking.annotation.AuditAction(action = "DELETE_BUS", entityName = "Bus")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBus(@PathVariable("id") Long id) {
         busService.deleteBus(id);

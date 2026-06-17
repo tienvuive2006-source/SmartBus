@@ -23,6 +23,7 @@ import AdminRouteManagerView from '../views/admin/AdminRouteManagerView.vue'
 import InspectorLayout from '../layouts/InspectorLayout.vue'
 import InspectorDashboardView from '../views/inspector/InspectorDashboardView.vue'
 import InspectorTripDetailView from '../views/inspector/InspectorTripDetailView.vue'
+import AdminAuditLogView from '../views/admin/AdminAuditLogView.vue'
 
 // (I will add routes inside the router array)
 
@@ -149,6 +150,11 @@ const router = createRouter({
           path: 'reviews',
           name: 'admin-review-manager',
           component: AdminReviewManagerView
+        },
+        {
+          path: 'audit-logs',
+          name: 'admin-audit-logs',
+          component: AdminAuditLogView
         }
       ]
     },

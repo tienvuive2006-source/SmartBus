@@ -56,15 +56,22 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
+    // ✅ Lấy userId từ token
+    public Long extractUserId(String token) {
+        Object userIdObj = extractAllClaims(token).get("userId");
+        if (userIdObj instanceof Integer) {
+            return ((Integer) userIdObj).longValue();
+        } else if (userIdObj instanceof Long) {
+            return (Long) userIdObj;
+        }
+        return Long.parseLong(userIdObj.toString());
+    }
+
     // ✅ Lấy role từ token
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
 
-    // ✅ Lấy userId từ token
-    public Long extractUserId(String token) {
-        return extractAllClaims(token).get("userId", Long.class);
-    }
 
     // ✅ Kiểm tra token có hết hạn chưa
     public boolean isTokenExpired(String token) {

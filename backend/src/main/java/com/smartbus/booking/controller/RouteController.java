@@ -21,16 +21,19 @@ public class RouteController {
         return ResponseEntity.ok(routeService.getAllRoutes());
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "CREATE_ROUTE", entityName = "Route")
     @PostMapping
     public ResponseEntity<Route> createRoute(@RequestBody Route route) {
         return ResponseEntity.ok(routeService.saveRoute(route));
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_ROUTE", entityName = "Route")
     @PutMapping("/{id}")
     public ResponseEntity<Route> updateRoute(@PathVariable("id") Long id, @RequestBody Route route) {
         return ResponseEntity.ok(routeService.updateRoute(id, route));
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "DELETE_ROUTE", entityName = "Route")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRoute(@PathVariable("id") Long id) {
         routeService.deleteRoute(id);

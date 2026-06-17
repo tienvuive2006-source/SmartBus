@@ -11,8 +11,8 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
-const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
-// const API_BASE = 'http://localhost:8080/api'
+// const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
+const API_BASE = 'http://localhost:8080/api'
 
 let apiInstance = null;
 
@@ -47,6 +47,13 @@ export function useApi() {
           // Token hết hạn -> tự động logout
           useAuthStore().logout()
           // Redirect về login
+          if (!window.location.pathname.includes('/auth/')) {
+            window.location.href = '/auth/login'
+          }
+        } else if (error.response?.status === 403 && error.response?.data?.error === 'ACCOUNT_LOCKED') {
+          // Tài khoản vừa bị khóa -> Thông báo và văng ngay lập tức
+          useAuthStore().logout()
+          alert("⛔ TÀI KHOẢN BỊ KHÓA!\nPhiên đăng nhập của bạn đã bị Quản trị viên vô hiệu hóa.")
           if (!window.location.pathname.includes('/auth/')) {
             window.location.href = '/auth/login'
           }

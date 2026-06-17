@@ -45,19 +45,49 @@
             </div>
           </div>
 
-          <!-- Password -->
+          <!-- Email -->
           <div>
-            <label class="block text-label-md font-black text-slate-600 uppercase tracking-wider mb-2">Mật khẩu bảo mật</label>
+            <label class="block text-label-md font-black text-slate-600 uppercase tracking-wider mb-2">Địa chỉ Email (Tùy chọn)</label>
             <div class="relative">
-              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">lock</span>
+              <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">mail</span>
               <input 
-                v-model="password" 
-                type="password" 
-                placeholder="Nhập tối thiểu 6 ký tự" 
-                required
-                minlength="6"
+                v-model="email" 
+                type="email" 
+                placeholder="Ví dụ: example@gmail.com" 
                 class="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-body-md font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
               />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">Mật khẩu</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">lock</span>
+                <input 
+                  v-model="password" 
+                  type="password" 
+                  placeholder="Tối thiểu 6 ký tự" 
+                  required
+                  minlength="6"
+                  class="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-body-md font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-2">Nhập lại</label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">lock_reset</span>
+                <input 
+                  v-model="confirmPassword" 
+                  type="password" 
+                  placeholder="Nhập lại MK" 
+                  required
+                  minlength="6"
+                  class="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-body-md font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
             </div>
           </div>
 
@@ -108,16 +138,24 @@ const authStore = useAuthStore();
 
 const fullName = ref('');
 const phone = ref('');
+const email = ref('');
 const password = ref('');
+const confirmPassword = ref('');
 const loading = ref(false);
 const errorMsg = ref('');
 
 const handleRegister = async () => {
   errorMsg.value = '';
+  
+  if (password.value !== confirmPassword.value) {
+    errorMsg.value = 'Mật khẩu nhập lại không khớp!';
+    return;
+  }
+  
   loading.value = true;
   
   try {
-    await authStore.register(fullName.value, phone.value, password.value);
+    await authStore.register(fullName.value, phone.value, password.value, email.value);
     
     // 🚀 Tự động đăng nhập ngay sau khi đăng ký -> về profile hưởng 500k
     router.push('/');

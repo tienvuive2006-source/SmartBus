@@ -2,13 +2,26 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
 
-const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
-// const API_BASE = 'http://localhost:8080/api'
+// const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
+const API_BASE = 'http://localhost:8080/api'
 
 export const useAuthStore = defineStore('auth', () => {
   // ─── STATE ────────────────────────────────────────────────────────
   const token = ref(localStorage.getItem('jwt_token') || null)
   const user = ref(JSON.parse(localStorage.getItem('jwt_user') || 'null'))
+  const notifications = ref([])
+
+  // ✅ Nạp thông báo riêng của User hiện tại
+  const loadNotifications = () => {
+    if (user.value && user.value.id) {
+      notifications.value = JSON.parse(localStorage.getItem(`app_notifications_${user.value.id}`) || '[]')
+    } else {
+      notifications.value = []
+    }
+  }
+  
+  // Gọi lần đầu khi khởi tạo store
+  loadNotifications()
 
   // ─── GETTERS ──────────────────────────────────────────────────────
   const isLoggedIn = computed(() => !!token.value)
@@ -21,6 +34,10 @@ export const useAuthStore = defineStore('auth', () => {
   const authHeader = computed(() => ({
     headers: { Authorization: `Bearer ${token.value}` }
   }))
+  
+  const unreadNotificationsCount = computed(() => {
+    return notifications.value.filter(n => !n.read).length
+  })
 
   // ─── ACTIONS ──────────────────────────────────────────────────────
 
@@ -39,8 +56,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ✅ Đăng ký
-  const register = async (fullName, phone, password) => {
-    const response = await axios.post(`${API_BASE}/auth/register`, { fullName, phone, password })
+  const register = async (fullName, phone, password, email = null) => {
+    const response = await axios.post(`${API_BASE}/auth/register`, { fullName, phone, password, email })
     _saveSession(response.data)
     return response.data
   }
@@ -49,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = () => {
     token.value = null
     user.value = null
+    notifications.value = []
     localStorage.removeItem('jwt_token')
     localStorage.removeItem('jwt_user')
     // Xóa luôn key cũ nếu còn tồn tại
@@ -64,7 +82,23 @@ export const useAuthStore = defineStore('auth', () => {
     if (!token.value) return null
     try {
       const response = await axios.get(`${API_BASE}/auth/me`, authHeader.value)
-      user.value = response.data
+      const freshUser = response.data
+      
+      // So sánh số dư ví (nếu có user cũ và số dư thay đổi)
+      if (user.value && user.value.walletBalance !== undefined && freshUser.walletBalance !== undefined) {
+        const diff = freshUser.walletBalance - user.value.walletBalance
+        if (diff !== 0) {
+          addNotification({
+            type: 'WALLET',
+            title: `Biến động số dư (${diff > 0 ? '+' : ''}${diff.toLocaleString('vi-VN')}đ)`,
+            message: `Quản trị viên đã ${diff > 0 ? 'cộng' : 'trừ'} ${Math.abs(diff).toLocaleString('vi-VN')}đ ${diff > 0 ? 'vào' : 'khỏi'} ví của bạn.`,
+            amount: diff,
+            date: new Date().toISOString()
+          })
+        }
+      }
+
+      user.value = freshUser
       localStorage.setItem('jwt_user', JSON.stringify(response.data))
       return response.data
     } catch {
@@ -73,10 +107,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // ✅ Quản lý thông báo
+  const addNotification = (notif) => {
+    if (!user.value?.id) return
+    notifications.value.unshift({ ...notif, id: Date.now(), read: false })
+    localStorage.setItem(`app_notifications_${user.value.id}`, JSON.stringify(notifications.value))
+  }
+
+  const markAllNotificationsRead = () => {
+    if (!user.value?.id) return
+    notifications.value.forEach(n => n.read = true)
+    localStorage.setItem(`app_notifications_${user.value.id}`, JSON.stringify(notifications.value))
+  }
+
+  const clearNotifications = () => {
+    if (!user.value?.id) return
+    notifications.value = []
+    localStorage.setItem(`app_notifications_${user.value.id}`, JSON.stringify([]))
+  }
+
   // ✅ Cập nhật số dư ví (dùng khi sau khi thanh toán)
   const updateWalletBalance = (newBalance) => {
     if (user.value) {
       user.value = { ...user.value, walletBalance: newBalance }
+      localStorage.setItem('jwt_user', JSON.stringify(user.value))
+    }
+  }
+
+  // ✅ Cập nhật thông tin User (dùng sau khi sửa Profile)
+  const updateUser = (newUserObj) => {
+    if (user.value) {
+      user.value = { ...user.value, ...newUserObj }
       localStorage.setItem('jwt_user', JSON.stringify(user.value))
     }
   }
@@ -90,28 +151,44 @@ export const useAuthStore = defineStore('auth', () => {
       fullName: data.fullName,
       role: data.role,
       email: data.email,
-      walletBalance: data.walletBalance
+      walletBalance: data.walletBalance,
+      authProvider: data.authProvider || 'LOCAL'
     }
     localStorage.setItem('jwt_token', data.token)
     localStorage.setItem('jwt_user', JSON.stringify(user.value))
+    loadNotifications() // Nạp thông báo khi có session mới
   }
+
+  // ─── REALTIME POLLING ──────────────────────────────────────────────
+  // Tự động kiểm tra thay đổi số dư siêu tốc (3 giây/lần)
+  setInterval(() => {
+    if (token.value && user.value && user.value.role === 'USER') {
+      fetchMe()
+    }
+  }, 3000)
 
   return {
     // state
     token,
     user,
+    notifications,
     // getters
     isLoggedIn,
     isAdmin,
     isInspector,
     currentUser,
     authHeader,
+    unreadNotificationsCount,
     // actions
     login,
     googleLogin,
     register,
     logout,
     fetchMe,
-    updateWalletBalance
+    updateWalletBalance,
+    updateUser,
+    addNotification,
+    markAllNotificationsRead,
+    clearNotifications
   }
 })

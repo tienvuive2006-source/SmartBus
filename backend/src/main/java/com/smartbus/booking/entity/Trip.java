@@ -84,10 +84,12 @@ public class Trip {
 
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore // Tránh lặp vô hạn JSON
+    @lombok.ToString.Exclude
     private java.util.List<Seat> seats;
 
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
     private java.util.List<Booking> bookings;
 
     @ManyToOne(fetch = FetchType.EAGER)

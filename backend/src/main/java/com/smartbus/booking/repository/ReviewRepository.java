@@ -10,6 +10,7 @@ import java.util.List;
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"user", "booking", "repliedBy"})
     List<Review> findByCompanyName(String companyName);
 
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.companyName = :companyName")
@@ -23,4 +24,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     java.util.Optional<Review> findByBookingId(Long bookingId);
     
     List<Review> findByBookingIdIn(List<Long> bookingIds);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"user", "booking", "booking.trip", "repliedBy"})
+    @Query("SELECT r FROM Review r")
+    List<Review> findAllWithDetails();
 }

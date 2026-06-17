@@ -309,7 +309,7 @@ const submitReply = async () => {
   try {
     await api.put(`/reviews/${selectedReview.value.id}/reply`, { 
       reply: replyContent.value,
-      adminId: authStore.user.id
+      adminId: authStore.currentUser?.id
     });
     alert('Đã gửi phản hồi!');
     showReplyModal.value = false;

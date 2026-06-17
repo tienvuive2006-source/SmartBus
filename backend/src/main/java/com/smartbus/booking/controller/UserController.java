@@ -39,14 +39,15 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userRepository.findAll();
-        List<com.smartbus.booking.entity.Booking> allBookings = bookingRepository.findAll();
         
+        // Tối ưu hóa N+1: Lấy trực tiếp tổng số vé từng User từ Database
+        List<Object[]> ticketCounts = bookingRepository.countTicketsPerUser();
         java.util.Map<Long, Integer> userTicketCounts = new java.util.HashMap<>();
-        for (com.smartbus.booking.entity.Booking b : allBookings) {
-            if (b.getUser() != null && !"CANCELLED".equals(b.getStatus())) {
-                Long userId = b.getUser().getId();
-                userTicketCounts.put(userId, userTicketCounts.getOrDefault(userId, 0) + b.getSeatNumbers().size());
-            }
+        
+        for (Object[] row : ticketCounts) {
+            Long userId = (Long) row[0];
+            Number count = (Number) row[1];
+            userTicketCounts.put(userId, count.intValue());
         }
         
         for (User user : users) {
@@ -67,6 +68,7 @@ public class UserController {
     }
 
     // 2. Cập nhật thông tin Người dùng (Số dư ví, Quyền hạn)
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_USER", entityName = "User")
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable("id") Long id, @RequestBody User userUpdates) {
         Optional<User> userOpt = userRepository.findById(id);
@@ -76,11 +78,13 @@ public class UserController {
 
         User existingUser = userOpt.get();
         
-        String currentPhone = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        String currentUserIdStr = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        Long currentUserId = Long.parseLong(currentUserIdStr);
+        
         boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
-        if (!isAdmin && !existingUser.getPhone().equals(currentPhone)) {
+        if (!isAdmin && !existingUser.getId().equals(currentUserId)) {
             return ResponseEntity.status(403).body("Không có quyền cập nhật tài khoản của người khác!");
         }
 
@@ -132,7 +136,25 @@ public class UserController {
         return ResponseEntity.ok(savedUser);
     }
 
+    // 2.5. Khóa/Mở khóa tài khoản
+    @com.smartbus.booking.annotation.AuditAction(action = "TOGGLE_USER_LOCK", entityName = "User")
+    @PutMapping("/{id}/lock")
+    public ResponseEntity<?> toggleUserLock(@PathVariable("id") Long id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        User user = userOpt.get();
+        if ("ADMIN".equals(user.getRole())) {
+            return ResponseEntity.status(400).body(java.util.Map.of("message", "Không thể khóa tài khoản Quản trị viên (ADMIN)!"));
+        }
+        user.setIsLocked(user.getIsLocked() == null ? true : !user.getIsLocked());
+        userRepository.save(user);
+        return ResponseEntity.ok(user);
+    }
+
     // 3. Xoá người dùng
+    @com.smartbus.booking.annotation.AuditAction(action = "DELETE_USER", entityName = "User")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable("id") Long id) {
         Optional<User> userOpt = userRepository.findById(id);
@@ -148,11 +170,9 @@ public class UserController {
         }
 
         // Kiểm tra xem khách hàng đã mua vé chưa, nếu có vé thì cấm xoá
-        List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findAll();
-        for (com.smartbus.booking.entity.Booking b : userBookings) {
-            if (b.getUser() != null && b.getUser().getId().equals(id)) {
-                return ResponseEntity.status(400).body(java.util.Map.of("message", "Không thể xoá khách hàng đã có lịch sử mua vé!"));
-            }
+        List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(id);
+        if (!userBookings.isEmpty()) {
+            return ResponseEntity.status(400).body(java.util.Map.of("message", "Không thể xoá khách hàng đã có lịch sử mua vé!"));
         }
 
         // Unlink or delete inspector if this user is an inspector
@@ -160,12 +180,10 @@ public class UserController {
         if (insp.isPresent()) {
             com.smartbus.booking.entity.Inspector inspector = insp.get();
             // Unlink trips assigned to this inspector
-            List<com.smartbus.booking.entity.Trip> trips = tripRepository.findAll();
+            List<com.smartbus.booking.entity.Trip> trips = tripRepository.findByInspectorId(inspector.getId());
             for (com.smartbus.booking.entity.Trip t : trips) {
-                if (t.getInspector() != null && t.getInspector().getId().equals(inspector.getId())) {
-                    t.setInspector(null);
-                    tripRepository.save(t);
-                }
+                t.setInspector(null);
+                tripRepository.save(t);
             }
             inspectorRepository.delete(inspector);
         }
@@ -177,7 +195,9 @@ public class UserController {
     // 4. Lấy lịch sử giao dịch/đặt vé của người dùng
     @GetMapping("/{id}/bookings")
     public ResponseEntity<?> getUserBookings(@PathVariable("id") Long id) {
-        String currentPhone = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        String currentUserIdStr = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        Long currentUserId = Long.parseLong(currentUserIdStr);
+        
         boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
@@ -187,24 +207,30 @@ public class UserController {
         }
 
         User existingUser = userOpt.get();
-        if (!isAdmin && !existingUser.getPhone().equals(currentPhone)) {
+        if (!isAdmin && !existingUser.getId().equals(currentUserId)) {
             return ResponseEntity.status(403).body("Không có quyền xem lịch sử của người khác!");
         }
 
         List<com.smartbus.booking.entity.Booking> userBookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(id);
         
-        // Populate isReviewed flag and review content
-        for (com.smartbus.booking.entity.Booking b : userBookings) {
-            java.util.Optional<com.smartbus.booking.entity.Review> reviewOpt = reviewRepository.findByBookingId(b.getId());
-            if (reviewOpt.isPresent()) {
-                b.setReviewed(true);
-                // Prevent infinite recursion by nullifying booking and user within the transient Review
-                com.smartbus.booking.entity.Review r = reviewOpt.get();
-                r.setBooking(null);
-                r.setUser(null);
-                b.setUserReview(r);
-            } else {
-                b.setReviewed(false);
+        // Populate isReviewed flag and review content (Tối ưu N+1 Query)
+        if (!userBookings.isEmpty()) {
+            List<Long> bookingIds = userBookings.stream().map(com.smartbus.booking.entity.Booking::getId).collect(java.util.stream.Collectors.toList());
+            List<com.smartbus.booking.entity.Review> reviews = reviewRepository.findByBookingIdIn(bookingIds);
+            java.util.Map<Long, com.smartbus.booking.entity.Review> reviewMap = reviews.stream()
+                    .collect(java.util.stream.Collectors.toMap(r -> r.getBooking().getId(), r -> r));
+            
+            for (com.smartbus.booking.entity.Booking b : userBookings) {
+                com.smartbus.booking.entity.Review r = reviewMap.get(b.getId());
+                if (r != null) {
+                    b.setReviewed(true);
+                    // Prevent infinite recursion by nullifying booking and user within the transient Review
+                    r.setBooking(null);
+                    r.setUser(null);
+                    b.setUserReview(r);
+                } else {
+                    b.setReviewed(false);
+                }
             }
         }
         
