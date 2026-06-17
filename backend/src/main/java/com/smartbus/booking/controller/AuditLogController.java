@@ -23,6 +23,6 @@ public class AuditLogController {
 
     @GetMapping
     public ResponseEntity<List<AuditLog>> getLogs() {
-        return ResponseEntity.ok(auditLogRepository.findAllByOrderByCreatedAtDesc());
+        return ResponseEntity.ok(auditLogRepository.findAllByOrderByIdDesc());
     }
 }
