@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     List<AuditLog> findAllByOrderByIdDesc();
+    
+    @org.springframework.transaction.annotation.Transactional
+    void deleteAllByActionName(String actionName);
 }

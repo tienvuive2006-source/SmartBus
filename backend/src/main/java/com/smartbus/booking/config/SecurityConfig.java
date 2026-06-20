@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/settings/**").permitAll()
                 // Cho phép khách vãng lai đặt vé và kiểm tra thanh toán
                 .requestMatchers("/admin/bookings/**").permitAll()
+                // Cho phép kết nối WebSocket
+                .requestMatchers("/ws/**").permitAll()
                 // ⚡ H2 console (chỉ dùng khi dev)
                 .requestMatchers("/h2-console/**").permitAll()
                 // 🔒 Admin endpoints - chỉ ADMIN
@@ -70,8 +72,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/users/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/users/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
-                // 🎫 Inspector endpoints
-                .requestMatchers("/inspector/**").hasAnyRole("ADMIN", "INSPECTOR")
+                // 🎫 Inspector & Driver endpoints
+                .requestMatchers("/inspector/**").hasAnyRole("ADMIN", "INSPECTOR", "DRIVER")
                 // 🔐 Các route còn lại cần đăng nhập
                 .anyRequest().authenticated()
             )

@@ -204,7 +204,8 @@ public class AuthController {
                     "role", user.getRole(),
                     "email", user.getEmail() != null ? user.getEmail() : "",
                     "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
-                    "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL"
+                    "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL",
+                    "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : ""
             ));
         } catch (Exception e) {
             return ResponseEntity.status(401).body("Token đã hết hạn hoặc không hợp lệ!");
@@ -356,7 +357,8 @@ public class AuthController {
                 "role", user.getRole(),
                 "email", user.getEmail() != null ? user.getEmail() : "",
                 "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
-                "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL"
+                "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL",
+                "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : ""
         );
     }
 }

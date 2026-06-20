@@ -25,4 +25,16 @@ public class AuditLogController {
     public ResponseEntity<List<AuditLog>> getLogs() {
         return ResponseEntity.ok(auditLogRepository.findAllByOrderByIdDesc());
     }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteLog(@org.springframework.web.bind.annotation.PathVariable("id") Long id) {
+        auditLogRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/clear-errors")
+    public ResponseEntity<Void> clearErrorLogs() {
+        auditLogRepository.deleteAllByActionName("SYSTEM_ERROR");
+        return ResponseEntity.noContent().build();
+    }
 }

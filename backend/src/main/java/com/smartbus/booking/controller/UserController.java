@@ -20,19 +20,22 @@ public class UserController {
     private final com.smartbus.booking.repository.TripRepository tripRepository;
     private final com.smartbus.booking.repository.ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     public UserController(UserRepository userRepository, 
                           com.smartbus.booking.repository.BookingRepository bookingRepository, 
                           com.smartbus.booking.repository.InspectorRepository inspectorRepository,
                           com.smartbus.booking.repository.TripRepository tripRepository,
                           com.smartbus.booking.repository.ReviewRepository reviewRepository,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.inspectorRepository = inspectorRepository;
         this.tripRepository = tripRepository;
         this.reviewRepository = reviewRepository;
         this.passwordEncoder = passwordEncoder;
+        this.messagingTemplate = messagingTemplate;
     }
 
     // 1. Lấy toàn bộ danh sách Người dùng
@@ -98,11 +101,14 @@ public class UserController {
         existingUser.setFullName(userUpdates.getFullName());
         existingUser.setPhone(userUpdates.getPhone());
         existingUser.setEmail(userUpdates.getEmail());
+        existingUser.setAvatarUrl(userUpdates.getAvatarUrl());
         
         if (isAdmin) {
             existingUser.setRole(userUpdates.getRole());
             if (userUpdates.getWalletBalance() != null) {
                 existingUser.setWalletBalance(userUpdates.getWalletBalance());
+                // Push WebSocket notification
+                messagingTemplate.convertAndSend("/topic/wallet/" + existingUser.getId(), "UPDATE");
             }
         }
         
@@ -113,8 +119,8 @@ public class UserController {
 
         User savedUser = userRepository.save(existingUser);
 
-        // Auto-sync Inspector entity
-        if ("INSPECTOR".equals(savedUser.getRole())) {
+        // Auto-sync Inspector entity for Staff (Lơ xe or Tài xế)
+        if ("INSPECTOR".equals(savedUser.getRole()) || "DRIVER".equals(savedUser.getRole())) {
             Optional<com.smartbus.booking.entity.Inspector> existingInsp = inspectorRepository.findByUserAccountId(savedUser.getId());
             if (existingInsp.isEmpty()) {
                 com.smartbus.booking.entity.Inspector newInsp = com.smartbus.booking.entity.Inspector.builder()

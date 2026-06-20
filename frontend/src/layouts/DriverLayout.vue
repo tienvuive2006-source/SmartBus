@@ -1,12 +1,12 @@
 <template>
   <div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
     <!-- Header Mobile-friendly -->
-    <header class="bg-primary text-white shadow-md sticky top-0 z-50">
+    <header class="bg-amber-600 text-white shadow-md sticky top-0 z-50">
       <div class="flex items-center justify-between px-4 py-3">
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-3xl font-black">directions_bus</span>
           <h1 class="text-title-lg font-black tracking-tight leading-none">
-            Trung Nam <span class="text-body-sm font-medium bg-white/20 px-2 py-0.5 rounded-full ml-1 uppercase">Lơ xe</span>
+            Trung Nam <span class="text-body-sm font-medium bg-white/20 px-2 py-0.5 rounded-full ml-1 uppercase">Tài xế</span>
           </h1>
         </div>
         

@@ -66,13 +66,20 @@
               <span class="material-symbols-outlined text-sm">person_pin</span>
               Tên Tài Xế Đảm Nhiệm
             </label>
-            <input 
+            <select 
               v-model="form.driverName" 
-              type="text" 
               required
-              placeholder="Họ và tên lái xe..."
-              class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold transition-colors"
-            />
+              class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold transition-colors bg-white"
+            >
+              <option value="" disabled>-- Chọn tài xế đảm nhiệm --</option>
+              <option 
+                v-for="driver in drivers" 
+                :key="driver.id" 
+                :value="driver.fullName"
+              >
+                {{ driver.fullName }} ({{ driver.phone }})
+              </option>
+            </select>
           </div>
 
 
@@ -132,7 +139,11 @@ const props = defineProps({
   isOpen: Boolean,
   isEditMode: Boolean,
   form: Object,
-  busTypes: Array
+  busTypes: Array,
+  drivers: {
+    type: Array,
+    default: () => []
+  }
 });
 
 const emit = defineEmits(['close', 'submit']);

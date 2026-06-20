@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import SockJS from 'sockjs-client'
+import { Client } from '@stomp/stompjs'
 
-// const API_BASE = 'http://localhost:8080/api'
-const API_BASE = 'https://smartbus-6uf5.onrender.com/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 export const useAuthStore = defineStore('auth', () => {
   // ─── STATE ────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
   const isInspector = computed(() => user.value?.role === 'INSPECTOR')
+  const isDriver = computed(() => user.value?.role === 'DRIVER')
   const currentUser = computed(() => user.value)
 
   // ─── HELPERS ──────────────────────────────────────────────────────
@@ -64,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // ✅ Đăng xuất
   const logout = () => {
+    disconnectWebSocket()
     token.value = null
     user.value = null
     notifications.value = []
@@ -152,20 +155,47 @@ export const useAuthStore = defineStore('auth', () => {
       role: data.role,
       email: data.email,
       walletBalance: data.walletBalance,
-      authProvider: data.authProvider || 'LOCAL'
+      authProvider: data.authProvider || 'LOCAL',
+      avatarUrl: data.avatarUrl || null
     }
     localStorage.setItem('jwt_token', data.token)
     localStorage.setItem('jwt_user', JSON.stringify(user.value))
     loadNotifications() // Nạp thông báo khi có session mới
+    connectWebSocket() // Kết nối WebSocket
   }
 
-  // ─── REALTIME POLLING ──────────────────────────────────────────────
-  // Tự động kiểm tra thay đổi số dư siêu tốc (3 giây/lần)
-  setInterval(() => {
-    if (token.value && user.value && user.value.role === 'USER') {
-      fetchMe()
+  // ─── WEBSOCKET (REALTIME PUSH NOTIFICATIONS) ──────────────────────
+  let stompClient = null
+
+  const connectWebSocket = () => {
+    if (!user.value || !user.value.id) return
+    
+    stompClient = new Client({
+      webSocketFactory: () => new SockJS(`${API_BASE}/ws`),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        stompClient.subscribe(`/topic/wallet/${user.value.id}`, (message) => {
+          if (message.body === 'UPDATE') {
+            fetchMe() // Nhận tín hiệu từ Admin -> cập nhật số dư ngay lập tức
+          }
+        })
+      }
+    })
+    
+    stompClient.activate()
+  }
+
+  const disconnectWebSocket = () => {
+    if (stompClient) {
+      stompClient.deactivate()
+      stompClient = null
     }
-  }, 3000)
+  }
+
+  // Bật WebSocket lúc app vừa load xong nếu user đang đăng nhập
+  if (user.value && user.value.id) {
+    connectWebSocket()
+  }
 
   return {
     // state
@@ -176,6 +206,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     isAdmin,
     isInspector,
+    isDriver,
     currentUser,
     authHeader,
     unreadNotificationsCount,

@@ -10,5 +10,9 @@ export default defineConfig({
       // Cho phép dùng @/ thay vì ../../../ khi import
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  define: {
+    // Fix lỗi 'global is not defined' của thư viện sockjs-client trong Vite
+    global: 'window'
   }
 })

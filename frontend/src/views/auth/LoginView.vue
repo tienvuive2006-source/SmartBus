@@ -112,7 +112,7 @@ const handleGoogleLogin = async (response) => {
     loading.value = true;
     try {
       await authStore.googleLogin(response.credential);
-      const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : (authStore.isInspector ? '/inspector' : '/'));
+      const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : (authStore.isInspector ? '/inspector' : (authStore.isDriver ? '/driver' : '/')));
       router.push(redirectTo);
     } catch (error) {
       console.error("Lỗi đăng nhập Google:", error);
@@ -131,7 +131,7 @@ const handleLogin = async () => {
     await authStore.login(phone.value, password.value);
     
     // Nếu có redirect query param (bị chặn do chưa login) -> về đó
-    const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : (authStore.isInspector ? '/inspector' : '/'));
+    const redirectTo = route.query.redirect || (authStore.isAdmin ? '/admin' : (authStore.isInspector ? '/inspector' : (authStore.isDriver ? '/driver' : '/')));
     router.push(redirectTo);
   } catch (error) {
     console.error("Đăng nhập thất bại:", error);

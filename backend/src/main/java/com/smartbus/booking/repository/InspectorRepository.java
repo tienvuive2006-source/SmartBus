@@ -7,4 +7,5 @@ import java.util.Optional;
 public interface InspectorRepository extends JpaRepository<Inspector, Long> {
     Optional<Inspector> findByPhone(String phone);
     Optional<Inspector> findByUserAccountId(Long userId);
+    java.util.List<Inspector> findByUserAccountRole(String role);
 }

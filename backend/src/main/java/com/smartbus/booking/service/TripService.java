@@ -30,11 +30,12 @@ public class TripService {
     }
 
     public List<Trip> searchTrips(String from, String to, String date) {
-        if ((from == null || from.isEmpty()) && (to == null || to.isEmpty()) && (date == null || date.isEmpty())) {
-            return getAllTrips();
-        }
-        
-        List<Trip> tripsByDate = tripRepository.findByDepartureDateContaining(date != null ? date : "");
+        String safeDate = date != null ? date.trim() : "";
+        String todayStr = java.time.LocalDate.now().toString();
+
+        // Bước 1: Thu hẹp phễu ngay từ Database (Không cho phép lấy toàn bộ 100,000 chuyến trong quá khứ)
+        List<Trip> tripsByDate = tripRepository.findTripsSafely(safeDate, todayStr);
+
         if ((from == null || from.trim().isEmpty()) && (to == null || to.trim().isEmpty())) {
             return tripsByDate;
         }

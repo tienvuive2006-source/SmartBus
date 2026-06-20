@@ -23,7 +23,12 @@ import AdminRouteManagerView from '../views/admin/AdminRouteManagerView.vue'
 import InspectorLayout from '../layouts/InspectorLayout.vue'
 import InspectorDashboardView from '../views/inspector/InspectorDashboardView.vue'
 import InspectorTripDetailView from '../views/inspector/InspectorTripDetailView.vue'
+import DriverLayout from '../layouts/DriverLayout.vue'
+import DriverDashboardView from '../views/driver/DriverDashboardView.vue'
+import DriverTripDetailView from '../views/driver/DriverTripDetailView.vue'
 import AdminAuditLogView from '../views/admin/AdminAuditLogView.vue'
+import AdminBannerManagerView from '../views/admin/AdminBannerManagerView.vue'
+import AdminIncidentManagerView from '../views/admin/AdminIncidentManagerView.vue'
 
 // (I will add routes inside the router array)
 
@@ -142,6 +147,12 @@ const router = createRouter({
           component: AdminFleetStatusView
         },
         {
+          path: 'banners',
+          name: 'admin-banners',
+          component: AdminBannerManagerView,
+          meta: { title: 'Quản lý Banner', showBack: true }
+        },
+        {
           path: 'users',
           name: 'admin-user-manager',
           component: AdminUserManagerView
@@ -155,6 +166,12 @@ const router = createRouter({
           path: 'audit-logs',
           name: 'admin-audit-logs',
           component: AdminAuditLogView
+        },
+        {
+          path: 'incidents',
+          name: 'admin-incidents',
+          component: AdminIncidentManagerView,
+          meta: { title: 'Quản lý Sự cố', showBack: true }
         }
       ]
     },
@@ -173,12 +190,28 @@ const router = createRouter({
           component: InspectorTripDetailView
         }
       ]
+    },
+    {
+      path: '/driver',
+      component: DriverLayout,
+      children: [
+        {
+          path: '',
+          name: 'driver-dashboard',
+          component: DriverDashboardView
+        },
+        {
+          path: 'trip/:id',
+          name: 'driver-trip-detail',
+          component: DriverTripDetailView
+        }
+      ]
     }
   ]
 })
 
 // 🛡️ HỆ THỐNG TƯỜNG LỬA CỬA NGÕ (VUE NAVIGATION GUARD - JWT VERSION)
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   // Đọc thẳng từ localStorage (cách này hoạt động trước khi Pinia khởi tạo)
   const token = localStorage.getItem('jwt_token')
   const userStr = localStorage.getItem('jwt_user')
@@ -192,11 +225,11 @@ router.beforeEach((to, from, next) => {
   if (to.path.startsWith('/admin')) {
     if (!token) {
       alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Quản Trị Viên!");
-      return next({ path: '/auth/login', query: { redirect: to.fullPath } });
+      return { path: '/auth/login', query: { redirect: to.fullPath } };
     }
     if (userRole !== 'ADMIN') {
       alert("⛔ CẢNH BÁO: Bạn không có đặc quyền truy cập Bảng Quản Trị!\nHệ thống sẽ trục xuất bạn về Trang Chủ.");
-      return next('/');
+      return '/';
     }
   }
 
@@ -204,16 +237,28 @@ router.beforeEach((to, from, next) => {
   if (to.path.startsWith('/inspector')) {
     if (!token) {
       alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Nhân viên Soát vé!");
-      return next({ path: '/auth/login', query: { redirect: to.fullPath } });
+      return { path: '/auth/login', query: { redirect: to.fullPath } };
     }
     if (userRole !== 'INSPECTOR' && userRole !== 'ADMIN') {
       alert("⛔ CẢNH BÁO: Bạn không có quyền hạn Soát vé!");
-      return next('/');
+      return '/';
+    }
+  }
+
+  // 🔒 Bảo vệ route DRIVER
+  if (to.path.startsWith('/driver')) {
+    if (!token) {
+      alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Lái xe!");
+      return { path: '/auth/login', query: { redirect: to.fullPath } };
+    }
+    if (userRole !== 'DRIVER' && userRole !== 'ADMIN') {
+      alert("⛔ CẢNH BÁO: Bạn không có quyền hạn Lái xe!");
+      return '/';
     }
   }
 
   // Đủ điều kiện hợp lệ -> Cho phép đi tiếp
-  next();
+  return true;
 });
 
 export default router;

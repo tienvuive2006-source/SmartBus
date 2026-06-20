@@ -41,6 +41,7 @@ public class BookingController {
     }
 
     @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_BOOKING_STATUS", entityName = "Booking")
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     @PostMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable("id") Long id, @RequestBody Map<String, String> payload) {
         return bookingRepository.findById(id)
@@ -93,6 +94,7 @@ public class BookingController {
     }
 
     @com.smartbus.booking.annotation.AuditAction(action = "CREATE_BOOKING", entityName = "Booking")
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     @PostMapping("/create")
     public ResponseEntity<?> createBooking(@RequestBody Map<String, Object> payload) {
         try {
@@ -101,12 +103,7 @@ public class BookingController {
             booking.setCustomerPhone((String) payload.get("customerPhone"));
             booking.setCustomerEmail((String) payload.get("customerEmail"));
             booking.setSeatNumbers((List<String>) payload.get("seatNumbers"));
-            booking.setTotalPrice(Double.valueOf(payload.get("totalPrice").toString()));
-            booking.setPaymentMethod((String) payload.get("paymentMethod"));
-            booking.setStatus((String) payload.get("status"));
-            booking.setCreatedAt(LocalDateTime.now());
-
-            Long tripId = Long.valueOf(((Map) payload.get("trip")).get("id").toString());
+            Long tripId = Long.valueOf(((Map<?, ?>) payload.get("trip")).get("id").toString());
             com.smartbus.booking.entity.Trip trip = tripRepository.findById(tripId).orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe"));
 
             // KỂM TRA: Không cho phép đặt vé nếu chuyến xe đã khởi hành (vượt quá thời gian hiện tại)
@@ -129,6 +126,16 @@ public class BookingController {
                 }
             }
 
+            // Tính toán lại giá vé trên Server để bảo mật (Không tin tưởng Frontend)
+            List<String> selectedSeats = (List<String>) payload.get("seatNumbers");
+            double serverCalculatedPrice = 0.0;
+            if (selectedSeats != null && !selectedSeats.isEmpty()) {
+                serverCalculatedPrice = (trip.getPrice() != null ? trip.getPrice() : 0.0) * selectedSeats.size();
+            }
+            booking.setTotalPrice(serverCalculatedPrice);
+            booking.setPaymentMethod((String) payload.get("paymentMethod"));
+            booking.setStatus((String) payload.get("status"));
+            booking.setCreatedAt(LocalDateTime.now());
             booking.setTrip(trip);
 
             // 1. GÁN USER VÀ TRỪ TIỀN VÍ (NẾU LÀ WALLET)
@@ -140,14 +147,13 @@ public class BookingController {
                             .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
                     
                     if ("WALLET".equals(payload.get("paymentMethod"))) {
-                        double price = Double.valueOf(payload.get("totalPrice").toString());
                         double balance = user.getWalletBalance() != null ? user.getWalletBalance() : 0.0;
                         
-                        if (balance < price) {
+                        if (balance < serverCalculatedPrice) {
                             throw new RuntimeException("Số dư Ví hệ thống không đủ để thực hiện giao dịch này!");
                         }
                         
-                        user.setWalletBalance(balance - price);
+                        user.setWalletBalance(balance - serverCalculatedPrice);
                         userRepository.save(user);
                     }
                     booking.setUser(user);
@@ -155,7 +161,6 @@ public class BookingController {
             }
 
             // 2. KHÓA GHẾ & ĐỒNG BỘ (Seat Locking)
-            List<String> selectedSeats = (List<String>) payload.get("seatNumbers");
             if (selectedSeats != null && !selectedSeats.isEmpty()) {
                 seatService.bookSeats(tripId, selectedSeats);
             }
@@ -178,16 +183,23 @@ public class BookingController {
             return ResponseEntity.ok(saved);
         } catch (Exception e) {
             e.printStackTrace();
+            try {
+                org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            } catch (Exception ex) {
+                // Ignore if no transaction
+            }
             return ResponseEntity.status(500).body(Map.of("error", "Lỗi: " + e.getMessage()));
         }
     }
+    @org.springframework.beans.factory.annotation.Value("${sepay.token}")
+    private String sepayToken;
+
     @GetMapping("/check-payment")
     public ResponseEntity<?> checkPayment(
             @RequestParam("expectedContent") String expectedContent, 
             @RequestParam("expectedAmount") Double expectedAmount,
             @RequestParam(value = "sessionStartTime", required = false) String sessionStartTimeStr) {
         try {
-            String sepayToken = "M2M5CO1H4ND6MK0YACOVST1AWEOLSVMFWEPSHP5PVIFC77AYV9XLQZLJUEYQZ4D2";
             String urlStr = "https://my.sepay.vn/userapi/transactions/list";
             java.net.URL url = new java.net.URL(urlStr);
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -209,17 +221,34 @@ public class BookingController {
                 com.fasterxml.jackson.databind.JsonNode transactions = rootNode.get("transactions");
                 
                 if (transactions != null && transactions.isArray()) {
-                    String normalizedExpected = expectedContent.toLowerCase().replaceAll("[^a-z0-9]", "");
+                    String expectedCompact = expectedContent.toLowerCase().replaceAll("[^a-z0-9]", "");
+                    java.util.regex.Pattern pattern = null;
+                    if (!expectedCompact.isEmpty()) {
+                        StringBuilder regexBuilder = new StringBuilder("(^|[^a-z0-9])");
+                        char[] chars = expectedCompact.toCharArray();
+                        for (int i = 0; i < chars.length; i++) {
+                            regexBuilder.append(chars[i]);
+                            if (i < chars.length - 1) {
+                                regexBuilder.append("[^a-z0-9]*");
+                            }
+                        }
+                        regexBuilder.append("([^a-z0-9]|$)");
+                        pattern = java.util.regex.Pattern.compile(regexBuilder.toString());
+                    }
+
                     java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                     
                     for (com.fasterxml.jackson.databind.JsonNode txn : transactions) {
-                        String content = txn.get("transaction_content").asText().toLowerCase().replaceAll("[^a-z0-9]", "");
+                        String rawContent = txn.get("transaction_content").asText().toLowerCase();
+                        String normalizedContent = java.text.Normalizer.normalize(rawContent, java.text.Normalizer.Form.NFD)
+                                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "").replace("đ", "d");
+                                
                         double amountIn = Double.parseDouble(txn.get("amount_in").asText());
                         String txnDateStr = txn.get("transaction_date").asText();
                         java.time.LocalDateTime txnDate = java.time.LocalDateTime.parse(txnDateStr, formatter);
                         
-                        // Chặn trường hợp nhận nhầm giao dịch cũ bằng cách chỉ khớp chính xác nội dung
-                        boolean isContentMatch = content.contains(normalizedExpected);
+                        // Chặn trường hợp nhận nhầm giao dịch (Collision) bằng Regex Boundary
+                        boolean isContentMatch = pattern != null && pattern.matcher(normalizedContent).find();
                         
                         // Chỉ xét giao dịch sau khi khách hàng bắt đầu phiên (trừ hao 2 phút do đồng hồ lệch)
                         boolean isTimeValid = false; // Mặc định từ chối để bảo mật

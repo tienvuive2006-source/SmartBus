@@ -39,6 +39,12 @@
 			<artifactId>spring-boot-starter-aop</artifactId>
 		</dependency>
 
+		<!-- WebSocket for Real-time push notifications -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
 		<!-- PostgreSQL JDBC Driver (Supabase Cloud) -->
 		<dependency>
 			<groupId>org.postgresql</groupId>

@@ -1,10 +1,23 @@
 <template>
   <div class="lg:col-span-7 space-y-5">
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
       <h3 class="font-headline-sm text-headline-sm font-black text-on-surface">
         Bảng kê khai hạm đội
-        <span class="text-label-md font-black ml-2 bg-primary/5 text-primary px-2.5 py-0.5 rounded-full border border-primary/10">{{ buses.length }} đầu xe</span>
+        <span class="text-label-md font-black ml-2 bg-primary/5 text-primary px-2.5 py-0.5 rounded-full border border-primary/10">{{ filteredBuses.length }} đầu xe</span>
       </h3>
+
+      <div class="relative w-full sm:w-[240px]">
+        <select 
+          v-model="selectedBusType" 
+          class="w-full appearance-none bg-white border border-outline-variant/30 text-on-surface font-bold py-2.5 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+        >
+          <option value="">Tất cả dòng xe</option>
+          <option v-for="type in uniqueBusTypes" :key="type" :value="type">
+            {{ type }}
+          </option>
+        </select>
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline-variant">expand_more</span>
+      </div>
     </div>
 
     <div v-if="loading" class="p-12 bg-white rounded-2xl text-center border border-outline-variant/20 shadow-sm">
@@ -12,7 +25,7 @@
       <p class="text-body-md text-on-surface-variant">Đang quét cơ sở dữ liệu SQL Server...</p>
     </div>
 
-    <div v-else-if="buses.length === 0" class="p-12 bg-white rounded-2xl text-center border border-dashed border-outline-variant/50">
+    <div v-else-if="filteredBuses.length === 0" class="p-12 bg-white rounded-2xl text-center border border-dashed border-outline-variant/50">
       <div class="w-20 h-20 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
         <span class="material-symbols-outlined text-5xl text-outline-variant">bus_alert</span>
       </div>
@@ -25,7 +38,7 @@
 
     <div v-else class="space-y-4">
       <div 
-        v-for="bus in buses" 
+        v-for="bus in filteredBuses" 
         :key="bus.id"
         class="bg-white rounded-2xl shadow-[0px_4px_16px_rgba(0,0,0,0.02)] border border-outline-variant/25 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group"
       >
@@ -106,10 +119,27 @@
 </template>
 
 <script setup>
-defineProps({
-  buses: Array,
+import { ref, computed } from 'vue';
+
+const props = defineProps({
+  buses: {
+    type: Array,
+    default: () => []
+  },
   loading: Boolean
 });
 
 defineEmits(['open-create', 'locate', 'edit', 'delete']);
+
+const selectedBusType = ref('');
+
+const uniqueBusTypes = computed(() => {
+  const types = props.buses.map(b => b.busType);
+  return [...new Set(types)].filter(Boolean);
+});
+
+const filteredBuses = computed(() => {
+  if (!selectedBusType.value) return props.buses;
+  return props.buses.filter(b => b.busType === selectedBusType.value);
+});
 </script>

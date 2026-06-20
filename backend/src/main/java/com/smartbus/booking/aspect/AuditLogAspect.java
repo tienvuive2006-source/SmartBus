@@ -34,11 +34,13 @@ public class AuditLogAspect {
             if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
                 try {
                     userId = Long.parseLong(auth.getName());
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                }
             }
 
             HttpServletRequest request = null;
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder
+                    .getRequestAttributes();
             if (attributes != null) {
                 request = attributes.getRequest();
             }
@@ -64,12 +66,17 @@ public class AuditLogAspect {
                 }
             }
 
+            // Hàm tiện ích che giấu mật khẩu và token bằng Regex
+            String finalDetails = details.toString()
+                    .replaceAll("(?i)(password\\s*[=:]\\s*)[^,\\}\\]\\n\\r]+", "$1***")
+                    .replaceAll("(?i)(token\\s*[=:]\\s*)[^,\\}\\]\\n\\r]+", "$1***");
+
             AuditLog log = AuditLog.builder()
                     .userId(userId)
                     .actionName(auditAction.action())
                     .entityName(auditAction.entityName())
                     .entityId("N/A") // Trích xuất thêm nếu cần
-                    .details(details.toString())
+                    .details(finalDetails)
                     .ipAddress(ipAddress)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -82,52 +89,4 @@ public class AuditLogAspect {
         }
     }
 
-    // ==============================================================
-    // CAMERA QUÉT LỖI: Bắt TẤT CẢ các lỗi văng ra từ mọi Controller
-    // ==============================================================
-    @org.aspectj.lang.annotation.AfterThrowing(pointcut = "execution(* com.smartbus.booking.controller..*(..))", throwing = "ex")
-    public void logSystemError(JoinPoint joinPoint, Throwable ex) {
-        try {
-            Long userId = null;
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
-                try {
-                    userId = Long.parseLong(auth.getName());
-                } catch (NumberFormatException ignored) {}
-            }
-
-            HttpServletRequest request = null;
-            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attributes != null) {
-                request = attributes.getRequest();
-            }
-            String ipAddress = request != null ? request.getRemoteAddr() : "UNKNOWN";
-
-            String methodName = joinPoint.getSignature().getName();
-            String className = joinPoint.getTarget().getClass().getSimpleName();
-
-            StringBuilder details = new StringBuilder();
-            details.append("🔥 LỖI TẠI HÀM: ").append(className).append(".").append(methodName).append("\n");
-            details.append("⚠️ Nguyên nhân: ").append(ex.getMessage()).append("\n");
-            
-            // Trích xuất dòng code chính xác gây ra lỗi
-            if (ex.getStackTrace() != null && ex.getStackTrace().length > 0) {
-                details.append("📍 Vị trí sập nguồn: ").append(ex.getStackTrace()[0].toString());
-            }
-
-            AuditLog log = AuditLog.builder()
-                    .userId(userId)
-                    .actionName("SYSTEM_ERROR")
-                    .entityName(className)
-                    .entityId("CRITICAL")
-                    .details(details.toString())
-                    .ipAddress(ipAddress)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            auditLogRepository.save(log);
-        } catch (Exception ignored) {
-            // Lỗi chèn thì bỏ qua, không làm sập web
-        }
-    }
 }

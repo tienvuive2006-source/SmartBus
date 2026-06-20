@@ -32,6 +32,9 @@ public class User {
     @Column(nullable = true)
     private String email;
 
+    @Column(length = 1000)
+    private String avatarUrl;
+
     @Builder.Default
     private Double walletBalance = 0.0; // Tích hợp ví tiền luôn cực xịn
 

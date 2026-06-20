@@ -45,6 +45,7 @@
       :isEditMode="isEditMode"
       :form="form"
       :busTypes="busTypes"
+      :drivers="drivers"
       @close="closeModal"
       @submit="handleFormSubmit"
     />
@@ -61,6 +62,7 @@ import FleetModal from '../../components/admin/fleet/FleetModal.vue';
 const api = useApi();
 const buses = ref([]);
 const busTypes = ref([]); 
+const drivers = ref([]);
 const loading = ref(true);
 
 const fetchBusTypes = async () => {
@@ -95,6 +97,13 @@ const fetchBuses = async () => {
     buses.value = response.data;
   } catch (error) { console.error(error); }
   finally { loading.value = false; }
+};
+
+const fetchDrivers = async () => {
+  try {
+    const response = await api.get('/users');
+    drivers.value = response.data.filter(u => u.role === 'DRIVER');
+  } catch (error) { console.error(error); }
 };
 
 const isModalOpen = ref(false);
@@ -133,6 +142,7 @@ const handleDeleteBus = async (bus) => {
 
 onMounted(async () => {
   await fetchBusTypes();
+  await fetchDrivers();
   await fetchBuses();
 });
 </script>

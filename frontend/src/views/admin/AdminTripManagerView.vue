@@ -43,6 +43,23 @@
         </select>
         <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
       </div>
+      
+      <div class="relative flex-1 sm:max-w-[180px] flex items-center gap-2">
+        <input 
+          type="date" 
+          v-model="filterDate" 
+          title="Chọn ngày khởi hành"
+          class="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm transition-all" 
+        />
+        <button 
+          v-if="filterDate" 
+          @click="filterDate = ''" 
+          class="text-slate-400 hover:text-red-500 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50"
+          title="Bỏ lọc ngày"
+        >
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
     </div>
 
     <!-- 2. Main List -->
@@ -264,6 +281,7 @@ const averagePrice = computed(() => {
 // --- FILTERING LOGIC ---
 const filterRoute = ref('');
 const filterBusType = ref('');
+const filterDate = ref('');
 
 const uniqueRoutesForFilter = computed(() => {
   const routes = new Set();
@@ -286,6 +304,11 @@ const filteredTrips = computed(() => {
       const from = t.departurePoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
       const to = t.arrivalPoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
       if (`${from} ➔ ${to}` !== filterRoute.value) {
+        pass = false;
+      }
+    }
+    if (filterDate.value) {
+      if (!t.departureDate || !t.departureDate.startsWith(filterDate.value)) {
         pass = false;
       }
     }

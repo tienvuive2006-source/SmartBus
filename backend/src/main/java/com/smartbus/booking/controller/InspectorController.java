@@ -25,7 +25,7 @@ public class InspectorController {
     // 0. Lấy danh sách tất cả lơ xe (Dành cho Admin chọn)
     @GetMapping("/all")
     public ResponseEntity<List<com.smartbus.booking.entity.Inspector>> getAllInspectors() {
-        return ResponseEntity.ok(inspectorRepository.findAll());
+        return ResponseEntity.ok(inspectorRepository.findByUserAccountRole("INSPECTOR"));
     }
 
     // 0.5. Phân công lơ xe cho chuyến xe

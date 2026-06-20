@@ -18,34 +18,41 @@
     </div>
 
     <!-- Tabs Navigation -->
-    <div class="flex items-center gap-2 border-b border-gray-200 px-1 mt-2 mb-4">
-      <button 
-        @click="activeTab = 'audit'"
-        :class="[
-          'px-6 py-3 text-sm font-black transition-all border-b-2',
-          activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-        ]"
-      >
-        <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-[18px]">verified_user</span>
-          Hoạt động thường
-        </div>
-      </button>
-      <button 
-        @click="activeTab = 'error'"
-        :class="[
-          'px-6 py-3 text-sm font-black transition-all border-b-2',
-          activeTab === 'error' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-        ]"
-      >
-        <div class="flex items-center gap-2">
-          <span class="material-symbols-outlined text-[18px]">warning</span>
-          Lỗi hệ thống
-          <span v-if="errorCount > 0" class="ml-1 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-[10px]">
-            {{ errorCount }}
-          </span>
-        </div>
-      </button>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-200 px-1 mt-2 mb-4 gap-4">
+      <div class="flex items-center gap-2">
+        <button 
+          @click="activeTab = 'audit'"
+          :class="[
+            'px-6 py-3 text-sm font-black transition-all border-b-2',
+            activeTab === 'audit' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          ]"
+        >
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">verified_user</span>
+            Hoạt động thường
+          </div>
+        </button>
+        <button 
+          @click="activeTab = 'error'"
+          :class="[
+            'px-6 py-3 text-sm font-black transition-all border-b-2',
+            activeTab === 'error' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          ]"
+        >
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">warning</span>
+            Lỗi hệ thống
+            <span v-if="errorCount > 0" class="ml-1 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-[10px]">
+              {{ errorCount }}
+            </span>
+          </div>
+        </button>
+      </div>
+      <div v-if="activeTab === 'error' && errorCount > 0">
+        <button @click="clearErrorLogs" class="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 active:scale-95">
+          <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Dọn sạch lỗi
+        </button>
+      </div>
     </div>
 
     <!-- Table -->
@@ -94,6 +101,9 @@
                   <button @click="openDetails(log)" class="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-colors shrink-0" title="Xem chi tiết">
                     <span class="material-symbols-outlined text-[14px]">info</span>
                   </button>
+                  <button @click="deleteLog(log.id)" class="w-6 h-6 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors shrink-0" title="Xóa bản ghi này">
+                    <span class="material-symbols-outlined text-[14px]">delete</span>
+                  </button>
                 </div>
               </td>
               <td class="py-4 px-6 font-mono text-xs text-gray-400">{{ log.ipAddress }}</td>
@@ -113,7 +123,7 @@
                 <span class="material-symbols-outlined">data_object</span>
               </div>
               <div>
-                <h3 class="text-lg font-black text-gray-900">Chi tiết dữ liệu (Payload)</h3>
+                <h3 class="text-lg font-black text-gray-900">Chi tiết thao tác</h3>
                 <p class="text-xs font-bold text-gray-500">Log ID: #{{ selectedLog?.id }}</p>
               </div>
             </div>
@@ -121,7 +131,44 @@
               <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
-          <div class="p-6 overflow-y-auto bg-slate-900 text-emerald-400 font-mono text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
+          
+          <!-- Modal Tabs -->
+          <div class="flex border-b border-gray-200 bg-gray-50/50 px-4">
+            <button 
+              @click="modalTab = 'summary'"
+              :class="[
+                'px-6 py-3 text-sm font-black transition-all border-b-2 outline-none',
+                modalTab === 'summary' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ]"
+            >
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">translate</span>
+                Bản dịch (Cho Admin)
+              </div>
+            </button>
+            <button 
+              @click="modalTab = 'raw'"
+              :class="[
+                'px-6 py-3 text-sm font-black transition-all border-b-2 outline-none',
+                modalTab === 'raw' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ]"
+            >
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">code</span>
+                Dữ liệu thô (Cho IT)
+              </div>
+            </button>
+          </div>
+          
+          <!-- BẢN DỊCH CHO NGƯỜI BÌNH THƯỜNG -->
+          <div v-if="modalTab === 'summary'" class="p-6 bg-indigo-50/30 overflow-y-auto">
+            <p class="text-sm text-indigo-900 font-medium leading-relaxed whitespace-pre-wrap">
+              {{ generateHumanReadableSummary(selectedLog) }}
+            </p>
+          </div>
+
+          <!-- DỮ LIỆU THÔ DÀNH CHO LẬP TRÌNH VIÊN -->
+          <div v-if="modalTab === 'raw'" class="p-6 overflow-y-auto bg-slate-900 text-emerald-400 font-mono text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
             {{ formatDetails(selectedLog?.details) }}
           </div>
           <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
@@ -145,6 +192,7 @@ const loading = ref(false)
 const showModal = ref(false)
 const selectedLog = ref(null)
 const activeTab = ref('audit')
+const modalTab = ref('summary')
 
 const filteredLogs = computed(() => {
   if (activeTab.value === 'error') {
@@ -156,6 +204,129 @@ const filteredLogs = computed(() => {
 const errorCount = computed(() => {
   return logs.value.filter(log => log.actionName === 'SYSTEM_ERROR').length
 })
+
+const generateHumanReadableSummary = (log) => {
+  if (!log) return '';
+  
+  let summary = '';
+  const actionMap = {
+    // === USER & AUTH ===
+    'UPDATE_USER': 'Cập nhật thông tin / Nạp tiền',
+    'REGISTER_USER': 'Khách hàng đăng ký tài khoản',
+    'TOGGLE_USER_LOCK': 'Khóa/Mở khóa tài khoản Người dùng',
+    'DELETE_USER': 'Xóa tài khoản Người dùng',
+    
+    // === BOOKING ===
+    'CREATE_BOOKING': 'Khách hàng Đặt vé mới',
+    'UPDATE_BOOKING_STATUS': 'Cập nhật trạng thái Vé',
+    'CANCEL_BOOKING': 'Hủy vé',
+
+    // === TRIP (CHUYẾN XE) ===
+    'CREATE_TRIP': 'Tạo Chuyến Xe mới',
+    'UPDATE_TRIP': 'Cập nhật Chuyến Xe',
+    'DELETE_TRIP': 'Xóa Chuyến Xe',
+    'TOGGLE_TRIP_VISIBILITY': 'Bật/tắt trạng thái hiển thị Chuyến Xe',
+
+    // === ROUTE (TUYẾN ĐƯỜNG) ===
+    'CREATE_ROUTE': 'Thêm Tuyến Đường',
+    'UPDATE_ROUTE': 'Sửa Tuyến Đường',
+    'DELETE_ROUTE': 'Xóa Tuyến Đường',
+
+    // === BUS & BUS TYPE (XE & LOẠI XE) ===
+    'CREATE_BUS': 'Thêm Xe Bus mới',
+    'UPDATE_BUS': 'Cập nhật Xe Bus',
+    'DELETE_BUS': 'Xóa Xe Bus',
+    'CREATE_BUS_TYPE': 'Thêm Loại Xe',
+    'UPDATE_BUS_TYPE': 'Sửa Loại Xe',
+    'DELETE_BUS_TYPE': 'Xóa Loại Xe',
+
+    // === REVIEW (ĐÁNH GIÁ) ===
+    'CREATE_REVIEW': 'Khách hàng Viết Đánh giá',
+    'REPLY_REVIEW': 'Phản hồi Đánh giá',
+    'DELETE_REVIEW': 'Xóa Đánh giá',
+
+    // === INSPECTOR (LƠ XE / SOÁT VÉ) ===
+    'ASSIGN_INSPECTOR': 'Phân công Nhân viên phụ trách chuyến',
+    'UNASSIGN_INSPECTOR': 'Hủy phân công Nhân viên',
+    'UPDATE_TRIP_STATUS': 'Cập nhật trạng thái chạy của xe (Đang chạy/Hoàn thành)',
+    'CHECK_IN_BOOKING': 'Quét mã soát vé lên xe',
+
+    // === HỆ THỐNG ===
+    'UPDATE_SYSTEM_SETTING': 'Cập nhật cài đặt hệ thống (Banner/Cấu hình)'
+  };
+  
+  summary += `📌 Thao tác: ${actionMap[log.actionName] || log.actionName}\n`;
+  summary += `📦 Đối tượng: ${log.entityName}\n`;
+
+  if (log.details) {
+    let raw = log.details.replace('Method args:', '').trim();
+    let parts = raw.split('|').map(p => p.trim()).filter(p => p !== '');
+    
+    // Hàm parse chuỗi Java Object
+    const parseJavaObj = (str) => {
+      let obj = {};
+      let contentMatch = str.match(/\((.*)\)/);
+      if (contentMatch) {
+        let props = contentMatch[1].split(', ');
+        props.forEach(prop => {
+          let [key, ...val] = prop.split('=');
+          if (key) obj[key.trim()] = val.join('=').trim();
+        });
+      }
+      return obj;
+    };
+
+    if (log.actionName === 'UPDATE_USER' || log.actionName === 'REGISTER_USER') {
+      let id = parts[0];
+      let inputData = parts.length > 1 ? parseJavaObj(parts[1]) : parseJavaObj(parts[0]);
+      summary += `\n📝 Chi tiết:\n`;
+      if (log.actionName === 'UPDATE_USER') {
+          summary += `   • ID Người dùng: ${id}\n`;
+      }
+      if (inputData.walletBalance && inputData.walletBalance !== 'null') {
+         summary += `   • Số dư ví: ${parseFloat(inputData.walletBalance).toLocaleString('vi-VN')} VNĐ\n`;
+      }
+      if (inputData.role && inputData.role !== 'null') summary += `   • Cấp quyền: ${inputData.role}\n`;
+      if (inputData.fullName && inputData.fullName !== 'null') summary += `   • Họ tên: ${inputData.fullName}\n`;
+      if (inputData.phone && inputData.phone !== 'null') summary += `   • Số ĐT: ${inputData.phone}\n`;
+      if (inputData.email && inputData.email !== 'null') summary += `   • Email: ${inputData.email}\n`;
+    } 
+    else if (log.actionName === 'TOGGLE_USER_LOCK') {
+      let id = parts[0];
+      let outputData = parts.length > 1 ? parseJavaObj(parts[1]) : parseJavaObj(parts[0]);
+      summary += `\n📝 Chi tiết:\n`;
+      summary += `   • ID Người dùng: ${id}\n`;
+      if (outputData.fullName && outputData.fullName !== 'null') summary += `   • Khách hàng: ${outputData.fullName}\n`;
+      if (outputData.isLocked && outputData.isLocked !== 'null') {
+        summary += `   • Trạng thái mới: ${outputData.isLocked === 'true' ? '🔴 ĐÃ BỊ KHÓA (Cấm đăng nhập)' : '🟢 ĐÃ MỞ KHÓA (Cho phép hoạt động)'}\n`;
+      }
+    }
+    else if (log.actionName.includes('TRIP') && parts.length > 0) {
+      let dataPart = parts.length > 1 ? parts[1] : parts[0];
+      let inputData = parseJavaObj(dataPart);
+      summary += `\n📝 Thông tin chuyến xe:\n`;
+      if (inputData.departurePoint) summary += `   • Tuyến: ${inputData.departurePoint.split(',')[0]} ➝ ${inputData.arrivalPoint.split(',')[0]}\n`;
+      if (inputData.companyName) summary += `   • Nhà xe: ${inputData.companyName}\n`;
+      if (inputData.departureTime) summary += `   • Khởi hành: ${inputData.departureTime} ${inputData.departureDate || ''}\n`;
+      if (inputData.price && inputData.price !== 'null') summary += `   • Giá vé: ${parseFloat(inputData.price).toLocaleString('vi-VN')} VNĐ\n`;
+    }
+    else {
+      // Mặc định bóc tách vài trường quan trọng nếu có
+      let dataPart = parts.length > 1 ? parts[1] : parts[0];
+      let inputData = parseJavaObj(dataPart);
+      if (Object.keys(inputData).length > 0) {
+        summary += `\n📝 Dữ liệu thay đổi chính:\n`;
+        ['name', 'title', 'status', 'amount', 'email', 'phone'].forEach(key => {
+          if (inputData[key] && inputData[key] !== 'null') {
+            summary += `   • ${key.toUpperCase()}: ${inputData[key]}\n`;
+          }
+        });
+      }
+    }
+  }
+  
+  return summary.trim();
+}
 
 const formatDetails = (text) => {
   if (!text) return 'Không có dữ liệu chi tiết';
@@ -213,6 +384,7 @@ const formatDetails = (text) => {
 
 const openDetails = (log) => {
   selectedLog.value = log
+  modalTab.value = 'summary'
   showModal.value = true
 }
 
@@ -225,6 +397,26 @@ const fetchLogs = async () => {
     console.error("Lỗi khi tải nhật ký hoạt động:", error)
   } finally {
     loading.value = false
+  }
+}
+
+const deleteLog = async (id) => {
+  if (!confirm('Bạn có chắc chắn muốn xóa bản ghi Audit Log này không?')) return;
+  try {
+    await api.delete(`/admin/audit-logs/${id}`);
+    fetchLogs();
+  } catch (err) {
+    alert('Không thể xóa log!');
+  }
+}
+
+const clearErrorLogs = async () => {
+  if (!confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn dọn sạch TẤT CẢ log lỗi hệ thống không? Hành động này không thể hoàn tác!')) return;
+  try {
+    await api.delete(`/admin/audit-logs/clear-errors`);
+    fetchLogs();
+  } catch (err) {
+    alert('Không thể dọn dẹp lỗi!');
   }
 }
 

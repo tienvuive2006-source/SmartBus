@@ -12,7 +12,7 @@
            <input 
              type="date" 
              v-model="filterDate"
-             class="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-body-md font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm text-slate-700" 
+             class="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-body-md font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all shadow-sm text-slate-700" 
            />
          </div>
          <button 
@@ -53,7 +53,7 @@
       </div>
       <h3 class="text-title-md font-bold text-slate-700">Chưa có lịch trình</h3>
       <p class="text-body-sm text-slate-500 mt-2">Không có chuyến xe nào được phân công trong ngày này.</p>
-      <button v-if="filterDate" @click="filterDate = ''" class="mt-4 text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+      <button v-if="filterDate" @click="filterDate = ''" class="mt-4 text-sm font-bold text-amber-600 bg-amber-50 px-4 py-2 rounded-xl active:scale-95 transition-transform">
         Xem tất cả ngày
       </button>
     </div>
@@ -64,7 +64,7 @@
         v-for="trip in filteredTrips" 
         :key="trip.id" 
         class="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
-        @click="$router.push(`/inspector/trip/${trip.id}`)"
+        @click="$router.push(`/driver/trip/${trip.id}`)"
       >
         <!-- Status Indicator Strip -->
         <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="getStatusColor(trip.status)"></div>
@@ -86,7 +86,7 @@
           </div>
           
           <div class="flex items-center gap-2 mt-4 relative">
-            <div class="w-3 h-3 rounded-full border-2 border-primary bg-white z-10"></div>
+            <div class="w-3 h-3 rounded-full border-2 border-amber-500 bg-white z-10"></div>
             <div class="flex-1 h-px bg-slate-200 border-dashed border-t border-slate-300 absolute left-3 right-3 top-1/2 -translate-y-1/2"></div>
             <div class="w-3 h-3 rounded-full border-2 border-rose-500 bg-white z-10 ml-auto"></div>
           </div>
@@ -95,22 +95,22 @@
             <span class="truncate max-w-[45%] text-right">{{ trip.arrivalPoint }}</span>
           </div>
 
-          <!-- Thông tin xe & Tài xế -->
+          <!-- Thông tin xe & Lơ xe -->
           <div class="mt-5 flex gap-4 items-center bg-slate-50 p-3 rounded-xl border border-slate-100 group-hover:bg-white transition-colors">
             <div class="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-200 border border-slate-200 shadow-sm relative">
-              <img v-if="trip.imageUrl" :src="trip.imageUrl" class="w-full h-full object-cover" />
+              <img v-if="trip.busInfo && trip.busInfo.imageUrl" :src="trip.busInfo.imageUrl" class="w-full h-full object-cover" />
               <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
                  <span class="material-symbols-outlined text-[24px]">directions_bus</span>
               </div>
             </div>
             <div class="flex flex-col flex-1 justify-center">
               <div class="flex items-center justify-between mb-1">
-                 <span class="text-xs font-black text-slate-800">{{ trip.busType || 'Limousine 24 phòng' }}</span>
-                 <span class="text-[9px] font-black text-[#075955] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 uppercase tracking-widest shadow-sm">Tài xế</span>
+                 <span class="text-xs font-black text-slate-800">{{ (trip.busInfo && trip.busInfo.busType) ? trip.busInfo.busType : 'Limousine VIP' }}</span>
+                 <span class="text-[9px] font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 uppercase tracking-widest shadow-sm">Lơ xe</span>
               </div>
               <div class="text-xs font-medium text-slate-500 flex items-center justify-between">
                  <span>Họ & Tên:</span>
-                 <span class="font-bold text-slate-800">{{ getRealDriverName(trip.assignedLicensePlate) }}</span>
+                 <span class="font-bold text-slate-800">{{ trip.inspector ? trip.inspector.fullName : 'Chưa có' }}</span>
               </div>
             </div>
           </div>
@@ -121,9 +121,9 @@
           <div class="flex items-center justify-between text-body-sm">
             <div class="flex items-center gap-2 text-slate-600 font-medium">
               <span class="material-symbols-outlined text-[18px]">airline_seat_recline_normal</span>
-              <span>Ghế trống: <strong class="text-primary">{{ trip.availableSeats }}</strong>/{{ trip.totalSeats || 24 }}</span>
+              <span>Ghế trống: <strong class="text-amber-600">{{ trip.availableSeats }}</strong>/{{ trip.totalSeats || 24 }}</span>
             </div>
-            <div class="flex items-center text-primary font-bold gap-1 group-hover:translate-x-1 transition-transform">
+            <div class="flex items-center text-amber-600 font-bold gap-1 group-hover:translate-x-1 transition-transform">
               Xem chi tiết <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
             </div>
           </div>
@@ -165,21 +165,34 @@ const fetchTripsAndBuses = async () => {
   loading.value = true;
   error.value = '';
   try {
-    const inspectorId = authStore.currentUser?.id;
-    if (!inspectorId) {
+    const userFullName = authStore.currentUser?.fullName;
+    if (!userFullName) {
       throw new Error("Không xác định được danh tính nhân viên.");
     }
     
-    // Gọi song song API lấy danh sách chuyến xe và danh sách xe
+    // Gọi song song API lấy danh sách toàn bộ chuyến xe và danh sách xe
     const [tripRes, busRes] = await Promise.all([
-       axios.get(`${import.meta.env.VITE_API_BASE_URL}/inspector/trips/${inspectorId}`, authStore.authHeader),
+       axios.get(`${import.meta.env.VITE_API_BASE_URL}/trips`),
        axios.get(`${import.meta.env.VITE_API_BASE_URL}/buses`)
     ]);
     
     buses.value = busRes.data;
 
+    // Tìm các xe (licensePlate) mà tài xế hiện tại được phân công
+    const myBuses = buses.value
+      .filter(b => b.driverName === userFullName)
+      .map(b => b.licensePlate);
+
+    // Lọc các chuyến xe có biển số nằm trong danh sách myBuses và gán thêm thông tin Bus
+    const myTrips = tripRes.data
+      .filter(t => myBuses.includes(t.assignedLicensePlate))
+      .map(t => {
+        const busInfo = buses.value.find(b => b.licensePlate === t.assignedLicensePlate);
+        return { ...t, busInfo };
+      });
+
     // Sort: Trạng thái SCHEDULED / IN_PROGRESS lên đầu, theo giờ xuất phát
-    trips.value = tripRes.data.sort((a, b) => {
+    trips.value = myTrips.sort((a, b) => {
       if (a.status === 'COMPLETED' && b.status !== 'COMPLETED') return 1;
       if (a.status !== 'COMPLETED' && b.status === 'COMPLETED') return -1;
       return a.departureTime.localeCompare(b.departureTime);
@@ -218,7 +231,7 @@ const getStatusText = (status) => {
 const getStatusColor = (status) => {
   switch(status) {
     case 'SCHEDULED': return 'bg-amber-400';
-    case 'IN_PROGRESS': return 'bg-primary';
+    case 'IN_PROGRESS': return 'bg-amber-500';
     case 'COMPLETED': return 'bg-emerald-500';
     case 'CANCELLED': return 'bg-rose-500';
     default: return 'bg-amber-400';
@@ -228,16 +241,12 @@ const getStatusColor = (status) => {
 const getStatusTextColor = (status) => {
   switch(status) {
     case 'SCHEDULED': return 'text-amber-600';
-    case 'IN_PROGRESS': return 'text-primary';
+    case 'IN_PROGRESS': return 'text-amber-600';
     case 'COMPLETED': return 'text-emerald-600';
     case 'CANCELLED': return 'text-rose-600';
     default: return 'text-amber-600';
   }
 };
 
-const getRealDriverName = (licensePlate) => {
-   if (!licensePlate) return 'Chưa phân công xe';
-   const bus = buses.value.find(b => b.licensePlate === licensePlate);
-   return bus && bus.driverName ? bus.driverName : 'Chưa cập nhật tài xế';
-};
+
 </script>

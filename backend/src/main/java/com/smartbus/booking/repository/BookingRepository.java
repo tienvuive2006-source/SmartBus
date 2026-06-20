@@ -9,10 +9,10 @@ import java.util.List;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     
-    @EntityGraph(attributePaths = {"trip", "trip.inspector", "seatNumbers"})
+    @EntityGraph(attributePaths = {"trip", "trip.inspector", "seatNumbers", "user"})
     List<Booking> findAllByOrderByCreatedAtDesc();
     
-    @EntityGraph(attributePaths = {"trip", "trip.inspector", "seatNumbers"})
+    @EntityGraph(attributePaths = {"trip", "trip.inspector", "seatNumbers", "user"})
     List<Booking> findByUserIdOrderByCreatedAtDesc(Long userId);
     
     List<Booking> findByTripId(Long tripId);

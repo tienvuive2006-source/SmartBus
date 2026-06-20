@@ -2,7 +2,7 @@
   <div class="space-y-6 pb-12">
     <!-- Header Back Navigation -->
     <div class="flex items-center gap-3">
-      <button @click="$router.push('/inspector')" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
+      <button @click="$router.push('/driver')" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors">
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
       <div>
@@ -20,8 +20,8 @@
 
     <template v-else-if="trip">
       
-      <!-- Thông tin xe & Tài xế -->
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex gap-4 items-center mb-4">
+      <!-- Thông tin xe & Lơ xe -->
+      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex gap-4 items-center mb-4 mt-2">
         <div class="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-200 border border-slate-200 shadow-sm relative">
           <img v-if="trip.imageUrl" :src="trip.imageUrl" class="w-full h-full object-cover" />
           <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
@@ -31,11 +31,11 @@
         <div class="flex flex-col flex-1 justify-center">
           <div class="flex items-center justify-between mb-1">
              <span class="text-sm font-black text-slate-800">{{ trip.busType || 'Limousine 24 phòng' }}</span>
-             <span class="text-[9px] font-black text-[#075955] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 uppercase tracking-widest shadow-sm">Tài xế</span>
+             <span class="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 uppercase tracking-widest shadow-sm">Lơ xe</span>
           </div>
           <div class="text-xs font-medium text-slate-500 flex items-center justify-between">
              <span>Họ & Tên:</span>
-             <span class="font-bold text-slate-800">{{ getRealDriverName(trip.assignedLicensePlate) }}</span>
+             <span class="font-bold text-slate-800">{{ trip.inspector ? trip.inspector.fullName : 'Chưa phân công' }}</span>
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@
             @click="updateStatus('IN_PROGRESS')" 
             :disabled="trip.status !== 'SCHEDULED' || !isTimeValidToDepart"
             class="py-3 rounded-2xl font-black text-body-sm transition-all disabled:opacity-50"
-            :class="trip.status === 'SCHEDULED' && isTimeValidToDepart ? 'bg-primary text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-400'"
+            :class="trip.status === 'SCHEDULED' && isTimeValidToDepart ? 'bg-amber-500 text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-400'"
           >
             {{ trip.status === 'SCHEDULED' && !isTimeValidToDepart ? 'CHƯA ĐẾN GIỜ' : 'XE XUẤT BẾN' }}
           </button>
@@ -70,25 +70,25 @@
         </div>
       </div>
 
+      <!-- Bản đồ lộ trình -->
+      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-3 mb-4 relative z-0">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+            <span class="material-symbols-outlined text-amber-500 text-[18px]">map</span>
+            Bản đồ lộ trình
+          </h3>
+          <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-widest">GPS Live</span>
+        </div>
+        <div id="driver-route-map" class="w-full h-[400px] md:h-[500px] rounded-2xl border-2 border-slate-100 overflow-hidden z-0"></div>
+      </div>
+
       <!-- Action Buttons -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 gap-4">
         <button class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-2 text-indigo-600 hover:bg-indigo-50 transition-colors active:scale-95" @click="showSeatMap = true">
           <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
             <span class="material-symbols-outlined text-3xl">airline_seat_recline_normal</span>
           </div>
           <span class="font-black text-body-sm text-center">SƠ ĐỒ GHẾ</span>
-        </button>
-        <button class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-2 text-primary hover:bg-primary/5 transition-colors active:scale-95" @click="openQRScanner">
-          <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <span class="material-symbols-outlined text-3xl">qr_code_scanner</span>
-          </div>
-          <span class="font-black text-body-sm text-center">QUÉT MÃ QR</span>
-        </button>
-        <button class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-2 text-emerald-600 hover:bg-emerald-50 transition-colors active:scale-95" @click="handleBuyOffline">
-          <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-            <span class="material-symbols-outlined text-3xl">point_of_sale</span>
-          </div>
-          <span class="font-black text-body-sm text-center">BÁN VÉ BẾN</span>
         </button>
         <button class="bg-white p-4 rounded-3xl shadow-sm border border-error/20 flex flex-col items-center justify-center gap-2 text-error hover:bg-error/5 transition-colors active:scale-95" @click="showIncidentModal = true">
           <div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center">
@@ -142,14 +142,7 @@
               
               <div class="flex justify-between items-center">
                 <span class="text-body-sm font-medium text-slate-600">ID: #{{ booking.id }}</span>
-                <button 
-                  v-if="booking.status !== 'CHECKED_IN'"
-                  @click="manualCheckIn(booking)"
-                  class="px-4 py-1.5 bg-slate-800 text-white font-bold text-body-sm rounded-xl active:scale-95 transition-transform"
-                >
-                  XÁC NHẬN LÊN XE
-                </button>
-                <button v-else disabled class="px-4 py-1.5 bg-primary/10 text-primary font-bold text-body-sm rounded-xl flex items-center gap-1">
+                <button v-if="booking.status === 'CHECKED_IN'" disabled class="px-4 py-1.5 bg-primary/10 text-primary font-bold text-body-sm rounded-xl flex items-center gap-1">
                   <span class="material-symbols-outlined text-[18px]">check_circle</span> Hoàn tất
                 </button>
               </div>
@@ -338,24 +331,16 @@
           </div>
         </div>
       </Teleport>
-
-      <QRScannerModal 
-        :isOpen="showQRScanner"
-        :feedback="qrFeedback"
-        @close="showQRScanner = false"
-        @scan="onScanSuccess"
-      />
-
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
-import QRScannerModal from '@/components/inspector/QRScannerModal.vue';
+import { decodePolyline, fetchPolylineFromCloudinary } from '@/utils/polyline';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -367,9 +352,7 @@ const buses = ref([]);
 const bookings = ref([]);
 const seats = ref([]);
 const showSeatMap = ref(false);
-
-const showQRScanner = ref(false);
-const qrFeedback = ref(null);
+const leafletMap = ref(null);
 
 const showIncidentModal = ref(false);
 const incidentForm = ref({ severity: '', description: '' });
@@ -396,7 +379,7 @@ const submitIncident = async () => {
     alert('Đã gửi báo cáo sự cố thành công! Bộ phận điều phối sẽ liên hệ ngay.');
     showIncidentModal.value = false;
     incidentForm.value = { severity: '', description: '' };
-    await fetchIncidents();
+    await fetchIncidents(); // Tải lại danh sách sự cố
   } catch (error) {
     console.error(error);
     alert('Không thể gửi báo cáo. Vui lòng gọi trực tiếp cho tổng đài!');
@@ -406,10 +389,9 @@ const submitIncident = async () => {
 const fetchData = async () => {
   loading.value = true;
   try {
-    // Lấy thông tin chuyến (Lấy từ mảng trips phân công)
-    const inspectorId = authStore.currentUser?.id;
-    const tripsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/inspector/trips/${inspectorId}`, authStore.authHeader);
-    trip.value = tripsRes.data.find(t => t.id == tripId);
+    // Lấy thông tin chuyến bằng API public
+    const tripsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/trips/${tripId}`);
+    trip.value = tripsRes.data;
 
     // Lấy song song bookings, seats, và buses
     const [bookingsRes, seatsRes, busRes] = await Promise.all([
@@ -422,6 +404,11 @@ const fetchData = async () => {
     seats.value = seatsRes.data;
     buses.value = busRes.data;
     await fetchIncidents();
+
+    // Load Map after data is ready
+    nextTick(() => {
+      initMap();
+    });
   } catch (error) {
     console.error("Lỗi tải chi tiết:", error);
     alert("Không thể tải thông tin chuyến xe!");
@@ -479,119 +466,7 @@ const updateStatus = async (newStatus) => {
 
 
 
-const manualCheckIn = async (booking) => {
-  let msg = `Xác nhận khách hàng ${booking.customerName} đã lên xe?`;
-  if (booking.status === 'PENDING') {
-    msg = `⚠️ Khách hàng ${booking.customerName} CHƯA THANH TOÁN.\nXác nhận ĐÃ THU TIỀN (${booking.totalPrice?.toLocaleString() || 0}đ) và cho khách lên xe?`;
-  }
-  if(!confirm(msg)) return;
-  try {
-    await axios.put(`${import.meta.env.VITE_API_BASE_URL}/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);
-    booking.status = 'CHECKED_IN';
-  } catch (err) {
-    alert("Cập nhật thất bại!");
-  }
-};
 
-const openQRScanner = () => {
-  showQRScanner.value = true;
-  qrFeedback.value = null;
-};
-
-// Cờ chống quét liên tục cùng 1 vé
-let isProcessingQR = false;
-
-const onScanSuccess = async (decodedText) => {
-  if (isProcessingQR) return;
-  isProcessingQR = true;
-
-  try {
-    const idMatch = decodedText.match(/Mã đặt vé: #(\d+)/);
-    let qrBookingId = null;
-    
-    if (idMatch && idMatch[1]) {
-      qrBookingId = parseInt(idMatch[1]);
-    } else {
-      const num = parseInt(decodedText);
-      if (!isNaN(num)) qrBookingId = num;
-    }
-
-    if (!qrBookingId) {
-      qrFeedback.value = { type: 'error', message: '❌ Mã QR không hợp lệ hoặc không phải vé xe!' };
-      return;
-    }
-
-    const booking = bookings.value.find(b => b.id === qrBookingId);
-    
-    if (!booking) {
-      qrFeedback.value = { type: 'error', message: `❌ Vé #${qrBookingId} KHÔNG HỢP LỆ (Không đúng chuyến hoặc ĐÃ BỊ HỦY)!` };
-      playBeep(false);
-      return;
-    }
-
-    if (booking.status === 'CHECKED_IN') {
-      qrFeedback.value = { type: 'error', message: `⚠️ CẢNH BÁO: Vé #${qrBookingId} ĐÃ ĐƯỢC QUÉT TRƯỚC ĐÓ!` };
-      playBeep(false);
-      return;
-    }
-
-    const wasPending = booking.status === 'PENDING';
-
-    if (wasPending) {
-      // Show warning directly on the scanner UI and DO NOT check in automatically
-      qrFeedback.value = { 
-        type: 'warning', 
-        message: `⚠️ CHƯA THANH TOÁN: Cần thu ${booking.totalPrice?.toLocaleString() || 0}đ\nKhách: ${booking.customerName}. Vui lòng thu tiền rồi Check-in thủ công ở danh sách bên dưới!` 
-      };
-      playBeep(false);
-      return;
-    }
-
-    await axios.put(`${import.meta.env.VITE_API_BASE_URL}/inspector/bookings/${booking.id}/checkin`, {}, authStore.authHeader);
-    booking.status = 'CHECKED_IN';
-    
-    qrFeedback.value = { type: 'success', message: `✅ Check-in thành công: ${booking.customerName}` };
-    playBeep(true);
-
-  } catch (error) {
-    console.error(error);
-    qrFeedback.value = { type: 'error', message: '❌ Máy chủ từ chối Check-in. Vui lòng thử lại!' };
-  } finally {
-    setTimeout(() => {
-      isProcessingQR = false;
-    }, 2500);
-  }
-};
-
-const playBeep = (isSuccess) => {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    osc.type = isSuccess ? 'sine' : 'sawtooth';
-    osc.frequency.setValueAtTime(isSuccess ? 800 : 300, ctx.currentTime);
-    if (isSuccess) {
-      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-    }
-    
-    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-
-    osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.3);
-  } catch (e) {
-    console.warn("Trình duyệt không hỗ trợ Web Audio API");
-  }
-};
-
-const handleBuyOffline = () => {
-  alert("Tính năng bán vé trực tiếp trên xe sẽ được liên kết tới màn hình Chọn ghế trong tương lai.");
-};
 
 // Utils
 const getStatusText = (status) => {
@@ -606,16 +481,96 @@ const getStatusText = (status) => {
 const getStatusColorClass = (status) => {
   switch(status) {
     case 'SCHEDULED': return 'text-amber-600 bg-amber-50 border border-amber-200';
-    case 'IN_PROGRESS': return 'text-primary bg-primary/10 border border-primary/20';
+    case 'IN_PROGRESS': return 'text-amber-600 bg-amber-50 border border-amber-200';
     case 'COMPLETED': return 'text-emerald-600 bg-emerald-50 border border-emerald-200';
     case 'CANCELLED': return 'text-rose-600 bg-rose-50 border border-rose-200';
     default: return 'text-slate-600 bg-slate-50 border border-slate-200';
   }
 };
 
-const getRealDriverName = (licensePlate) => {
-   if (!licensePlate) return 'Chưa phân công xe';
-   const bus = buses.value.find(b => b.licensePlate === licensePlate);
-   return bus && bus.driverName ? bus.driverName : 'Chưa cập nhật tài xế';
+
+
+// Map Logic
+const initMap = () => {
+  if (!document.getElementById('leaflet-css')) {
+    const link = document.createElement('link');
+    link.id = 'leaflet-css'; link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+  }
+  const scriptId = 'leaflet-script';
+  if (!window.L && !document.getElementById(scriptId)) {
+    const script = document.createElement('script');
+    script.id = scriptId; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => renderLeaflet();
+    document.head.appendChild(script);
+  } else { setTimeout(renderLeaflet, 400); }
+};
+
+const renderLeaflet = async () => {
+  const L = window.L; if (!L) return;
+  const container = document.getElementById('driver-route-map');
+  if (!container || !trip.value) return;
+  
+  if (leafletMap.value) leafletMap.value.remove();
+  
+  // Set view mặc định vào Đà Nẵng nếu không có toạ độ
+  const startLat = trip.value.departureLat || 16.0;
+  const startLng = trip.value.departureLng || 108.0;
+  
+  leafletMap.value = L.map(container).setView([startLat, startLng], 6);
+  L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps'
+  }).addTo(leafletMap.value);
+
+  // Markers
+  const from = [trip.value.departureLat, trip.value.departureLng];
+  const to = [trip.value.arrivalLat, trip.value.arrivalLng];
+
+  const startIcon = L.divIcon({ 
+    html: `<div class="w-8 h-8 bg-emerald-500 border-4 border-white rounded-full shadow-lg flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">trip_origin</span></div>`, 
+    className: '', iconSize: [32, 32] 
+  });
+  
+  const endIcon = L.divIcon({ 
+    html: `<div class="w-8 h-8 bg-rose-600 border-4 border-white rounded-full shadow-lg flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">location_on</span></div>`, 
+    className: '', iconSize: [32, 32] 
+  });
+
+  if (from[0] > 1 && to[0] > 1) {
+    L.marker(from, { icon: startIcon }).addTo(leafletMap.value).bindPopup('<b>Điểm đi:</b> ' + trip.value.departurePoint);
+    L.marker(to, { icon: endIcon }).addTo(leafletMap.value).bindPopup('<b>Điểm đến:</b> ' + trip.value.arrivalPoint);
+    
+    // Default straight line
+    const fallbackLine = L.polyline([from, to], { 
+      color: '#f59e0b', weight: 2, dashArray: '5, 10', opacity: 0.5 
+    }).addTo(leafletMap.value);
+    leafletMap.value.fitBounds([from, to], { padding: [30, 30] });
+
+    if (trip.value.routeData) {
+      try {
+        let routeStr = trip.value.routeData;
+        if (routeStr.startsWith('http')) {
+            routeStr = await fetchPolylineFromCloudinary(routeStr);
+        }
+        let coords = [];
+        if (routeStr.startsWith('[')) {
+            coords = JSON.parse(routeStr);
+        } else if (routeStr) {
+            coords = decodePolyline(routeStr);
+        }
+        if (coords && coords.length > 0) {
+          leafletMap.value.removeLayer(fallbackLine);
+          L.polyline(coords, { 
+            color: '#f59e0b', weight: 5, opacity: 0.9, lineJoin: 'round', lineCap: 'round'
+          }).addTo(leafletMap.value);
+          leafletMap.value.fitBounds(coords, { padding: [30, 30] });
+        }
+      } catch (e) { console.error("Lỗi parse routeData", e); }
+    }
+  } else if (from[0] > 1) {
+    L.marker(from, { icon: startIcon }).addTo(leafletMap.value); 
+    leafletMap.value.setView(from, 13);
+  }
 };
 </script>
