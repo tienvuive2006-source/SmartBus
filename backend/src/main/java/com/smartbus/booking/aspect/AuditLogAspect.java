@@ -44,7 +44,15 @@ public class AuditLogAspect {
             if (attributes != null) {
                 request = attributes.getRequest();
             }
-            String ipAddress = request != null ? request.getRemoteAddr() : "UNKNOWN";
+            String ipAddress = "UNKNOWN";
+            if (request != null) {
+                ipAddress = request.getHeader("X-Forwarded-For");
+                if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+                    ipAddress = request.getRemoteAddr();
+                } else {
+                    ipAddress = ipAddress.split(",")[0].trim();
+                }
+            }
 
             // Lấy tham số truyền vào hàm để làm details (ở mức cơ bản)
             StringBuilder details = new StringBuilder("Method args: ");

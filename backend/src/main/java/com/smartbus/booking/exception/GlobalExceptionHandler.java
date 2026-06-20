@@ -35,7 +35,15 @@ public class GlobalExceptionHandler {
         } catch (Exception ignored) {}
 
         // 2. Lấy IP
-        String ipAddress = request.getRemoteAddr() != null ? request.getRemoteAddr() : "UNKNOWN";
+        String ipAddress = "UNKNOWN";
+        if (request != null) {
+            ipAddress = request.getHeader("X-Forwarded-For");
+            if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+                ipAddress = request.getRemoteAddr();
+            } else {
+                ipAddress = ipAddress.split(",")[0].trim();
+            }
+        }
         String requestURI = request.getRequestURI();
 
         // 3. Chuẩn bị nội dung chi tiết
