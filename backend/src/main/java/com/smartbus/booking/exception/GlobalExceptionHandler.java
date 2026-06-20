@@ -25,6 +25,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleAllExceptions(Exception ex, HttpServletRequest request) {
+        // Bỏ qua lỗi ngắt kết nối đột ngột từ client (Ví dụ: user tắt trình duyệt khi đang tải)
+        String exMessage = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (ex.getClass().getName().contains("ClientAbortException") || 
+            exMessage.contains("broken pipe") || 
+            exMessage.contains("connection reset")) {
+            return null;
+        }
         // 1. Lấy thông tin User ID
         Long userId = null;
         try {
