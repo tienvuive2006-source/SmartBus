@@ -35,9 +35,31 @@ public class BookingController {
     @Autowired
     private com.smartbus.booking.service.EmailService emailService;
 
+    @Autowired
+    private com.smartbus.booking.repository.PaymentOrderRepository paymentOrderRepository;
+
+    @Autowired
+    private com.smartbus.booking.repository.RoundTripGroupRepository roundTripGroupRepository;
+
     @GetMapping
     public List<Booking> getAllBookings() {
         return bookingRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @jakarta.annotation.PostConstruct
+    public void fixOldCashBookings() {
+        try {
+            List<Booking> bookings = bookingRepository.findAll();
+            for (Booking b : bookings) {
+                if ("CASH".equals(b.getPaymentMethod()) && "PAID".equals(b.getStatus())) {
+                    b.setStatus("PENDING");
+                    bookingRepository.save(b);
+                }
+            }
+            System.out.println("✅ Đã fix xong dữ liệu cũ: Đổi CASH + PAID thành PENDING");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_BOOKING_STATUS", entityName = "Booking")
@@ -191,6 +213,155 @@ public class BookingController {
             return ResponseEntity.status(500).body(Map.of("error", "Lỗi: " + e.getMessage()));
         }
     }
+
+    @PostMapping("/create-roundtrip")
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public ResponseEntity<?> createRoundTrip(@RequestBody Map<String, Object> payload) {
+        try {
+            Long outboundTripId = Long.valueOf(payload.get("outboundTripId").toString());
+            List<String> outboundSeats = (List<String>) payload.get("outboundSeats");
+            
+            Long returnTripId = payload.containsKey("returnTripId") && payload.get("returnTripId") != null ? 
+                                Long.valueOf(payload.get("returnTripId").toString()) : null;
+            List<String> returnSeats = payload.containsKey("returnSeats") && payload.get("returnSeats") != null ? 
+                                       (List<String>) payload.get("returnSeats") : null;
+
+            // 1. Tính toán giá
+            com.smartbus.booking.entity.Trip outTrip = tripRepository.findById(outboundTripId).orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến đi"));
+            double totalAmount = (outTrip.getPrice() != null ? outTrip.getPrice() : 0.0) * outboundSeats.size();
+            
+            if (returnTripId != null && returnSeats != null) {
+                com.smartbus.booking.entity.Trip retTrip = tripRepository.findById(returnTripId).orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến về"));
+                totalAmount += (retTrip.getPrice() != null ? retTrip.getPrice() : 0.0) * returnSeats.size();
+            }
+            
+            // 2. Giữ ghế (Seat Holding)
+            seatService.holdSeats(outboundTripId, outboundSeats);
+            if (returnTripId != null && returnSeats != null) {
+                seatService.holdSeats(returnTripId, returnSeats);
+            }
+            
+            // 3. Tạo PaymentOrder
+            String paymentCode = "RT" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(LocalDateTime.now()) + (int)(Math.random() * 90 + 10);
+            com.smartbus.booking.entity.PaymentOrder po = new com.smartbus.booking.entity.PaymentOrder();
+            po.setPaymentCode(paymentCode);
+            po.setTotalAmount(totalAmount);
+            po.setStatus("PENDING");
+            po.setCreatedAt(LocalDateTime.now());
+            
+            if (payload.get("user") != null) {
+                Object userIdObj = ((Map<?, ?>) payload.get("user")).get("id");
+                if (userIdObj != null) {
+                    po.setCustomerId(Long.valueOf(userIdObj.toString()));
+                }
+            }
+            
+            com.smartbus.booking.entity.PaymentOrder savedPo = paymentOrderRepository.save(po);
+            
+            return ResponseEntity.ok(Map.of(
+                "paymentOrderId", savedPo.getId(),
+                "paymentCode", savedPo.getPaymentCode(),
+                "totalAmount", savedPo.getTotalAmount()
+            ));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/confirm-roundtrip")
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public ResponseEntity<?> confirmRoundTrip(@RequestBody Map<String, Object> payload) {
+        try {
+            Long paymentOrderId = Long.valueOf(payload.get("paymentOrderId").toString());
+            com.smartbus.booking.entity.PaymentOrder po = paymentOrderRepository.findById(paymentOrderId)
+                .orElseThrow(() -> new RuntimeException("Giao dịch không tồn tại"));
+                
+            if ("COMPLETED".equals(po.getStatus())) {
+                return ResponseEntity.ok(Map.of("message", "Giao dịch này đã được xử lý thành công trước đó."));
+            }
+            
+            String paymentMethod = (String) payload.get("paymentMethod");
+            
+            // Nếu là WALLET thì trừ tiền
+            if ("WALLET".equals(paymentMethod) && po.getCustomerId() != null) {
+                com.smartbus.booking.entity.User user = userRepository.findById(po.getCustomerId()).orElseThrow();
+                double balance = user.getWalletBalance() != null ? user.getWalletBalance() : 0.0;
+                if (balance < po.getTotalAmount()) {
+                    throw new RuntimeException("Số dư Ví hệ thống không đủ!");
+                }
+                user.setWalletBalance(balance - po.getTotalAmount());
+                userRepository.save(user);
+            }
+            
+            // Tạo RoundTripGroup
+            com.smartbus.booking.entity.RoundTripGroup rtg = new com.smartbus.booking.entity.RoundTripGroup();
+            rtg.setGroupId("GRP" + po.getPaymentCode());
+            rtg.setCustomerId(po.getCustomerId());
+            rtg.setCreatedAt(LocalDateTime.now());
+            roundTripGroupRepository.save(rtg);
+            
+            Map<String, Object> customerInfo = (Map<String, Object>) payload.get("customerInfo");
+            
+            // Tạo vé OUTBOUND
+            Long outboundTripId = Long.valueOf(payload.get("outboundTripId").toString());
+            List<String> outboundSeats = (List<String>) payload.get("outboundSeats");
+            createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId());
+            
+            // Tạo vé RETURN
+            if (payload.containsKey("returnTripId") && payload.get("returnTripId") != null) {
+                Long returnTripId = Long.valueOf(payload.get("returnTripId").toString());
+                List<String> returnSeats = (List<String>) payload.get("returnSeats");
+                createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId());
+            }
+            
+            po.setStatus("COMPLETED");
+            paymentOrderRepository.save(po);
+            
+            return ResponseEntity.ok(Map.of("success", true, "groupId", rtg.getGroupId()));
+            
+        } catch (Exception e) {
+             e.printStackTrace();
+             org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    private void createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId) {
+        com.smartbus.booking.entity.Trip trip = tripRepository.findById(tripId).orElseThrow();
+        Booking b = new Booking();
+        b.setCustomerName((String) cust.get("customerName"));
+        b.setCustomerPhone((String) cust.get("customerPhone"));
+        b.setCustomerEmail((String) cust.get("customerEmail"));
+        b.setSeatNumbers(seats);
+        b.setTotalPrice((trip.getPrice() != null ? trip.getPrice() : 0.0) * seats.size());
+        b.setPaymentMethod(pm);
+        if ("CASH".equals(pm)) {
+            b.setStatus("PENDING");
+        } else {
+            b.setStatus("PAID");
+        }
+        b.setCreatedAt(LocalDateTime.now());
+        b.setTrip(trip);
+        b.setTripType(tripType);
+        b.setRoundTripGroupId(groupId);
+        if (customerId != null) {
+             b.setUser(userRepository.findById(customerId).orElse(null));
+        }
+        
+        seatService.bookSeats(tripId, seats); // Khóa ghế vĩnh viễn (sẽ tự động xóa Reservation)
+        
+        Booking saved = bookingRepository.save(b);
+        
+        try {
+            if (b.getCustomerEmail() != null && !b.getCustomerEmail().isEmpty() && !b.getCustomerEmail().equals("no-email@smartbus.com")) {
+                emailService.sendBookingConfirmation(saved);
+            }
+        } catch (Exception e) {}
+    }
+
     @org.springframework.beans.factory.annotation.Value("${sepay.token}")
     private String sepayToken;
 
@@ -279,5 +450,12 @@ public class BookingController {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("success", false, "error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/track")
+    public ResponseEntity<?> trackBooking(@RequestParam("code") Long code, @RequestParam("phone") String phone) {
+        return bookingRepository.findByIdAndCustomerPhone(code, phone)
+                .map(booking -> ResponseEntity.ok(booking))
+                .orElseGet(() -> ResponseEntity.status(404).body((Booking) null));
     }
 }

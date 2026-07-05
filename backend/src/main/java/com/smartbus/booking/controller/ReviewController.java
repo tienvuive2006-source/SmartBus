@@ -51,7 +51,17 @@ public class ReviewController {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-            Booking booking = bookingRepository.findById(request.getBookingId())
+            Long actualBookingId;
+            String reqId = request.getBookingId();
+            if (reqId != null && reqId.startsWith("GRPRT")) {
+                List<Booking> groupBookings = bookingRepository.findByRoundTripGroupId(reqId);
+                if (groupBookings.isEmpty()) throw new RuntimeException("Không tìm thấy mã vé khứ hồi này");
+                actualBookingId = groupBookings.get(0).getId();
+            } else {
+                actualBookingId = Long.parseLong(reqId);
+            }
+
+            Booking booking = bookingRepository.findById(actualBookingId)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy mã đặt vé"));
 
             if (booking.getUser() == null || !booking.getUser().getId().equals(userId)) {

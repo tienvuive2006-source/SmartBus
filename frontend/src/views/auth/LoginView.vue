@@ -39,6 +39,7 @@
               <input 
                 v-model="password" 
                 type="password" 
+                autocomplete="current-password"
                 placeholder="Nhập mật khẩu bảo mật" 
                 required
                 class="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-body-md font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"

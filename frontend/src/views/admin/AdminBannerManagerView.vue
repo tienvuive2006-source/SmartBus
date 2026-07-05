@@ -75,6 +75,45 @@
         </div>
       </div>
     </div>
+
+    <!-- Info Management Section -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-8">
+      <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+           <span class="material-symbols-outlined text-[#075955] text-[20px]">newspaper</span>
+           Thông tin ngành vận tải (Hiển thị ở trang chủ)
+        </h3>
+        <button @click="addInfo" class="text-[10px] font-bold text-[#075955] uppercase bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors">
+          + Thêm thông tin
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div v-if="infos.length === 0" class="text-center py-8 text-slate-400 text-sm">
+          Chưa có thông tin nào. Trang chủ sẽ hiển thị thông tin mặc định.
+        </div>
+        <div v-for="(info, index) in infos" :key="index" class="p-4 border border-slate-200 rounded-xl bg-slate-50 relative group">
+          <button @click="deleteInfo(index)" class="absolute top-4 right-4 text-rose-500 hover:text-rose-700 p-1 bg-white rounded-lg shadow-sm border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span class="material-symbols-outlined text-sm">delete</span>
+          </button>
+          <div class="mb-3 pr-10">
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Tiêu đề</label>
+            <input v-model="info.title" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-[#075955]" placeholder="Ví dụ: Quy định về hành lý ký gửi" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Nội dung chi tiết</label>
+            <textarea v-model="info.content" rows="3" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-[#075955] resize-none" placeholder="Ví dụ: Mỗi hành khách được miễn cước tối đa 20kg..."></textarea>
+          </div>
+        </div>
+        
+        <div v-if="infos.length > 0" class="flex justify-end pt-4 border-t border-slate-100 mt-4">
+          <button @click="saveInfos" :disabled="savingInfos" class="bg-[#075955] hover:bg-[#064a47] text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-2 border-none cursor-pointer shadow-sm hover:shadow-md active:scale-95">
+            <span v-if="savingInfos" class="material-symbols-outlined text-sm animate-spin">sync</span>
+            <span v-else class="material-symbols-outlined text-sm">save</span>
+            Lưu Thông Tin
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -90,6 +129,10 @@ const uploading = ref(false);
 const fileInput = ref(null);
 
 const SETTING_KEY = 'HERO_BANNERS';
+const INFO_SETTING_KEY = 'TRANSPORT_INFO';
+
+const infos = ref([]);
+const savingInfos = ref(false);
 
 const fetchBanners = async () => {
   loading.value = true;
@@ -165,7 +208,45 @@ const toggleBanner = async (index) => {
   await saveBanners();
 };
 
+const fetchInfos = async () => {
+  try {
+    const res = await api.get(`/settings/${INFO_SETTING_KEY}`);
+    if (res.data && res.data.value) {
+      infos.value = JSON.parse(res.data.value);
+    } else {
+      infos.value = [];
+    }
+  } catch (err) {
+    console.error("Lỗi tải thông tin vận tải:", err);
+    infos.value = [];
+  }
+};
+
+const saveInfos = async () => {
+  savingInfos.value = true;
+  try {
+    await api.put(`/settings/${INFO_SETTING_KEY}`, { value: JSON.stringify(infos.value) });
+    alert("Đã lưu thông tin ngành vận tải thành công!");
+  } catch (err) {
+    console.error("Lỗi lưu thông tin vận tải:", err);
+    alert("Không thể lưu thay đổi vào máy chủ!");
+  } finally {
+    savingInfos.value = false;
+  }
+};
+
+const addInfo = () => {
+  infos.value.push({ title: '', content: '' });
+};
+
+const deleteInfo = (index) => {
+  if (confirm("Xóa thông tin này?")) {
+    infos.value.splice(index, 1);
+  }
+};
+
 onMounted(() => {
   fetchBanners();
+  fetchInfos();
 });
 </script>

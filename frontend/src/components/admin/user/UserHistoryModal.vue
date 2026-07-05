@@ -36,11 +36,25 @@
           </div>
           <div v-else class="space-y-4">
             <div v-for="booking in bookings" :key="booking.id" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-              <div class="absolute left-0 top-0 w-1 h-full" :class="booking.status === 'CANCELLED' ? 'bg-red-500' : 'bg-emerald-500'"></div>
+              <div class="absolute left-0 top-0 w-1 h-full" 
+                   :class="{
+                     'bg-emerald-500': booking.status === 'PAID',
+                     'bg-amber-500': booking.status === 'PENDING',
+                     'bg-rose-500': booking.status === 'CANCELLED',
+                     'bg-blue-500': booking.status === 'CHECKED_IN'
+                   }"></div>
               <div class="flex justify-between items-start mb-3">
                 <div>
-                  <span class="text-xs font-black px-2 py-1 rounded-md uppercase tracking-wider mb-2 inline-block" :class="booking.status === 'CANCELLED' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'">
-                    {{ booking.status === 'CANCELLED' ? 'Đã hủy' : 'Thành công' }}
+                  <span class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-2 inline-block border shadow-sm" 
+                        :class="{
+                          'bg-emerald-50 text-emerald-600 border-emerald-100': booking.status === 'PAID',
+                          'bg-amber-50 text-amber-600 border-amber-100': booking.status === 'PENDING',
+                          'bg-rose-50 text-rose-600 border-rose-100': booking.status === 'CANCELLED',
+                          'bg-blue-50 text-blue-600 border-blue-100': booking.status === 'CHECKED_IN'
+                        }">
+                    {{ booking.status === 'PAID' ? 'Đã thanh toán' : 
+                       booking.status === 'PENDING' ? 'Chờ thanh toán' : 
+                       booking.status === 'CHECKED_IN' ? 'Đã lên xe' : 'Đã hủy' }}
                   </span>
                   <h4 class="text-base font-black text-slate-800">
                     {{ booking.trip?.departurePoint || 'N/A' }} 

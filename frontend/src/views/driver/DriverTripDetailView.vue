@@ -53,11 +53,11 @@
         <div class="grid grid-cols-2 gap-3">
           <button 
             @click="updateStatus('IN_PROGRESS')" 
-            :disabled="trip.status !== 'SCHEDULED' || !isTimeValidToDepart"
+            :disabled="trip.status !== 'ASSIGNED' || !isTimeValidToDepart"
             class="py-3 rounded-2xl font-black text-body-sm transition-all disabled:opacity-50"
-            :class="trip.status === 'SCHEDULED' && isTimeValidToDepart ? 'bg-amber-500 text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-400'"
+            :class="trip.status === 'ASSIGNED' && isTimeValidToDepart ? 'bg-amber-500 text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-400'"
           >
-            {{ trip.status === 'SCHEDULED' && !isTimeValidToDepart ? 'CHƯA ĐẾN GIỜ' : 'XE XUẤT BẾN' }}
+            {{ trip.status === 'ASSIGNED' && !isTimeValidToDepart ? 'CHƯA ĐẾN GIỜ' : 'XE XUẤT BẾN' }}
           </button>
           <button 
             @click="updateStatus('COMPLETED')" 
@@ -446,9 +446,11 @@ const isTimeValidToDepart = computed(() => {
     if (depTimeStr.length === 5) depTimeStr += ':00';
     
     const depDateTime = new Date(`${depDateStr}T${depTimeStr}`);
+    // Cho phép xuất bến trước 3 tiếng
+    const allowedTime = new Date(depDateTime.getTime() - 3 * 60 * 60 * 1000);
     const now = new Date();
     
-    return now >= depDateTime;
+    return now >= allowedTime;
   } catch (e) {
     return false;
   }
@@ -457,8 +459,13 @@ const isTimeValidToDepart = computed(() => {
 const updateStatus = async (newStatus) => {
   if(!confirm(`Xác nhận cập nhật trạng thái chuyến xe thành: ${getStatusText(newStatus)}?`)) return;
   try {
-    await axios.put(`${import.meta.env.VITE_API_BASE_URL}/inspector/trips/${tripId}/status`, { status: newStatus }, authStore.authHeader);
+    await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/trips/${tripId}/status`, { status: newStatus }, authStore.authHeader);
     trip.value.status = newStatus;
+    
+    // Cập nhật lại vị trí xe trên bản đồ
+    if (leafletMap.value) {
+      renderLeaflet();
+    }
   } catch (err) {
     alert("Cập nhật thất bại!");
   }
@@ -471,7 +478,7 @@ const updateStatus = async (newStatus) => {
 // Utils
 const getStatusText = (status) => {
   switch(status) {
-    case 'SCHEDULED': return 'Chưa khởi hành';
+    case 'ASSIGNED': return 'Chưa khởi hành';
     case 'IN_PROGRESS': return 'Đang chạy';
     case 'COMPLETED': return 'Đã hoàn thành';
     case 'CANCELLED': return 'Đã hủy';
@@ -480,7 +487,7 @@ const getStatusText = (status) => {
 };
 const getStatusColorClass = (status) => {
   switch(status) {
-    case 'SCHEDULED': return 'text-amber-600 bg-amber-50 border border-amber-200';
+    case 'ASSIGNED': return 'text-amber-600 bg-amber-50 border border-amber-200';
     case 'IN_PROGRESS': return 'text-amber-600 bg-amber-50 border border-amber-200';
     case 'COMPLETED': return 'text-emerald-600 bg-emerald-50 border border-emerald-200';
     case 'CANCELLED': return 'text-rose-600 bg-rose-50 border border-rose-200';
@@ -568,6 +575,23 @@ const renderLeaflet = async () => {
         }
       } catch (e) { console.error("Lỗi parse routeData", e); }
     }
+
+    // --- Bus Marker Logic (Dựa theo trạng thái) ---
+    const busIcon = L.divIcon({ 
+      html: `<div class="w-12 h-12 bg-indigo-600 border-4 border-white rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] flex items-center justify-center text-white relative z-50 transition-transform duration-1000"><span class="material-symbols-outlined text-[20px]">directions_bus</span></div>`, 
+      className: '', iconSize: [48, 48] 
+    });
+
+    let currentPos = from; // Mặc định ở điểm xuất phát
+    if (trip.value.status === 'COMPLETED') {
+      currentPos = to; // Nếu đã hoàn thành thì nhảy sang điểm đích
+    } else if (trip.value.status === 'IN_PROGRESS') {
+      // Nếu đang chạy, ta vẫn để ở điểm xuất phát hoặc có thể nhích lên 1 chút.
+      currentPos = from; 
+    }
+
+    L.marker(currentPos, { icon: busIcon, zIndexOffset: 1000 }).addTo(leafletMap.value).bindPopup(`<b>Xe Trung Nam</b><br>Trạng thái: ${getStatusText(trip.value.status)}`);
+
   } else if (from[0] > 1) {
     L.marker(from, { icon: startIcon }).addTo(leafletMap.value); 
     leafletMap.value.setView(from, 13);

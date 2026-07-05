@@ -70,14 +70,14 @@ export default {
         "stack-space": "1.5rem"
       },
       fontFamily: {
-        sans: ["'Plus Jakarta Sans'", "sans-serif"],
-        "headline-md": ["Inter", "sans-serif"],
-        "ticket-number": ["Inter", "sans-serif"],
-        "label-md": ["Inter", "sans-serif"],
-        "body-md": ["Inter", "sans-serif"],
-        "headline-sm": ["Inter", "sans-serif"],
-        "headline-lg": ["Inter", "sans-serif"],
-        "body-lg": ["Inter", "sans-serif"]
+        sans: ["'Inter'", "sans-serif"],
+        "headline-md": ["'Inter'", "sans-serif"],
+        "ticket-number": ["'Inter'", "sans-serif"],
+        "label-md": ["'Inter'", "sans-serif"],
+        "body-md": ["'Inter'", "sans-serif"],
+        "headline-sm": ["'Inter'", "sans-serif"],
+        "headline-lg": ["'Inter'", "sans-serif"],
+        "body-lg": ["'Inter'", "sans-serif"]
       },
       fontSize: {
         "headline-md": ["22px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],

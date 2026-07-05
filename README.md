@@ -85,7 +85,15 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
 
 ### 3. Phân hệ Quản trị viên (Admin Panel)
 - **Bảng điều khiển (Admin Dashboard):**
+  - Giao diện thiết kế cao cấp (Emerald/Gold Theme) với thanh điều hướng (Sidebar) thông minh.
   - Thống kê tổng quan bằng biểu đồ: Tổng doanh thu, Số vé bán ra, Tỉ lệ lấp đầy, Số lượng khách hàng.
+- **Bản đồ Giám sát Tài xế (Real-time Driver Map):**
+  - Theo dõi vị trí và trạng thái của toàn bộ tài xế theo thời gian thực trên bản đồ số.
+  - Tích hợp thuật toán Spiderfy xử lý hiển thị chống trùng lặp (overlap) tại các trạm trung chuyển.
+- **Phân công Lịch trình Tài xế (Driver Scheduling):**
+  - Tách biệt quản lý phương tiện (Vehicle) và tài xế (Driver).
+  - Thuật toán tự động phát hiện xung đột thời gian (Collision Detection), chặn giao việc trùng lặp.
+  - Gửi thông báo (Notification) thay đổi lịch trình ngay lập tức đến ứng dụng của tài xế.
 - **Quản lý Tuyến đường (Route Manager):**
   - Thêm, sửa, xóa các điểm đi/đến.
   - Tích hợp chuỗi tọa độ (Polyline/Geometry) để vẽ bản đồ lộ trình (lưu file chuỗi lên Cloudinary để tối ưu hóa DB).
@@ -93,7 +101,7 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
 - **Quản lý Chuyến xe (Trip Manager):**
   - Thiết lập lịch trình cụ thể: Chọn tuyến đường, gán Loại xe, cài đặt ngày giờ khởi hành, giá vé.
   - Quản lý trạng thái chuyến: Đang lên lịch (Scheduled), Đang chạy (In Progress), Đã hoàn thành, Đã hủy.
-  - Phân công Lơ xe (Inspector) cho từng chuyến.
+  - Phân công Lơ xe (Inspector) và Tài xế (Driver) cho từng chuyến.
 - **Quản lý Loại xe & Đội xe (Bus/Fleet Manager):**
   - Định nghĩa các loại xe: Số lượng ghế, sơ đồ phân bố (Layout).
   - Tải và lưu trữ ảnh thực tế của phương tiện.
@@ -102,19 +110,22 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
   - Bộ lọc tìm kiếm vé theo mã vé, số điện thoại, trạng thái.
   - Xuất báo cáo danh sách đặt vé sang định dạng **PDF**.
 - **Quản lý Người dùng (User Manager):**
+  - Bố cục quản lý động theo từng nhóm (Khách hàng, Tài xế, Lơ xe, Admin).
   - Xem danh sách toàn bộ người dùng, số dư ví điện tử của từng người.
-  - Phân quyền tài khoản (Nâng cấp User lên Admin hoặc Inspector).
-  - Xóa/Khóa tài khoản.
+  - Phân quyền tài khoản, Xóa/Khóa tài khoản.
 - **Quản lý Đánh giá (Review Manager):**
   - Kiểm duyệt phản hồi của khách hàng.
   - Xóa hoặc ẩn các đánh giá không phù hợp.
 - **Nhật ký Hoạt động & Báo lỗi (Audit Logs & Diagnostic):**
   - Ứng dụng AOP (Aspect-Oriented Programming) tự động ghi vết (Log) toàn bộ lịch sử thao tác thay đổi dữ liệu của Quản trị viên.
   - Tự động bắt lỗi toàn cục (Global Exception Handling) và đánh dấu cảnh báo đỏ (System Error) trên Dashboard để phát hiện và gỡ lỗi nhanh chóng.
-- **Giám sát trạng thái Đội xe (Fleet Status):**
-  - Theo dõi trực quan trạng thái hoạt động hiện tại của các xe.
 
-### 4. Phân hệ Lơ xe / Nhân viên soát vé (Inspector)
+### 4. Phân hệ Tài xế (Driver Workspace)
+- **Quản lý Lịch trình Chủ động:** Xem danh sách chuyến xe được phân công, lịch chạy sắp tới trong ngày.
+- **Nhận cảnh báo & Thông báo Thời gian thực:** Nhận thông báo tự động (Push Notification) khi có thay đổi lịch trình từ Admin.
+- **Cập nhật Hành trình:** Chuyển đổi trạng thái chuyến đi, đồng bộ tín hiệu định vị trực tiếp về bản đồ điều hành của Trung tâm.
+
+### 5. Phân hệ Lơ xe / Nhân viên soát vé (Inspector)
 - **Bảng điều khiển Lơ xe (Inspector Dashboard):**
   - Xem danh sách các chuyến xe được phân công phụ trách trong ngày.
 - **Sơ đồ chuyến đi trực tiếp (Trip Check-in):**
@@ -122,6 +133,16 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
 - **Quét mã QR Vé điện tử (QR Scanner):**
   - Bật camera thiết bị di động (điện thoại/tablet) để quét mã QR vé do khách hàng cung cấp.
   - Tự động nhận diện tính hợp lệ của vé và cập nhật trạng thái "Đã lên xe" (CHECKED_IN).
+
+### 6. Cải tiến Kỹ thuật & Tối ưu Trải nghiệm (Mới cập nhật)
+- **Thiết kế Thích ứng (Responsive UI/UX):** 
+  - Giao diện đặt vé (Trip Cards) và thanh điều hướng (Navbar) tự động co giãn và hiển thị tối ưu trên đa màn hình (Điện thoại, Tablet, PC).
+  - Tối ưu hóa trạng thái cuộn (Scroll state) và hiển thị thông minh các thành phần như Chuông thông báo (Notification Bell).
+- **Hệ thống Thông báo & Email Mượt mà:**
+  - Hoàn thiện luồng xác nhận đặt vé tự động qua Email (EmailService).
+  - Giải quyết triệt để lỗi đồng bộ thời gian thực (Reflection / `-parameters`) trong Spring Boot giúp tín hiệu WebSockets hoạt động ổn định.
+- **Tương thích Hệ thống Cũ (Legacy PHP System):**
+  - Cấu hình và hỗ trợ chạy song song với mã nguồn PHP 5.6 (XAMPP) cũ của nhà xe, giải quyết các lỗi thẻ mở ngắn (`short_open_tag`) và nâng cấp dần lên nền tảng mới.
 
 ---
 
@@ -175,4 +196,3 @@ Dự án đã được triển khai (Deploy) thành công lên môi trường Cl
 Dự án được xây dựng và phát triển với tâm huyết phục vụ báo cáo Đồ án Tốt nghiệp.
 Mọi góp ý, thắc mắc về luồng nghiệp vụ hoặc kiến trúc hệ thống, xin vui lòng tạo Issue trên kho lưu trữ GitHub này.
 
-*© 2026 SmartBus Project - Developed by Ngô Lê Tiến Đạt & Huỳnh Đức Tiến*

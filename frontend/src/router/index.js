@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
-import HomeView from '../views/HomeView.vue'
 import SearchResultsView from '../views/booking/SearchResultsView.vue'
 import SeatSelectionView from '../views/booking/SeatSelectionView.vue'
 import PaymentView from '../views/booking/PaymentView.vue'
@@ -13,7 +12,7 @@ import NotificationsView from '../views/user/NotificationsView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import AdminTripManagerView from '../views/admin/AdminTripManagerView.vue'
 import AdminFleetStatusView from '../views/admin/AdminFleetStatusView.vue'
-import AdminBusTypeView from '../views/admin/AdminBusTypeView.vue'
+
 import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
 import AdminUserManagerView from '../views/admin/AdminUserManagerView.vue'
@@ -29,6 +28,10 @@ import DriverTripDetailView from '../views/driver/DriverTripDetailView.vue'
 import AdminAuditLogView from '../views/admin/AdminAuditLogView.vue'
 import AdminBannerManagerView from '../views/admin/AdminBannerManagerView.vue'
 import AdminIncidentManagerView from '../views/admin/AdminIncidentManagerView.vue'
+import AdminDriverWorkspaceView from '../views/admin/AdminDriverWorkspaceView.vue'
+import AdminLeaveManagerView from '../views/admin/AdminLeaveManagerView.vue'
+import AdminDriverWrapperView from '../views/admin/AdminDriverWrapperView.vue'
+import AdminDriverLocationsView from '../views/admin/AdminDriverLocationsView.vue'
 
 // (I will add routes inside the router array)
 
@@ -46,9 +49,9 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: HomeView,
+          component: () => import('../views/LandingPageView.vue'),
           // Thêm hideHeader: true vào đây
-          meta: { title: 'Trung Nam', showBack: false, hideHeader: true }
+          meta: { title: 'Trung Nam', showBack: false, hideHeader: true, hideFooter: true }
         },
         {
           path: 'booking/search',
@@ -60,31 +63,31 @@ const router = createRouter({
           path: 'booking/seat',
           name: 'seat',
           component: SeatSelectionView,
-          meta: { hideHeader: true, hideFooter: true }
+          meta: { hideFooter: true }
         },
         {
           path: 'booking/payment',
           name: 'payment',
           component: PaymentView,
-          meta: { hideHeader: true, hideFooter: true }
+          meta: { hideFooter: true }
         },
         {
           path: 'booking/payment-success',
           name: 'payment-success',
           component: PaymentSuccessView,
-          meta: { hideHeader: true, hideFooter: true }
+          meta: { hideFooter: true }
         },
         {
           path: 'profile',
           name: 'profile',
           component: ProfileView,
-          meta: { title: 'Hồ sơ cá nhân', showBack: false, hideHeader: true }
+          meta: { title: 'Hồ sơ cá nhân', showBack: false }
         },
         {
           path: 'history',
           name: 'history',
           component: HistoryView,
-          meta: { title: 'Lịch sử đặt vé', showBack: false, hideHeader: true }
+          meta: { title: 'Lịch sử đặt vé', showBack: false }
         },
         {
           path: 'ai-assistant',
@@ -109,6 +112,12 @@ const router = createRouter({
           name: 'register',
           component: RegisterView,
           meta: { hideHeader: true, hideFooter: true }
+        },
+        {
+          path: 'landing-demo',
+          name: 'landing-demo',
+          component: () => import('../views/LandingPageView.vue'),
+          meta: { title: 'Landing Page Demo', hideHeader: true, hideFooter: true, showBack: false }
         }
       ]
     },
@@ -136,15 +145,35 @@ const router = createRouter({
           name: 'admin-route-manager',
           component: AdminRouteManagerView
         },
-        {
-          path: 'bus-type',
-          name: 'admin-bus-type',
-          component: AdminBusTypeView
-        },
+
         {
           path: 'fleet-status',
           name: 'admin-fleet-status',
           component: AdminFleetStatusView
+        },
+        {
+          path: 'drivers',
+          name: 'admin-drivers',
+          component: AdminDriverWrapperView,
+          redirect: '/admin/drivers/workspace',
+          meta: { fullScreen: true },
+          children: [
+            {
+              path: 'workspace',
+              name: 'admin-drivers-workspace',
+              component: AdminDriverWorkspaceView
+            },
+            {
+              path: 'leave-requests',
+              name: 'admin-leave-requests',
+              component: AdminLeaveManagerView
+            },
+            {
+              path: 'locations',
+              name: 'admin-driver-locations',
+              component: AdminDriverLocationsView
+            }
+          ]
         },
         {
           path: 'banners',
@@ -157,6 +186,7 @@ const router = createRouter({
           name: 'admin-user-manager',
           component: AdminUserManagerView
         },
+
         {
           path: 'reviews',
           name: 'admin-review-manager',

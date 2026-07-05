@@ -38,6 +38,13 @@
                 <option v-for="route in savedRoutes" :key="route.name" :value="route.name">
                   {{ route.name }}
                 </option>
+                <!-- Fallback option for return trips or unsaved routes -->
+                <option 
+                  v-if="form.departurePoint && form.arrivalPoint && !savedRoutes.find(r => r.name === `${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}`)" 
+                  :value="`${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}`"
+                >
+                  {{ form.departurePoint.split(',')[0] }} ➔ {{ form.arrivalPoint.split(',')[0] }} (Tuyến chưa lưu mẫu)
+                </option>
               </select>
             </div>
 
@@ -70,37 +77,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Phân công Xe & Tài xế (Tùy chọn)</label>
-                <select 
-                  v-model="form.assignedLicensePlate" 
-                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all"
-                  @change="(e) => {
-                    const bus = buses?.find(b => b.licensePlate === e.target.value);
-                    if(bus && (!isEditMode || form.availableSeats === form.totalSeats)) { form.busType = bus.busType; }
-                  }"
-                >
-                  <option value="">-- Chưa phân công --</option>
-                  <option v-for="bus in (form.busType ? buses.filter(b => b.busType === form.busType) : buses)" :key="bus.id" :value="bus.licensePlate">
-                    {{ bus.licensePlate }} - Tài xế: {{ bus.driverName || 'N/A' }}
-                  </option>
-                </select>
-              </div>
 
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Phân công Lơ xe (Tùy chọn)</label>
-                <select 
-                  v-model="form.inspectorId" 
-                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all"
-                >
-                  <option value="">-- Chưa phân công --</option>
-                  <option v-for="inspector in inspectors" :key="inspector.id" :value="inspector.id">
-                    {{ inspector.fullName }}
-                  </option>
-                </select>
-              </div>
-            </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1.5">
@@ -108,8 +85,18 @@
                 <input v-model="form.departureDate" type="date" required class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all" />
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">Giá vé niêm yết (VNĐ)</label>
-                <input v-model.number="form.price" type="number" required class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all font-mono" />
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Giá vé (VNĐ)
+                  <span v-if="form.departurePoint && form.arrivalPoint && form.busType && !isEditMode" class="text-rose-500 normal-case font-bold ml-1">
+                    (Giá đề xuất)
+                  </span>
+                </label>
+                <input 
+                  v-model.number="form.price"
+                  type="number" 
+                  required 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all font-mono" 
+                />
               </div>
             </div>
 
@@ -167,11 +154,72 @@
               </div>
             </div>
 
+            <!-- Tự động đẻ chuyến về (chỉ hiện khi tạo mới) -->
+            <div v-if="!isEditMode" class="mt-6 border-2 border-dashed border-[#075955]/30 bg-[#075955]/[0.02] p-5 rounded-2xl transition-all hover:border-[#075955]/50 relative overflow-hidden group">
+              <div class="absolute -right-6 -top-6 w-24 h-24 bg-[#075955]/5 rounded-full blur-xl group-hover:bg-[#075955]/10 transition-all"></div>
+              
+              <label class="flex items-center gap-3 cursor-pointer mb-2 relative z-10">
+                <input type="checkbox" v-model="form.createReturnTrip" class="w-5 h-5 rounded border-slate-300 text-[#075955] focus:ring-[#075955] cursor-pointer" />
+                <div class="flex flex-col">
+                  <span class="text-sm font-black text-[#075955] tracking-wide uppercase">Tự động đẻ kèm chuyến Về (Khứ hồi)</span>
+                  <span class="text-[10px] font-bold text-slate-400">Tiết kiệm thao tác tạo lại từ đầu</span>
+                </div>
+              </label>
+              
+              <div v-if="form.createReturnTrip" class="mt-5 animate-fade-in-up relative z-10">
+                <div class="mb-5 flex items-center gap-2 text-xs font-bold text-slate-500 bg-white/60 backdrop-blur-sm px-4 py-2.5 rounded-xl border border-slate-200/60 shadow-sm w-fit">
+                  <span class="material-symbols-outlined text-[16px] text-emerald-600">sync_alt</span>
+                  <span class="uppercase tracking-wider text-[9px] font-black">Lộ trình về:</span>
+                  <span v-if="form.departurePoint && form.arrivalPoint" class="text-slate-800 font-black">
+                    {{ form.arrivalPoint.split(',')[0] }} ➔ {{ form.departurePoint.split(',')[0] }}
+                  </span>
+                  <span v-else class="text-rose-400 italic">Vui lòng chọn tuyến đường ở trên trước</span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Ngày về</label>
+                    <input v-model="form.returnDate" type="date" required class="w-full border-2 border-slate-200 focus:border-[#075955] bg-white rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all shadow-sm" />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Giờ về (Tự tính đến)</label>
+                    <input 
+                      v-model="form.returnTime" 
+                      type="text" 
+                      placeholder="14:00" 
+                      required
+                      @change="() => {
+                        let timeVal = form.returnTime?.trim() || '';
+                        if (/^\d{1,2}$/.test(timeVal)) timeVal = `${timeVal.padStart(2, '0')}:00`;
+                        else if (/^\d{3,4}$/.test(timeVal)) timeVal = `${timeVal.length === 3 ? '0' + timeVal[0] : timeVal.slice(0,2)}:${timeVal.slice(-2)}`;
+                        else if (/^\d{1,2}:\d{1,2}$/.test(timeVal)) {
+                           const parts = timeVal.split(':');
+                           timeVal = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+                        }
+                        form.returnTime = timeVal;
+                      }"
+                      class="w-full border-2 border-slate-200 focus:border-[#075955] bg-white rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all text-center shadow-sm" 
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-slate-600 uppercase tracking-wider ml-1">Dòng xe về</label>
+                    <select 
+                      v-model="form.returnBusType" 
+                      class="w-full border-2 border-slate-200 focus:border-[#075955] bg-white rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all shadow-sm text-center"
+                    >
+                      <option value="">-- Giống chuyến đi --</option>
+                      <option v-for="t in busTypes" :key="t.id" :value="t.name">{{ t.name }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
 
             <div class="pt-8 flex justify-end gap-3 shrink-0">
               <button type="button" @click="$emit('close')" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">Hủy bỏ</button>
-              <button @click="$emit('submit')" type="button" class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all">Lưu & Đăng tải</button>
+              <button type="submit" class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all">Lưu & Đăng tải</button>
             </div>
           </form>
 
@@ -218,13 +266,13 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref } from 'vue';
+
+const props = defineProps({
   isOpen: Boolean,
   isEditMode: Boolean,
   form: Object,
   busTypes: Array,
-  buses: Array,
-  inspectors: Array,
   geocoding: Object,
   mapLoading: Boolean,
   savedRoutes: Array
@@ -242,3 +290,4 @@ defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-cli
   animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 </style>
+

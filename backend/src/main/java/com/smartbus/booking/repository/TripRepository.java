@@ -8,11 +8,15 @@ import java.util.List;
 
 @Repository
 public interface TripRepository extends JpaRepository<Trip, Long> {
+    @Override
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"inspector"})
+    List<Trip> findAll();
     
     // Hỗ trợ tìm kiếm linh hoạt theo điểm đi và điểm đến
     List<Trip> findByDepartureDateContaining(String departureDate);
 
     // Kéo những chuyến xe trong một ngày cụ thể, HOẶC từ ngày hôm nay trở đi nếu không nhập ngày (Ngăn Out of Memory)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"inspector"})
     @org.springframework.data.jpa.repository.Query("SELECT t FROM Trip t WHERE (:date = '' AND t.departureDate >= :today) OR (:date != '' AND t.departureDate LIKE %:date%)")
     List<Trip> findTripsSafely(@org.springframework.data.repository.query.Param("date") String date, @org.springframework.data.repository.query.Param("today") String today);
 
@@ -21,6 +25,7 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
             String departurePoint, String arrivalPoint, String departureDate);
 
     // Lấy danh sách chuyến xe được phân công cho một nhân viên soát vé
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"inspector"})
     List<Trip> findByInspectorId(Long inspectorId);
 
     // ==========================================================
@@ -38,4 +43,58 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT MIN(t.id), t.departurePoint, t.arrivalPoint, MIN(t.imageUrl), MIN(t.departureDate), MIN(t.price), MIN(t.busType), t.companyName FROM Trip t WHERE t.isVisible = true GROUP BY t.departurePoint, t.arrivalPoint, t.companyName")
     List<Object[]> getPopularRoutes();
+
+    // ==========================================================
+    // KIỂM TRA XUNG ĐỘT LỊCH TÀI XẾ & XE (CONFLICT DETECTION)
+    // ==========================================================
+
+    /**
+     * Tìm tất cả chuyến xe của 1 tài xế trong cùng 1 ngày (dùng để tính buffer_time ở Service).
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE t.assignedDriverUsername = :driverUsername " +
+        "AND t.departureDate = :departureDate " +
+        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
+    )
+    List<Trip> findTripsForDriverOnDate(
+        @org.springframework.data.repository.query.Param("driverUsername") String driverUsername,
+        @org.springframework.data.repository.query.Param("departureDate") String departureDate,
+        @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
+    );
+
+    /**
+     * Tìm tất cả chuyến xe của 1 phương tiện (biển số) trong cùng 1 ngày.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE t.assignedLicensePlate = :licensePlate " +
+        "AND t.departureDate = :departureDate " +
+        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
+    )
+    List<Trip> findTripsForBusOnDate(
+        @org.springframework.data.repository.query.Param("licensePlate") String licensePlate,
+        @org.springframework.data.repository.query.Param("departureDate") String departureDate,
+        @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
+    );
+
+    /**
+     * Tìm tất cả chuyến xe của 1 lơ xe trong cùng 1 ngày.
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE t.inspector.id = :inspectorId " +
+        "AND t.departureDate = :departureDate " +
+        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
+    )
+    List<Trip> findTripsForInspectorOnDate(
+        @org.springframework.data.repository.query.Param("inspectorId") Long inspectorId,
+        @org.springframework.data.repository.query.Param("departureDate") String departureDate,
+        @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
+    );
+
+    /**
+     * Lấy tất cả chuyến xe được phân công cho 1 tài xế (Dùng cho Driver Dashboard)
+     */
+    List<Trip> findByAssignedDriverUsername(String assignedDriverUsername);
 }

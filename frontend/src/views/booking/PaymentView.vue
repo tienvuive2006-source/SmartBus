@@ -12,21 +12,7 @@
       </div>
     </div>
 
-    <!-- Header Navbar -->
-    <nav class="bg-white text-slate-800 border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <button @click="$router.back()" class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all border border-gray-200">
-            <span class="material-symbols-outlined text-lg font-bold text-gray-600">arrow_back</span>
-          </button>
-          <div class="flex flex-col">
-            <span class="text-lg font-black text-gray-800 leading-none tracking-tight">Thanh toán an toàn</span>
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Hoàn tất đặt vé của bạn</span>
-          </div>
-        </div>
 
-      </div>
-    </nav>
 
     <div class="max-w-6xl mx-auto px-4 py-8">
       <div v-if="loading" class="flex justify-center py-32">
@@ -131,7 +117,7 @@
                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-50"></div>
                    
                    <div class="relative w-48 h-48 sm:w-56 sm:h-56 shrink-0 bg-white p-2 rounded-2xl shadow-md border border-gray-100 group-hover:shadow-lg transition-shadow">
-                      <img :src="`https://img.vietqr.io/image/mb-0367093771-compact2.png?amount=${totalAmount}&addInfo=VEXE${seatNames.replace(/[, \-]/g, '')}&accountName=HUYNH%20DUC%20TIEN`" alt="QR Code" class="w-full h-full rounded-xl object-contain" />
+                      <img :src="`https://img.vietqr.io/image/mb-0367093771-compact2.png?amount=${totalAmount}&addInfo=${activePaymentCode || 'VEXE' + seatNames.replace(/[, \-]/g, '')}&accountName=HUYNH%20DUC%20TIEN`" alt="QR Code" class="w-full h-full rounded-xl object-contain" />
                       <!-- Hiệu ứng quét laser (CSS class tự định nghĩa dưới style) -->
                       <div class="absolute top-0 left-0 w-full h-1 bg-[#075955]/80 shadow-[0_0_8px_rgba(7,89,85,0.8)] qr-scan-line rounded-full hidden md:block"></div>
                    </div>
@@ -150,7 +136,7 @@
                          </div>
                          <div class="flex justify-between items-center">
                            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Nội dung <span class="text-red-500 normal-case font-medium ml-1">(Bắt buộc)</span></span>
-                           <span class="text-xs font-black text-gray-800 bg-white px-2 py-1 rounded border border-gray-300 shadow-sm uppercase tracking-widest">VEXE{{ seatNames.replace(/[, \-]/g, '') }}</span>
+                           <span class="text-xs font-black text-gray-800 bg-white px-2 py-1 rounded border border-gray-300 shadow-sm uppercase tracking-widest">{{ activePaymentCode || `VEXE${seatNames.replace(/[, \-]/g, '')}` }}</span>
                          </div>
                       </div>
                       
@@ -181,13 +167,24 @@
 
             <div class="space-y-4 text-sm border-b border-gray-100 pb-6 mb-6">
               <div class="flex flex-col gap-1">
-                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Lộ trình</span>
-                <span class="font-bold text-gray-800 text-sm">{{ trip.departurePoint }} <span class="text-gray-400 font-medium mx-1">→</span> {{ trip.arrivalPoint }}</span>
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Lộ trình (Chuyến Đi)</span>
+                <span class="font-bold text-gray-800 text-sm">{{ trip?.departurePoint }} <span class="text-gray-400 font-medium mx-1">→</span> {{ trip?.arrivalPoint }}</span>
               </div>
               <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
                 <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Ghế ngồi</span>
                 <span class="font-black text-[#075955] tracking-widest">{{ seatNames }}</span>
               </div>
+              
+              <template v-if="returnTripId">
+                <div class="flex flex-col gap-1 mt-4">
+                  <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Lộ trình (Chuyến Về)</span>
+                  <span class="font-bold text-gray-800 text-sm">{{ returnTrip?.departurePoint }} <span class="text-gray-400 font-medium mx-1">→</span> {{ returnTrip?.arrivalPoint }}</span>
+                </div>
+                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 mt-2">
+                  <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Ghế ngồi</span>
+                  <span class="font-black text-[#075955] tracking-widest">{{ returnSeatNames }}</span>
+                </div>
+              </template>
             </div>
 
             <div class="flex justify-between items-end mb-8">
@@ -262,13 +259,23 @@ const tripId = route.query.tripId;
 const selectedSeatsStr = route.query.seats;
 const seatsArray = computed(() => selectedSeatsStr ? selectedSeatsStr.split(',').map(s => s.trim()) : []);
 const seatNames = computed(() => seatsArray.value.join(', '));
+
+const returnTripId = route.query.returnTripId;
+const selectedReturnSeatsStr = route.query.returnSeats;
+const returnSeatsArray = computed(() => selectedReturnSeatsStr ? selectedReturnSeatsStr.split(',').map(s => s.trim()) : []);
+const returnSeatNames = computed(() => returnSeatsArray.value.join(', '));
+
 const totalAmount = computed(() => parseInt(route.query.total) || 0);
 
 const trip = ref(null);
+const returnTrip = ref(null);
 const loading = ref(true);
 const isProcessing = ref(false);
 const selectedMethod = ref('QR');
 const showQrCode = ref(false);
+
+const activePaymentOrderId = ref(null);
+const activePaymentCode = ref('');
 
 const paymentSuccess = ref(false);
 const timeLeft = ref(600); // 10 phút
@@ -306,7 +313,11 @@ const isFormComplete = computed(() => {
          (!wantsEmail.value || customerEmail.value.trim() !== '');
 });
 
-const generateQrCode = () => {
+const generateQrCode = async () => {
+  if (!activePaymentOrderId.value) {
+    const success = await createPaymentOrder();
+    if (!success) return;
+  }
   showQrCode.value = true;
   startCountdown();
   startRealBankWebhook();
@@ -328,10 +339,35 @@ const paymentMethods = computed(() => {
 
 const fetchTrip = async () => {
   try {
-    const res = await api.get(`/trips/${tripId}`);
-    trip.value = res.data;
+    const p1 = api.get(`/trips/${tripId}`);
+    const p2 = returnTripId ? api.get(`/trips/${returnTripId}`) : Promise.resolve(null);
+    const [res1, res2] = await Promise.all([p1, p2]);
+    trip.value = res1.data;
+    if (res2) returnTrip.value = res2.data;
   } catch (err) { console.error(err); }
   finally { loading.value = false; }
+};
+
+const createPaymentOrder = async () => {
+  try {
+    const payload = {
+      outboundTripId: tripId,
+      outboundSeats: seatsArray.value,
+      user: authStore.currentUser ? { id: authStore.currentUser.id } : null
+    };
+    if (returnTripId) {
+      payload.returnTripId = returnTripId;
+      payload.returnSeats = returnSeatsArray.value;
+    }
+    
+    const res = await api.post('/admin/bookings/create-roundtrip', payload);
+    activePaymentOrderId.value = res.data.paymentOrderId;
+    activePaymentCode.value = res.data.paymentCode;
+    return true;
+  } catch (err) {
+    alert('Không thể tạo giao dịch giữ chỗ. Vui lòng thử lại!');
+    return false;
+  }
 };
 
 const processPayment = async () => {
@@ -366,39 +402,42 @@ const processPayment = async () => {
 
   isProcessing.value = true;
   try {
-    const user = authStore.currentUser;
-    const bookingData = {
-      customerName: customerName.value,
-      customerPhone: customerPhone.value,
-      customerEmail: wantsEmail.value ? customerEmail.value : 'no-email@smartbus.com',
-      sendEmail: wantsEmail.value,
-      seatNumbers: seatsArray.value,
-      totalPrice: totalAmount.value,
+    if (!activePaymentOrderId.value) {
+      const success = await createPaymentOrder();
+      if (!success) {
+        isProcessing.value = false;
+        return;
+      }
+    }
+
+    const confirmData = {
+      customerInfo: {
+        customerName: customerName.value,
+        customerPhone: customerPhone.value,
+        customerEmail: wantsEmail.value ? customerEmail.value : 'no-email@smartbus.com'
+      },
       paymentMethod: selectedMethod.value,
-      status: selectedMethod.value === 'CASH' ? 'PENDING' : 'PAID',
-      trip: { id: parseInt(tripId) },
-      user: user?.id ? { id: user.id } : null
+      outboundTripId: tripId,
+      outboundSeats: seatsArray.value,
+      returnTripId: returnTripId,
+      returnSeats: returnSeatsArray.value,
+      paymentOrderId: activePaymentOrderId.value
     };
 
-    // Dùng api (có JWT token) thay vì axios trực tiếp
-    const res = await api.post('/admin/bookings/create', bookingData);
+    const res = await api.post('/admin/bookings/confirm-roundtrip', confirmData);
     if (res.status === 200 || res.status === 201) {
-      // Cập nhật số dư ví nếu thanh toán bằng ví
-      if (res.data.user?.walletBalance !== undefined) {
-        authStore.updateWalletBalance(res.data.user.walletBalance);
-      }
-
       // 💾 LƯU VÀO LỊCH SỬ LOCAL
       const newTicket = {
-        id: res.data.id,
+        id: res.data.groupId || Math.random().toString(), // fallback if groupId isn't returned
         from: trip.value.departurePoint,
-        to: trip.value.arrivalPoint,
+        to: returnTripId ? `${trip.value.arrivalPoint} (Khứ hồi)` : trip.value.arrivalPoint,
         time: trip.value.departureTime,
         date: trip.value.departureDate?.split('T')[0] || new Date().toISOString().split('T')[0],
-        seats: seatNames.value,
+        seats: seatNames.value + (returnTripId ? ` (+${returnSeatNames.value})` : ''),
         total: totalAmount.value,
         method: selectedMethod.value,
-        busType: trip.value.busType
+        busType: trip.value.busType,
+        status: selectedMethod.value === 'CASH' ? 'PENDING' : 'PAID'
       };
       
       const history = JSON.parse(localStorage.getItem('trungnam_history') || '[]');
@@ -411,17 +450,18 @@ const processPayment = async () => {
         router.push({ 
           path: '/booking/payment-success', 
           query: { 
-            bookingId: res.data.id, 
+            groupId: res.data.groupId,
+            bookingId: res.data.groupId, 
             from: trip.value.departurePoint, 
-            to: trip.value.arrivalPoint, 
+            to: returnTripId ? `${trip.value.arrivalPoint} (Khứ hồi)` : trip.value.arrivalPoint, 
             time: trip.value.departureTime, 
-            seats: seatNames.value, 
+            seats: seatNames.value + (returnTripId ? ` & ${returnSeatNames.value}` : ''), 
             total: totalAmount.value, 
             method: selectedMethod.value,
             customerName: customerName.value,
             customerPhone: customerPhone.value,
             date: trip.value.departureDate?.split('T')[0] || new Date().toISOString().split('T')[0],
-            status: res.data.status || 'PAID'
+            status: selectedMethod.value === 'CASH' ? 'PENDING' : 'PAID'
           } 
         });
       }, 2500);
@@ -438,7 +478,7 @@ const sessionStartTime = new Date().toISOString();
 
 const checkRealBankTransfer = async () => {
   // Tạo chuỗi nội dung giống hệt mã QR để so khớp
-  const expectedContent = `Ve xe ${seatNames.value}`.replace(/[, \-]/g, '').toLowerCase();
+  const expectedContent = (activePaymentCode.value || `Ve xe ${seatNames.value}`).replace(/[, \-]/g, '').toLowerCase();
   
   try {
     const res = await api.get('/admin/bookings/check-payment', {

@@ -1,7 +1,7 @@
 <template>
   <div class="relative" v-if="authStore.isLoggedIn" ref="dropdownRef">
     <!-- Nút chuông thông báo -->
-    <button @click="toggleDropdown" class="relative w-10 h-10 rounded-full hover:bg-white/10 transition-colors flex items-center justify-center text-white focus:outline-none">
+    <button @click="toggleDropdown" class="relative w-10 h-10 rounded-full transition-colors flex items-center justify-center focus:outline-none">
       <span class="material-symbols-outlined text-2xl" :class="{'animate-shake-slow': totalUnread > 0}">notifications_active</span>
       <!-- Badge số lượng thông báo -->
       <span v-if="totalUnread > 0" class="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border border-[#075955] text-[10px] font-black text-white shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-bounce">
@@ -39,7 +39,7 @@
         <!-- 2. THÔNG BÁO TỪ STORE (Biến động số dư, v.v...) -->
         <div v-for="notif in authStore.notifications" :key="notif.id" 
              class="p-4 border-b border-gray-100 transition-colors flex items-start gap-3 relative"
-             :class="notif.read ? 'bg-white hover:bg-gray-50' : 'bg-emerald-50/30 hover:bg-emerald-50/60'">
+             :class="notif.read ? 'bg-white hover:bg-gray-50' : 'bg-emerald-50 hover:bg-emerald-100/50'">
           
           <div v-if="!notif.read" class="absolute top-4 right-4 w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
           
@@ -51,8 +51,8 @@
           
           <div class="pr-4">
             <h4 class="text-sm font-black tracking-tight" :class="notif.amount > 0 ? 'text-emerald-700' : 'text-rose-700'">{{ notif.title }}</h4>
-            <p class="text-xs font-medium text-gray-600 mt-1 leading-snug" v-html="notif.message"></p>
-            <p class="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest">{{ new Date(notif.date).toLocaleString('vi-VN') }}</p>
+            <p class="text-xs font-medium text-gray-800 mt-1 leading-snug" v-html="notif.message"></p>
+            <p class="text-[10px] font-bold text-gray-500 mt-2 uppercase tracking-widest">{{ new Date(notif.date).toLocaleString('vi-VN') }}</p>
           </div>
         </div>
 

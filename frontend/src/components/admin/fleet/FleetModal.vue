@@ -37,6 +37,8 @@
             />
           </div>
 
+
+
           <div class="space-y-1.5">
             <label class="text-label-md font-black text-on-surface-variant uppercase">Dòng Xe / Cấu Hình Ghế</label>
             <select 
@@ -61,26 +63,7 @@
             </select>
           </div>
 
-          <div class="space-y-1.5">
-            <label class="text-label-md font-black text-on-surface-variant uppercase flex items-center gap-1">
-              <span class="material-symbols-outlined text-sm">person_pin</span>
-              Tên Tài Xế Đảm Nhiệm
-            </label>
-            <select 
-              v-model="form.driverName" 
-              required
-              class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold transition-colors bg-white"
-            >
-              <option value="" disabled>-- Chọn tài xế đảm nhiệm --</option>
-              <option 
-                v-for="driver in drivers" 
-                :key="driver.id" 
-                :value="driver.fullName"
-              >
-                {{ driver.fullName }} ({{ driver.phone }})
-              </option>
-            </select>
-          </div>
+
 
 
 

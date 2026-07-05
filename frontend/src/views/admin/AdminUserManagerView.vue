@@ -1,13 +1,13 @@
 <template>
   <div class="p-6 space-y-6">
     <!-- Header Bar -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
       <div>
         <h1 class="text-headline-md font-black flex items-center gap-2 text-slate-900">
-          <span class="material-symbols-outlined text-primary text-[32px]">groups</span>
-          Quản lý Người Dùng
+          <span class="material-symbols-outlined text-primary text-[32px]">{{ pageIcon }}</span>
+          {{ pageTitle }}
         </h1>
-        <p class="text-body-md text-on-surface-variant mt-1">Xem thông tin, phân quyền, và quản lý số dư ví của toàn bộ khách hàng.</p>
+        <p class="text-body-md text-on-surface-variant mt-1">{{ pageSubtitle }}</p>
       </div>
       <!-- Actions -->
       <div class="flex items-center gap-3 w-full md:w-auto">
@@ -28,39 +28,6 @@
           <span class="hidden sm:inline">Thêm mới</span>
         </button>
       </div>
-    </div>
-
-
-    <!-- Tabs Filter -->
-    <div class="flex gap-6 border-b border-slate-200 px-2 overflow-x-auto hide-scrollbar">
-      <button 
-        @click="activeTab = 'users'"
-        class="pb-3 text-sm font-black tracking-wide transition-all uppercase whitespace-nowrap"
-        :class="activeTab === 'users' ? 'text-primary border-b-[3px] border-primary' : 'text-slate-400 hover:text-slate-600'"
-      >
-        Khách hàng
-      </button>
-      <button 
-        @click="activeTab = 'inspector'"
-        class="pb-3 text-sm font-black tracking-wide transition-all uppercase whitespace-nowrap"
-        :class="activeTab === 'inspector' ? 'text-primary border-b-[3px] border-primary' : 'text-slate-400 hover:text-slate-600'"
-      >
-        Lơ xe / Phụ xe
-      </button>
-      <button 
-        @click="activeTab = 'driver'"
-        class="pb-3 text-sm font-black tracking-wide transition-all uppercase whitespace-nowrap"
-        :class="activeTab === 'driver' ? 'text-primary border-b-[3px] border-primary' : 'text-slate-400 hover:text-slate-600'"
-      >
-        Tài xế
-      </button>
-      <button 
-        @click="activeTab = 'admin'"
-        class="pb-3 text-sm font-black tracking-wide transition-all uppercase whitespace-nowrap"
-        :class="activeTab === 'admin' ? 'text-primary border-b-[3px] border-primary' : 'text-slate-400 hover:text-slate-600'"
-      >
-        Quản trị viên
-      </button>
     </div>
 
     <!-- Main Table Grid Container -->
@@ -127,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
 
 import UserTable from '@/components/admin/user/UserTable.vue';
@@ -135,12 +102,60 @@ import StaffTable from '@/components/admin/user/StaffTable.vue';
 import UserEditModal from '@/components/admin/user/UserEditModal.vue';
 import UserHistoryModal from '@/components/admin/user/UserHistoryModal.vue';
 import UserDeleteModal from '@/components/admin/user/UserDeleteModal.vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const api = useApi();
+const route = useRoute();
+const router = useRouter();
 const users = ref([]);
 const loading = ref(true);
 const searchQuery = ref('');
-const activeTab = ref('users'); // 'users' or 'staff'
+const activeTab = ref(route.query.tab || 'users');
+
+const pageTitle = computed(() => {
+  switch (activeTab.value) {
+    case 'users': return 'Quản lý Khách Hàng';
+    case 'driver': return 'Quản lý Tài Xế';
+    case 'inspector': return 'Quản lý Lơ Xe / Phụ Xe';
+    case 'admin': return 'Danh sách Quản Trị Viên';
+    default: return 'Quản lý Người Dùng';
+  }
+});
+
+const pageSubtitle = computed(() => {
+  switch (activeTab.value) {
+    case 'users': return 'Xem thông tin, phân quyền, và quản lý số dư ví của khách hàng.';
+    case 'driver': return 'Quản lý hồ sơ tài xế và theo dõi lịch sử phân công chuyến xe.';
+    case 'inspector': return 'Quản lý hồ sơ nhân viên soát vé và lơ xe.';
+    case 'admin': return 'Quản lý các tài khoản có quyền quản trị tối cao trên hệ thống.';
+    default: return 'Quản lý danh sách người dùng trên hệ thống.';
+  }
+});
+
+const pageIcon = computed(() => {
+  switch (activeTab.value) {
+    case 'users': return 'groups';
+    case 'driver': return 'local_taxi';
+    case 'inspector': return 'badge';
+    case 'admin': return 'admin_panel_settings';
+    default: return 'groups';
+  }
+});
+
+// Sync URL to activeTab
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && newTab !== activeTab.value) {
+    activeTab.value = newTab;
+  }
+});
+
+// Sync activeTab to URL
+watch(activeTab, (newTab) => {
+  if (route.query.tab !== newTab) {
+    router.replace({ query: { ...route.query, tab: newTab } });
+  }
+});
+
 const isModalOpen = ref(false);
 const isCreateMode = ref(false);
 const submitting = ref(false);
@@ -182,10 +197,9 @@ const fetchUsers = async () => {
     users.value = rawUsers.map(user => {
       let tripCount = 0;
       if (user.role === 'INSPECTOR') {
-         tripCount = trips.filter(t => t.inspector && t.inspector.fullName === user.fullName && (t.status === 'SCHEDULED' || t.status === 'IN_PROGRESS')).length;
+         tripCount = trips.filter(t => t.inspector?.phone === user.phone && (t.status === 'ASSIGNED' || t.status === 'PENDING' || t.status === 'IN_PROGRESS')).length;
       } else if (user.role === 'DRIVER') {
-         const myBuses = buses.filter(b => b.driverName === user.fullName).map(b => b.licensePlate);
-         tripCount = trips.filter(t => myBuses.includes(t.assignedLicensePlate) && (t.status === 'SCHEDULED' || t.status === 'IN_PROGRESS')).length;
+         tripCount = trips.filter(t => t.assignedDriverUsername === user.phone && (t.status === 'ASSIGNED' || t.status === 'PENDING' || t.status === 'IN_PROGRESS')).length;
       }
       return { ...user, activeTripCount: tripCount };
     });
@@ -202,10 +216,10 @@ const filteredUsers = computed(() => {
   // 1. Lọc theo Tab
   if (activeTab.value === 'users') {
     list = list.filter(u => u.role === 'USER');
-  } else if (activeTab.value === 'inspector') {
-    list = list.filter(u => u.role === 'INSPECTOR');
   } else if (activeTab.value === 'driver') {
     list = list.filter(u => u.role === 'DRIVER');
+  } else if (activeTab.value === 'inspector') {
+    list = list.filter(u => u.role === 'INSPECTOR');
   } else if (activeTab.value === 'admin') {
     list = list.filter(u => u.role === 'ADMIN');
   }
@@ -276,10 +290,11 @@ const submitEdit = async () => {
   submitting.value = true;
   try {
     if (isCreateMode.value) {
+      const payloadEmail = (editForm.value.role === 'DRIVER' || editForm.value.role === 'INSPECTOR') ? '' : editForm.value.email;
       await api.post('/auth/register', {
         fullName: editForm.value.fullName,
         phone: editForm.value.phone,
-        email: editForm.value.email,
+        email: payloadEmail,
         password: editForm.value.password || '123456'
       });
       const response = await api.get('/users');

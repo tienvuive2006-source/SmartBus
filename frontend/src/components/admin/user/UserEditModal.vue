@@ -21,10 +21,10 @@
         </div>
 
         <!-- Form Body -->
-        <form @submit.prevent="$emit('submit')" class="overflow-y-auto hide-scrollbar flex-1 p-8 pt-2 space-y-6">
+        <form @submit.prevent="handleSubmit" autocomplete="off" class="overflow-y-auto hide-scrollbar flex-1 p-8 pt-2 space-y-6">
           <div class="space-y-4">
             <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Họ và Tên khách hàng</label>
+              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Họ và Tên {{ form.role === 'USER' ? 'khách hàng' : 'nhân viên' }}</label>
               <input 
                 v-model="form.fullName" 
                 type="text" 
@@ -45,12 +45,13 @@
               />
             </div>
 
-            <div>
+            <div v-if="form.role === 'USER' || form.role === 'ADMIN'">
               <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Địa chỉ Email (Tuỳ chọn)</label>
               <input 
                 v-model="form.email" 
                 type="email" 
-                :disabled="!isCreateMode"
+                autocomplete="off"
+                data-lpignore="true"
                 class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50"
               />
             </div>
@@ -60,6 +61,8 @@
               <input 
                 v-model="form.password" 
                 type="password" 
+                autocomplete="new-password"
+                data-lpignore="true"
                 :placeholder="isCreateMode ? 'Nhập mật khẩu hoặc để trống' : 'Nhập mật khẩu mới'"
                 class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-mono"
               />
@@ -78,7 +81,7 @@
                   <option value="DRIVER">Tài xế (Lái xe)</option>
                 </select>
               </div>
-              <div>
+              <div v-if="form.role === 'USER'">
                 <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Số dư ví (đ)</label>
                 <input 
                   v-model.number="form.walletBalance" 
@@ -164,7 +167,12 @@ const props = defineProps({
   submitting: Boolean
 });
 
-defineEmits(['close', 'submit']);
+const emit = defineEmits(['close', 'submit']);
+
+const handleSubmit = () => {
+  emit('submit');
+};
+
 
 const fileInput = ref(null);
 const uploading = ref(false);

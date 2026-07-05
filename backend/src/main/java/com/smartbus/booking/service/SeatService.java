@@ -2,7 +2,9 @@ package com.smartbus.booking.service;
 
 import com.smartbus.booking.entity.Seat;
 import com.smartbus.booking.entity.Trip;
+import com.smartbus.booking.entity.SeatReservation;
 import com.smartbus.booking.repository.SeatRepository;
+import com.smartbus.booking.repository.SeatReservationRepository;
 import com.smartbus.booking.repository.TripRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,15 +17,63 @@ public class SeatService {
 
     private final SeatRepository seatRepository;
     private final TripRepository tripRepository;
+    private final SeatReservationRepository seatReservationRepository;
 
     // 🛡️ CONSTRUCTOR THUẦN TÚY (Pure Vanilla Java): Hoàn hảo 100% không bao giờ sợ lỗi IDE!
-    public SeatService(SeatRepository seatRepository, TripRepository tripRepository) {
+    public SeatService(SeatRepository seatRepository, TripRepository tripRepository, SeatReservationRepository seatReservationRepository) {
         this.seatRepository = seatRepository;
         this.tripRepository = tripRepository;
+        this.seatReservationRepository = seatReservationRepository;
     }
 
     public List<Seat> getSeatsByTripId(Long tripId) {
-        return seatRepository.findByTripIdOrderBySeatNumberAsc(tripId);
+        List<Seat> seats = seatRepository.findByTripIdOrderBySeatNumberAsc(tripId);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        
+        // Cập nhật trạng thái giả cho ghế đang bị tạm giữ (hold)
+        List<String> heldSeats = seatReservationRepository.findByTripId(tripId).stream()
+                .filter(h -> h.getExpiredAt().isAfter(now))
+                .map(SeatReservation::getSeatNumber)
+                .toList();
+                
+        seats.forEach(s -> {
+            if (!s.getIsBooked() && heldSeats.contains(s.getSeatNumber())) {
+                s.setIsBooked(true); // Đánh dấu là đã đặt để Frontend mờ đi
+            }
+        });
+        
+        return seats;
+    }
+
+    // TẠM GIỮ GHẾ 10 PHÚT TRONG LÚC THANH TOÁN
+    @Transactional
+    public void holdSeats(Long tripId, List<String> seatNumbers) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        seatReservationRepository.deleteExpiredReservations(now); // Dọn rác
+        
+        List<Seat> seats = seatRepository.findByTripIdOrderBySeatNumberAsc(tripId);
+        List<String> validHolds = seatReservationRepository.findByTripId(tripId).stream()
+                .filter(h -> h.getExpiredAt().isAfter(now))
+                .map(SeatReservation::getSeatNumber)
+                .toList();
+                
+        for (Seat s : seats) {
+            if (seatNumbers.contains(s.getSeatNumber())) {
+                if (s.getIsBooked() || validHolds.contains(s.getSeatNumber())) {
+                    throw new RuntimeException("Ghế " + s.getSeatNumber() + " đã có người đặt hoặc đang được giữ thanh toán!");
+                }
+            }
+        }
+        
+        java.time.LocalDateTime expiredAt = now.plusMinutes(10);
+        for (String seatNum : seatNumbers) {
+            seatReservationRepository.save(SeatReservation.builder()
+                    .tripId(tripId)
+                    .seatNumber(seatNum)
+                    .createdAt(now)
+                    .expiredAt(expiredAt)
+                    .build());
+        }
     }
 
     // Xóa toàn bộ ghế cũ khi Admin sửa đổi sơ đồ cấu hình
@@ -97,6 +147,9 @@ public class SeatService {
             trip.setAvailableSeats(finalCount);
             tripRepository.save(trip); // Ghi đè trực tiếp vào SQL Server!
         });
+        
+        // 5. XÓA HOLD TẠM THỜI (Vì đã chốt đơn)
+        seatReservationRepository.deleteByTripIdAndSeatNumbers(tripId, seatNumbers);
     }
 
     // 🔄 HỦY GHẾ VÀ HOÀN LẠI SỐ DƯ GHẾ TRỐNG

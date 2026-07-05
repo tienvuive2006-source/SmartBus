@@ -48,4 +48,8 @@ public class User {
     @Builder.Default
     @Column(name = "is_locked")
     private Boolean isLocked = false;
+
+    @Builder.Default
+    @Column(name = "driver_status")
+    private String driverStatus = "FREE"; // FREE, DRIVING, ON_LEAVE, SUSPENDED
 }

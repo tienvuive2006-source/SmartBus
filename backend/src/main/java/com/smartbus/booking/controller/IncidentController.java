@@ -16,11 +16,16 @@ public class IncidentController {
     @Autowired
     private IncidentRepository incidentRepository;
 
+    @Autowired
+    private com.smartbus.booking.repository.UserRepository userRepository;
+
     // Lấy danh sách sự cố cho Admin
     @GetMapping("/admin/incidents")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Incident>> getAllIncidents() {
-        return ResponseEntity.ok(incidentRepository.findAll());
+        List<Incident> incidents = incidentRepository.findAll();
+        incidents.forEach(this::populateDriverName);
+        return ResponseEntity.ok(incidents);
     }
 
     // Tài xế báo cáo sự cố mới
@@ -28,6 +33,10 @@ public class IncidentController {
     @PreAuthorize("hasAnyRole('DRIVER', 'INSPECTOR')")
     public ResponseEntity<?> reportIncident(@RequestBody Incident incident) {
         incident.setStatus("PENDING");
+        if (incident.getDriverId() != null) {
+            userRepository.findById(incident.getDriverId())
+                    .ifPresent(user -> incident.setDriverName(user.getFullName()));
+        }
         Incident savedIncident = incidentRepository.save(incident);
         return ResponseEntity.ok(savedIncident);
     }
@@ -36,7 +45,16 @@ public class IncidentController {
     @GetMapping("/driver/incidents/trip/{tripId}")
     @PreAuthorize("hasAnyRole('DRIVER', 'INSPECTOR')")
     public ResponseEntity<List<Incident>> getIncidentsByTrip(@PathVariable("tripId") Long tripId) {
-        return ResponseEntity.ok(incidentRepository.findByTripIdOrderByCreatedAtDesc(tripId));
+        List<Incident> incidents = incidentRepository.findByTripIdOrderByCreatedAtDesc(tripId);
+        incidents.forEach(this::populateDriverName);
+        return ResponseEntity.ok(incidents);
+    }
+
+    private void populateDriverName(Incident incident) {
+        if (incident.getDriverId() != null) {
+            userRepository.findById(incident.getDriverId())
+                    .ifPresent(user -> incident.setDriverName(user.getFullName()));
+        }
     }
 
     // Admin xử lý sự cố

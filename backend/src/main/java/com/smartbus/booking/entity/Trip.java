@@ -27,6 +27,16 @@ public class Trip {
     @Column(nullable = true)
     private String assignedLicensePlate; // Biển số xe thực tế được phân công để chạy chuyến này
 
+    @Column(nullable = true)
+    private String assignedDriverUsername; // Tên đăng nhập của tài xế được phân công
+
+    @Column(nullable = true)
+    private String assignedDriverFullName; // Tên hiển thị của tài xế được phân công
+
+    @Column(nullable = false, columnDefinition = "boolean DEFAULT false")
+    @Builder.Default
+    private Boolean driverAccepted = false; // Trạng thái tài xế chấp nhận chuyến
+
     @Column(nullable = false)
     private String departurePoint;
 
@@ -94,10 +104,10 @@ public class Trip {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "inspector_id", nullable = true)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "userAccount"})
     private Inspector inspector;
 
     @Column(nullable = true)
     @Builder.Default
-    private String status = "SCHEDULED"; // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+    private String status = "PENDING"; // PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
 }

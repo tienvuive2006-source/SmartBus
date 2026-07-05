@@ -24,7 +24,7 @@ public class Incident {
     @Column(name = "driver_id")
     private Long driverId;
 
-    @Column(name = "driver_name")
+    @Transient
     private String driverName;
 
     @Column(name = "description", length = 1000)

@@ -1,5 +1,5 @@
-# ==========================================
-# IDE & System Files (Bỏ qua file hệ thống)
+﻿# ==========================================
+# IDE & System Files (Bá» qua file há»‡ thá»‘ng)
 # ==========================================
 .vscode/
 .idea/
@@ -14,7 +14,7 @@ Thumbs.db
 .DS_Store
 
 # ==========================================
-# Frontend Vue 3 (Bỏ qua file build JS)
+# Frontend Vue 3 (Bá» qua file build JS)
 # ==========================================
 frontend/node_modules/
 frontend/dist/
@@ -23,17 +23,28 @@ frontend/.env.*.local
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
 
 # ==========================================
-# Backend Spring Boot (Bỏ qua file build Java)
+# Backend Spring Boot (Bá» qua file build Java)
 # ==========================================
 backend/target/
 backend/out/
-# backend/.mvn/ - Nên giữ lại để chạy được lệnh mvnw
-# backend/mvnw - Cần mang lên GitHub
-# backend/mvnw.cmd - Cần mang lên GitHub
+# backend/.mvn/ - NÃªn giá»¯ láº¡i Ä‘á»ƒ cháº¡y Ä‘Æ°á»£c lá»‡nh mvnw
+# backend/mvnw - Cáº§n mang lÃªn GitHub
+# backend/mvnw.cmd - Cáº§n mang lÃªn GitHub
 backend/*.jar
 backend/*.war
 backend/*.zip
 backend/*.tar.gz
 backend/HELP.md
+
+# ==========================================
+# AI Agents & Debug Files (File rác và g? l?i)
+# ==========================================
+.agents/
+.gemini/
+skills-lock.json
+*_debug.json

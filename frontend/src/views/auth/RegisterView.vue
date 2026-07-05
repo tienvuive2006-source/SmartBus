@@ -91,11 +91,6 @@
             </div>
           </div>
 
-          <!-- Success Message (Tặng tiền) -->
-          <div class="bg-emerald-50 border border-emerald-100 text-emerald-800 px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wide flex items-center gap-2">
-            <span class="material-symbols-outlined text-emerald-600 animate-pulse">redeem</span>
-            <span>QUÀ KHỞI NGHIỆP: TẶNG 500K VÀO VÍ KHI TẠO MỚI!</span>
-          </div>
 
           <!-- Error Alert -->
           <div v-if="errorMsg" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-body-sm font-bold flex items-center gap-2">
@@ -110,7 +105,7 @@
             class="w-full bg-gradient-to-r from-secondary to-primary text-white py-4 rounded-2xl font-black text-body-md shadow-md hover:brightness-110 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
           >
             <span v-if="loading" class="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></span>
-            {{ loading ? 'ĐANG KHỞI TẠO...' : 'TẠO TÀI KHOẢN & NHẬN 500K' }}
+            {{ loading ? 'ĐANG KHỞI TẠO...' : 'TẠO TÀI KHOẢN' }}
           </button>
         </form>
 
@@ -157,7 +152,7 @@ const handleRegister = async () => {
   try {
     await authStore.register(fullName.value, phone.value, password.value, email.value);
     
-    // 🚀 Tự động đăng nhập ngay sau khi đăng ký -> về profile hưởng 500k
+    // 🚀 Tự động đăng nhập ngay sau khi đăng ký
     router.push('/');
   } catch (error) {
     console.error("Đăng ký thất bại:", error);

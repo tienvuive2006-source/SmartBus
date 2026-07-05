@@ -59,6 +59,12 @@ public class Booking {
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user; // Optional: If the user is logged in
 
+    @Column(name = "round_trip_group_id")
+    private String roundTripGroupId;
+
+    @Column(name = "trip_type")
+    private String tripType; // OUTBOUND, RETURN
+
     @Transient
     private boolean isReviewed;
 

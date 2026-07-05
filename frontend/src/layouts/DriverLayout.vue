@@ -17,6 +17,8 @@
             <p class="text-label-sm opacity-80">{{ authStore.currentUser?.phone }}</p>
           </div>
           
+          <!-- Notification Bell Removed -->
+
           <!-- Avatar -->
           <div class="w-10 h-10 rounded-full border-2 border-white/20 overflow-hidden bg-white/10 shrink-0 shadow-sm flex items-center justify-center">
              <img v-if="authStore.currentUser?.avatarUrl" :src="authStore.currentUser.avatarUrl" class="w-full h-full object-cover" />

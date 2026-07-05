@@ -34,7 +34,6 @@ public class BusService {
         return busRepository.findById(id).map(bus -> {
             bus.setLicensePlate(updatedBus.getLicensePlate());
             bus.setBusType(updatedBus.getBusType());
-            bus.setDriverName(updatedBus.getDriverName());
             bus.setStatus(updatedBus.getStatus() != null ? updatedBus.getStatus().toUpperCase() : "ĐANG NGHỈ");
             bus.setCurrentStation(updatedBus.getCurrentStation());
             bus.setImageUrl(updatedBus.getImageUrl()); // Lưu link ảnh xe thật

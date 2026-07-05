@@ -37,6 +37,7 @@
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Điểm khởi hành</th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Điểm kết thúc</th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Thời gian</th>
+              <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Giá cơ bản</th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Thao tác</th>
             </tr>
           </thead>
@@ -56,6 +57,7 @@
               <td class="px-6 py-5 text-sm text-slate-600 truncate max-w-[200px]">{{ route.departurePoint }}</td>
               <td class="px-6 py-5 text-sm text-slate-600 truncate max-w-[200px]">{{ route.arrivalPoint }}</td>
               <td class="px-6 py-5 text-center font-bold text-emerald-600 text-sm">{{ route.duration || '--' }}</td>
+              <td class="px-6 py-5 text-center font-bold text-slate-700 text-sm">{{ route.basePrice ? route.basePrice.toLocaleString() + 'đ' : '--' }}</td>
               <td class="px-6 py-5 text-center">
                 <div class="flex items-center justify-center gap-2">
                   <button @click="editRoute(idx)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-sm border border-slate-100" title="Chỉnh sửa">
@@ -185,6 +187,21 @@
                     {{ loc }}
                   </li>
                 </ul>
+              </div>
+
+              <!-- Thêm Giá cơ bản input -->
+              <div class="space-y-1.5 relative">
+                <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex justify-between">
+                  <span>Giá cơ bản (VNĐ)</span>
+                </label>
+                <div class="relative flex items-center">
+                  <input 
+                    v-model.number="form.basePrice"
+                    type="number"
+                    placeholder="VD: 100000" 
+                    class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all font-mono" 
+                  />
+                </div>
               </div>
 
               <!-- Thêm Image URL input -->
@@ -358,7 +375,8 @@ const fetchActualTrips = async () => {
 const routes = ref([]);
 const isModalOpen = ref(false);
 const editingIndex = ref(-1);
-const form = ref({ name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', imageUrl: '', routeData: '' });
+const form = ref({ name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', basePrice: null, imageUrl: '', routeData: '' });
+
 const geocoding = ref({ departure: false, arrival: false });
 const lastGeocodeTarget = ref('departure');
 const mapLoading = ref(false);
@@ -413,7 +431,7 @@ const loadRoutes = async () => {
 
 const openAddModal = () => {
   editingIndex.value = -1;
-  form.value = { name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', imageUrl: '', routeData: '' };
+  form.value = { name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', basePrice: null, imageUrl: '', routeData: '' };
   isModalOpen.value = true;
   initMap();
 };
@@ -483,6 +501,7 @@ const saveRoute = async () => {
     arrivalLat: form.value.arrivalLat || 0,
     arrivalLng: form.value.arrivalLng || 0,
     duration: form.value.duration,
+    basePrice: form.value.basePrice || 0,
     imageUrl: form.value.imageUrl || '',
     routeData: form.value.routeData || ''
   };

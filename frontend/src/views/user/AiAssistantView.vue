@@ -29,24 +29,7 @@
       </div>
     </div>
 
-    <!-- User Message Example -->
-    <div class="flex gap-3 max-w-[85%] self-end">
-      <div class="bg-primary text-on-primary p-4 rounded-2xl rounded-tr-none shadow-sm text-body-lg font-body-lg">
-        Tôi muốn tìm vé đi Đà Lạt vào ngày mai.
-      </div>
-    </div>
 
-    <!-- AI Typing Indicator -->
-    <div class="flex gap-3 max-w-[85%]">
-      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
-        <span class="material-symbols-outlined">smart_toy</span>
-      </div>
-      <div class="bg-surface-container-low p-4 rounded-2xl rounded-tl-none shadow-sm border border-surface-container-highest flex items-center gap-1">
-        <div class="w-2 h-2 bg-outline rounded-full animate-bounce"></div>
-        <div class="w-2 h-2 bg-outline rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-        <div class="w-2 h-2 bg-outline rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
-      </div>
-    </div>
 
     <!-- Message Input Area -->
     <div class="fixed bottom-[72px] md:bottom-0 left-0 w-full bg-surface-bright/90 backdrop-blur-md border-t border-surface-container shadow-[0px_-4px_12px_rgba(0,0,0,0.05)] z-40">

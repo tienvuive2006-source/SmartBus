@@ -25,5 +25,7 @@ public class BusType {
     
     private String description; // Mô tả sơ lược về tiện nghi
     
+    private Double priceMultiplier = 1.0; // Hệ số nhân giá
+    
     private String imageUrl; // Hình ảnh mẫu cho dòng xe này
 }

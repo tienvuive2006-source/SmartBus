@@ -1,14 +1,14 @@
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col">
-    <TopAppBar v-if="!$route.meta.hideHeader" />
+    <LandingNavbar v-if="!$route.meta.hideHeader" :forceSolid="true" />
 
-    <main class="flex-grow">
+    <main class="flex-grow" :class="{ 'pt-[104px]': !$route.meta.hideHeader }">
       <router-view />
     </main>
 
-    <AppFooter />
+    <AppFooter v-if="!$route.meta.hideFooter" />
 
-    <BottomNavBar class="md:hidden" />
+    <BottomNavBar v-if="!$route.meta.hideHeader && !$route.meta.hideFooter" class="md:hidden" />
 
     <!-- AI Chatbot Floating Widget -->
     <AiChatbot />
@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-import TopAppBar from '../components/TopAppBar.vue'
+import LandingNavbar from '../components/landing/LandingNavbar.vue'
 import BottomNavBar from '../components/BottomNavBar.vue'
 import AppFooter from '../components/AppFooter.vue'
 import AiChatbot from '../components/AiChatbot.vue' // Import AI Chatbot

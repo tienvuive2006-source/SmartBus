@@ -84,15 +84,7 @@
               <!-- Status badge is moved to image overlay -->
             </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-3 text-on-surface-variant">
-              <div class="flex items-center gap-2 bg-surface-container-lowest p-2 rounded-xl border border-outline-variant/20">
-                <span class="material-symbols-outlined text-primary text-[20px]">airline_seat_recline_normal</span>
-                <div class="flex flex-col">
-                  <span class="text-[10px] font-black text-outline uppercase">Tài xế chủ xe</span>
-                  <span class="text-label-md font-bold text-on-surface">{{ bus.driverName || 'Chưa phân công' }}</span>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
 

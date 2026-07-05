@@ -1,22 +1,6 @@
 <template>
   <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-800">
-    <nav class="bg-[#075955] text-white border-b border-[#05403d] sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-2 cursor-pointer" @click="$router.push('/')">
-          <span class="material-symbols-outlined text-white text-4xl">directions_bus</span>
-          <div class="flex flex-col">
-            <span class="text-xl font-bold leading-none tracking-tight">Trung - Nam</span>
-            <span class="text-[9px] uppercase tracking-wider font-semibold">Nhà xe chuyên tuyến Miền Trung - Nam</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-6">
-          <button @click="$router.push('/')" class="text-sm font-semibold hover:text-yellow-300 transition-colors flex items-center gap-1">
-            <span class="material-symbols-outlined text-xl">home</span>
-            Trang chủ
-          </button>
-        </div>
-      </div>
-    </nav>
+
 
     <div class="pb-12 px-4 animate-fade-in bg-[#f2f5f8]">
     <main class="max-w-3xl mx-auto space-y-6 py-6">
@@ -473,7 +457,11 @@ const loadHistory = async () => {
   const stored = localStorage.getItem('trungnam_history') || localStorage.getItem('saomaifly_history') || localStorage.getItem('skybus_history');
   if (stored) {
     try {
-      localTickets = JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      localTickets = parsed.map(t => ({
+        ...t,
+        status: t.status || (t.method === 'CASH' ? 'PENDING' : 'PAID')
+      }));
     } catch (err) {
       console.error("Lỗi nạp lịch sử local:", err);
     }
@@ -498,6 +486,10 @@ const isSubmittingReview = ref(false);
 const reviewForm = ref({ rating: 0, comment: '' });
 
 const openReviewModal = (ticket) => {
+  if (!authStore.isLoggedIn) {
+    alert("Vui lòng đăng nhập để đánh giá chuyến đi!");
+    return;
+  }
   selectedTicket.value = ticket;
   reviewForm.value = { rating: 5, comment: '' };
   isReviewModalOpen.value = true;
@@ -540,6 +532,10 @@ const cancelReason = ref('');
 const isCancelling = ref(false);
 
 const openCancelModal = (ticket) => {
+  if (!authStore.isLoggedIn) {
+    alert("Vui lòng đăng nhập để hủy vé trực tuyến! Khách vãng lai vui lòng gọi Hotline 1900 1234 để được hỗ trợ hủy vé.");
+    return;
+  }
   selectedTicket.value = ticket;
   cancelReason.value = '';
   isCancelModalOpen.value = true;

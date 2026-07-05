@@ -145,6 +145,28 @@ public class TripController {
         return ResponseEntity.noContent().build();
     }
 
+    // 7. CẬP NHẬT TRẠNG THÁI TÀI XẾ CHẤP NHẬN CHUYẾN
+    @com.smartbus.booking.annotation.AuditAction(action = "ACCEPT_TRIP", entityName = "Trip")
+    @PatchMapping("/{id}/accept")
+    public ResponseEntity<Trip> acceptTrip(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(tripService.acceptTrip(id));
+    }
+
+    // 8. TÀI XẾ TỪ CHỐI CHUYẾN
+    @com.smartbus.booking.annotation.AuditAction(action = "REJECT_TRIP", entityName = "Trip")
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<Trip> rejectTrip(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(tripService.rejectTrip(id));
+    }
+
+    // 9. CẬP NHẬT TRẠNG THÁI CHUYẾN ĐI (SCHEDULED, IN_PROGRESS, COMPLETED)
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_TRIP_STATUS", entityName = "Trip")
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Trip> updateTripStatus(@PathVariable("id") Long id, @RequestBody java.util.Map<String, String> body) {
+        String status = body.get("status");
+        return ResponseEntity.ok(tripService.updateTripStatus(id, status));
+    }
+
     // 7. BẬT/TẮT HIỂN THỊ CHUYẾN XE (TOGGLE VISIBILITY)
     @com.smartbus.booking.annotation.AuditAction(action = "TOGGLE_TRIP_VISIBILITY", entityName = "Trip")
     @PatchMapping("/{id}/visibility")

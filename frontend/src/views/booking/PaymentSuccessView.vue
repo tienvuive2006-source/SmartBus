@@ -1,24 +1,6 @@
 <template>
   <div class="min-h-screen bg-[#f4f7f6] font-sans text-slate-800 pb-20 no-print">
-    <!-- Navigation Bar -->
-    <nav class="bg-white text-slate-800 border-b border-gray-200 sticky top-0 z-50 shadow-sm no-print">
-      <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-3 cursor-pointer" @click="$router.push('/')">
-          <div class="w-10 h-10 rounded-full bg-[#075955] flex items-center justify-center text-white">
-            <span class="material-symbols-outlined text-xl">directions_bus</span>
-          </div>
-          <div class="flex flex-col">
-            <span class="text-lg font-black text-gray-900 leading-none tracking-tight">Trung - Nam</span>
-            <span class="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-1">Chuyên tuyến Miền Trung - Nam</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-6">
-          <button @click="$router.push('/')" class="text-[10px] font-black uppercase tracking-widest bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl transition-all duration-200 hidden sm:block">
-            Trang chủ
-          </button>
-        </div>
-      </div>
-    </nav>
+
 
     <!-- Main Content Container -->
     <div class="flex flex-col items-center pt-8 px-4">
@@ -45,12 +27,12 @@
           <div class="absolute right-0 top-[30%] -mr-3 w-6 h-6 bg-[#f4f7f6] rounded-full border-l border-gray-200 z-10 no-print shadow-inner"></div>
 
           <!-- Ticket Header -->
-          <div class="p-6 md:p-8 bg-emerald-50/30 border-b border-dashed border-gray-200 flex justify-between items-center relative">
-            <div class="flex flex-col gap-1">
+          <div class="p-6 md:p-8 bg-emerald-50/30 border-b border-dashed border-gray-200 flex flex-wrap justify-between items-start md:items-center relative gap-4">
+            <div class="flex flex-col gap-1 min-w-0 flex-1">
               <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Mã số vé</span>
-              <span class="text-2xl font-black text-gray-900 tracking-widest">{{ bookingId }}</span>
+              <span class="text-xl md:text-2xl font-black text-gray-900 tracking-widest break-all">{{ bookingId }}</span>
             </div>
-            <div>
+            <div class="shrink-0">
               <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase border px-3 py-1.5 rounded-xl shadow-sm animate-pulse-subtle"
                     :class="status === 'PENDING' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'">
                 <span class="material-symbols-outlined text-sm">{{ status === 'PENDING' ? 'schedule' : 'verified' }}</span>

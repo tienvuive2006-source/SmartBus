@@ -1,18 +1,41 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nhà Xe Trung - Nam - Chuyên tuyến Miền Trung - Nam</title>
-    <!-- Google Fonts & Material Symbols -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/favicon4.png" />
+  <meta name=" viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nhà Xe Trung - Nam - Chuyên tuyến Miền Trung - Nam</title>
+  <!-- Google Fonts & Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
+  <!-- FontAwesome for brand icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- Initial Splash Screen (Loads instantly before Vue) -->
+  <div id="global-splash" style="position: fixed; inset: 0; z-index: 99999; background: #FDFBF7; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; font-family: 'Inter', sans-serif;">
+    <!-- SVG Spinner (Mượt tuyệt đối, không bao giờ giật) -->
+    <svg style="width: 44px; height: 44px; animation: spin 0.8s linear infinite; margin-bottom: 16px;" viewBox="0 0 50 50">
+      <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(196, 155, 85, 0.2)" stroke-width="4"></circle>
+      <circle cx="25" cy="25" r="20" fill="none" stroke="#C49B55" stroke-width="4" stroke-dasharray="31.4 125.6" stroke-linecap="round"></circle>
+    </svg>
+    <!-- Loading Text -->
+    <div style="color: #142A38; font-size: 14px; font-weight: 500; letter-spacing: 1px; animation: pulse 1.5s infinite; transform: translateZ(0);">Đang tải...</div>
+    
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+      body { margin: 0; overflow: hidden; } /* Khóa cuộn màn hình lúc đang tải */
+      #global-splash.fade-out { opacity: 0; pointer-events: none; }
+    </style>
+  </div>
+
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
 </html>

@@ -6,12 +6,13 @@
       <div>
         <h2 class="text-headline-lg font-headline-lg font-black text-on-background flex items-center gap-3">
           <span class="material-symbols-outlined text-4xl text-primary">garage</span>
-          Quản Lý Hạm Đội Xe Thật
+          Quản Lý Đội Xe & Catalog
         </h2>
-        <p class="text-body-lg font-body-lg text-on-surface-variant">Khởi tạo, cấu hình và giám sát cơ sở hạ tầng xe Trung Nam từ SQL Server</p>
+        <p class="text-body-lg font-body-lg text-on-surface-variant">Khởi tạo, cấu hình và giám sát cơ sở hạ tầng xe Trung Nam</p>
       </div>
       
       <button 
+        v-if="activeTab === 'FLEET'"
         @click="openCreateModal"
         class="bg-primary text-on-primary hover:bg-surface-tint hover:shadow-lg active:scale-95 px-6 py-3 rounded-2xl font-black tracking-wide shadow-md transition-all flex items-center gap-2 shrink-0"
       >
@@ -20,7 +21,29 @@
       </button>
     </div>
 
-    <!-- 1. Stats Overview -->
+    <!-- TABS NAVIGATION -->
+    <div class="flex gap-4 mb-8">
+      <button 
+        @click="activeTab = 'FLEET'"
+        :class="activeTab === 'FLEET' ? 'bg-primary text-white shadow-md' : 'bg-surface-container text-on-surface hover:bg-surface-variant'"
+        class="px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2"
+      >
+        <span class="material-symbols-outlined">local_shipping</span>
+        Danh Sách Xe (Hạm Đội)
+      </button>
+      <button 
+        @click="activeTab = 'CATALOG'"
+        :class="activeTab === 'CATALOG' ? 'bg-primary text-white shadow-md' : 'bg-surface-container text-on-surface hover:bg-surface-variant'"
+        class="px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2"
+      >
+        <span class="material-symbols-outlined">category</span>
+        Danh Mục Dòng Xe
+      </button>
+    </div>
+
+    <!-- CONTENT: FLEET TAB -->
+    <div v-if="activeTab === 'FLEET'" class="animate-fade-in">
+      <!-- 1. Stats Overview -->
     <FleetStats 
       :totalBuses="totalBuses"
       :activeBuses="activeBuses"
@@ -39,16 +62,22 @@
       />
     </div>
 
-    <!-- 3. Teleport Modal -->
-    <FleetModal 
-      :isOpen="isModalOpen"
-      :isEditMode="isEditMode"
-      :form="form"
-      :busTypes="busTypes"
-      :drivers="drivers"
-      @close="closeModal"
-      @submit="handleFormSubmit"
-    />
+      <!-- 3. Teleport Modal -->
+      <FleetModal 
+        :isOpen="isModalOpen"
+        :isEditMode="isEditMode"
+        :form="form"
+        :busTypes="busTypes"
+        :drivers="drivers"
+        @close="closeModal"
+        @submit="handleFormSubmit"
+      />
+    </div>
+
+    <!-- CONTENT: CATALOG TAB -->
+    <div v-else-if="activeTab === 'CATALOG'" class="animate-fade-in">
+      <BusTypeManager />
+    </div>
   </div>
 </template>
 
@@ -58,7 +87,9 @@ import { useApi } from '@/composables/useApi';
 import FleetStats from '../../components/admin/fleet/FleetStats.vue';
 import FleetTable from '../../components/admin/fleet/FleetTable.vue';
 import FleetModal from '../../components/admin/fleet/FleetModal.vue';
+import BusTypeManager from '../../components/admin/fleet/BusTypeManager.vue';
 
+const activeTab = ref('FLEET');
 const api = useApi();
 const buses = ref([]);
 const busTypes = ref([]); 
@@ -108,11 +139,19 @@ const fetchDrivers = async () => {
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
-const form = ref({ id: null, licensePlate: '', busType: '', driverName: '', currentStation: 'Hà Nội', status: 'ĐANG NGHỈ', imageUrl: '' });
+const form = ref({ id: null, licensePlate: '', busType: '', currentStation: 'Hà Nội', status: 'ĐANG NGHỈ', imageUrl: '' });
 
 const openCreateModal = () => {
   isEditMode.value = false;
-  form.value = { id: null, licensePlate: '', busType: busTypes.value[0]?.name || '', driverName: '', currentStation: 'Hà Nội', status: 'ĐANG NGHỈ', imageUrl: '' };
+  const defaultType = busTypes.value.length > 0 ? busTypes.value[0] : null;
+  form.value = { 
+    id: null, 
+    licensePlate: '', 
+    busType: defaultType?.name || '', 
+    currentStation: 'Hà Nội', 
+    status: 'ĐANG NGHỈ', 
+    imageUrl: defaultType?.imageUrl || '' 
+  };
   isModalOpen.value = true;
 };
 
@@ -125,7 +164,16 @@ const openEditModal = (bus) => {
 const closeModal = () => { isModalOpen.value = false; };
 
 const handleFormSubmit = async () => {
-  if (!form.value.licensePlate || !form.value.driverName) return alert("Vui lòng nhập đầy đủ!");
+  if (!form.value.licensePlate) return alert("Vui lòng nhập Biển số xe!");
+  
+  // Tự động đồng bộ ảnh từ Catalog nếu xe đang không có ảnh
+  if (!form.value.imageUrl && form.value.busType) {
+    const type = busTypes.value.find(t => t.name === form.value.busType);
+    if (type && type.imageUrl) {
+      form.value.imageUrl = type.imageUrl;
+    }
+  }
+
   try {
     if (isEditMode.value) await api.put(`/buses/${form.value.id}`, form.value);
     else await api.post('/buses', form.value);

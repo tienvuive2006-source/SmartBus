@@ -20,7 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
       notifications.value = []
     }
   }
-  
+
   // Gọi lần đầu khi khởi tạo store
   loadNotifications()
 
@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   const authHeader = computed(() => ({
     headers: { Authorization: `Bearer ${token.value}` }
   }))
-  
+
   const unreadNotificationsCount = computed(() => {
     return notifications.value.filter(n => !n.read).length
   })
@@ -86,7 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await axios.get(`${API_BASE}/auth/me`, authHeader.value)
       const freshUser = response.data
-      
+
       // So sánh số dư ví (nếu có user cũ và số dư thay đổi)
       if (user.value && user.value.walletBalance !== undefined && freshUser.walletBalance !== undefined) {
         const diff = freshUser.walletBalance - user.value.walletBalance
@@ -169,7 +169,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const connectWebSocket = () => {
     if (!user.value || !user.value.id) return
-    
+
     stompClient = new Client({
       webSocketFactory: () => new SockJS(`${API_BASE}/ws`),
       reconnectDelay: 5000,
@@ -181,7 +181,7 @@ export const useAuthStore = defineStore('auth', () => {
         })
       }
     })
-    
+
     stompClient.activate()
   }
 

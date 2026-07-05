@@ -1,0 +1,156 @@
+<template>
+  <div class="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden relative">
+    <!-- Toolbar -->
+    <div class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-20 relative">
+      <div class="flex items-center gap-4">
+        <div class="flex flex-col">
+          <h2 class="text-lg font-black text-slate-800">
+            <span v-if="selectedDriver">Lịch của {{ selectedDriver.fullName }}</span>
+            <span v-else>Lịch Trình Tổng Hợp</span>
+          </h2>
+          <div class="flex items-center gap-2 mt-0.5" v-if="!loadingSchedule">
+            <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shadow-sm">Tổng: {{ tripStats.total }}</span>
+            <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 shadow-sm">Chưa phân công: {{ tripStats.unassigned }}</span>
+            <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 shadow-sm">Đã gán tài xế: {{ tripStats.assigned }}</span>
+            <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 shadow-sm">Đang chạy: {{ tripStats.inProgress }}</span>
+            <span class="text-[10px] font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded border border-slate-300 shadow-sm">Đã hoàn thành: {{ tripStats.completed }}</span>
+          </div>
+        </div>
+        <span v-if="loadingSchedule" class="text-xs font-bold text-primary animate-pulse ml-2">Đang đồng bộ...</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button @click="$emit('change-week', -1)" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors">
+          <span class="material-symbols-outlined text-sm">chevron_left</span>
+        </button>
+        <div class="px-4 py-1.5 bg-slate-100 rounded-lg text-sm font-bold text-slate-700 cursor-pointer hover:bg-slate-200 transition-colors" @click="$emit('reset-week')">
+          {{ weekLabel }}
+        </div>
+        <button @click="$emit('change-week', 1)" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-colors">
+          <span class="material-symbols-outlined text-sm">chevron_right</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Grid Body -->
+    <div class="flex-1 overflow-y-auto overflow-x-auto relative bg-white custom-scrollbar" ref="gridContainer">
+      <div class="min-w-[800px] flex flex-col relative" :style="{ height: gridHeight + 'px' }">
+        
+        <!-- Header Days (X-Axis) -->
+        <div class="flex border-b border-slate-200 bg-white sticky top-0 z-30 shadow-sm">
+          <div v-for="day in weekDays" :key="day.date" class="flex-1 py-3 text-center border-r border-slate-200 flex flex-col justify-center items-center" :class="{'bg-primary/5': isToday(day.date)}">
+             <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ day.dayName }}</span>
+             <span class="text-sm font-bold mt-0.5" :class="isToday(day.date) ? 'text-primary' : 'text-slate-800'">{{ day.dateLabel }}</span>
+          </div>
+        </div>
+
+        <!-- TimeGrid Area (Kanban Style) -->
+        <div class="flex-1 flex relative bg-slate-50/30">
+          <div 
+            v-for="day in weekDays" :key="'col-' + day.date" 
+            class="flex-1 flex flex-col gap-3 p-2.5 border-r border-slate-200/60 overflow-y-auto hide-scrollbar" 
+            :class="{'bg-primary/5': isToday(day.date)}"
+          >
+            
+            <!-- ===== LEAVE REQUEST BLOCKS ===== -->
+            <LeaveBlock 
+              v-for="leave in getLeavesForDay(day.date)" 
+              :key="'leave-'+leave.id"
+              :leave="leave"
+              @click="$emit('open-leave', leave)"
+            />
+
+            <!-- ===== TRIP BLOCKS ===== -->
+            <TripBlock 
+              v-for="trip in getTripsForDay(day.date)" 
+              :key="'trip-'+trip.id"
+              :trip="trip"
+              @click="$emit('open-trip', trip)"
+            />
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import TripBlock from './TripBlock.vue';
+import LeaveBlock from './LeaveBlock.vue';
+
+const props = defineProps({
+  selectedDriver: { type: Object, default: null },
+  weekDays: { type: Array, required: true },
+  weekLabel: { type: String, required: true },
+  loadingSchedule: { type: Boolean, default: false },
+  getTripsForDay: { type: Function, required: true },
+  getLeavesForDay: { type: Function, required: true }
+});
+
+defineEmits(['change-week', 'reset-week', 'open-trip', 'open-leave']);
+
+const tripStats = computed(() => {
+  let total = 0;
+  let assigned = 0;
+  let unassigned = 0;
+  let inProgress = 0;
+  let completed = 0;
+  
+  if (props.weekDays && props.getTripsForDay) {
+    props.weekDays.forEach(day => {
+      const trips = props.getTripsForDay(day.date) || [];
+      total += trips.length;
+      trips.forEach(t => {
+        if (t.status === 'IN_PROGRESS') {
+           inProgress++;
+        } else if (t.status === 'COMPLETED') {
+           completed++;
+        } else if (t.assignedDriverUsername) {
+           assigned++;
+        } else {
+           unassigned++;
+        }
+      });
+    });
+  }
+  
+  return { total, assigned, unassigned, inProgress, completed };
+});
+
+const hours = Array.from({ length: 19 }, (_, i) => i + 5); // 05:00 to 23:00
+const hourHeight = 96;
+const gridHeight = hours.length * hourHeight + 48; // + header
+
+const gridContainer = ref(null);
+
+const isToday = (dateStr) => {
+  const today = new Date().toISOString().split('T')[0];
+  return dateStr === today;
+};
+</script>
+
+<style scoped>
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; 
+}
+</style>

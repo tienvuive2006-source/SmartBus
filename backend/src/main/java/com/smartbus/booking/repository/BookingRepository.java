@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -22,4 +23,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @EntityGraph(attributePaths = {"seatNumbers"})
     List<Booking> findByStatusIn(List<String> statuses);
+
+    List<Booking> findByRoundTripGroupId(String roundTripGroupId);
+
+    @EntityGraph(attributePaths = {"trip", "seatNumbers", "trip.busType"})
+    Optional<Booking> findByIdAndCustomerPhone(Long id, String customerPhone);
 }

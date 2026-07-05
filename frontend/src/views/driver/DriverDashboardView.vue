@@ -58,6 +58,7 @@
       </button>
     </div>
 
+
     <!-- Trip List -->
     <div v-else class="space-y-4">
       <div 
@@ -127,20 +128,109 @@
               Xem chi tiết <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
             </div>
           </div>
+          
+          <!-- Nút Xác Nhận / Từ Chối -->
+          <div v-if="!trip.driverAccepted && trip.status === 'SCHEDULED'" class="mt-4 pt-4 border-t border-slate-100 flex gap-3">
+             <button @click.stop="acceptTrip(trip.id)" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest shadow-sm active:scale-95 transition-all">
+                Nhận chuyến
+             </button>
+             <button @click.stop="rejectTrip(trip.id)" class="flex-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all">
+                Từ chối
+             </button>
+          </div>
+          
+          <!-- Nút Bắt Đầu / Hoàn Thành -->
+          <div v-else-if="trip.driverAccepted && trip.status === 'SCHEDULED'" class="mt-4 pt-4 border-t border-slate-100">
+             <button @click.stop="updateTripStatus(trip.id, 'IN_PROGRESS')" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined">play_circle</span>
+                Bắt Đầu Hành Trình
+             </button>
+          </div>
+          
+          <div v-else-if="trip.status === 'IN_PROGRESS'" class="mt-4 pt-4 border-t border-slate-100">
+             <button @click.stop="updateTripStatus(trip.id, 'COMPLETED')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined">task_alt</span>
+                Hoàn Thành Chuyến
+             </button>
+          </div>
+          
         </div>
       </div>
     </div>
     
     <!-- Spacer for bottom navigation -->
     <div class="h-24 sm:h-32 w-full"></div>
+    <!-- Floating Action Button for Leave Request -->
+    <button @click="showLeaveModal = true" class="fixed bottom-24 right-6 w-14 h-14 bg-amber-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-amber-700 active:scale-90 transition-transform z-40">
+      <span class="material-symbols-outlined text-2xl">event_busy</span>
+    </button>
+
+    <!-- Modal Xin Nghỉ Phép -->
+    <Teleport to="body">
+      <div v-if="showLeaveModal" class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showLeaveModal = false"></div>
+        <div class="relative w-full sm:max-w-md bg-white sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl overflow-hidden flex flex-col animate-slide-up sm:animate-fade-in-up">
+          <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
+            <h3 class="text-title-md font-black text-slate-800 flex items-center gap-2">
+              <span class="material-symbols-outlined text-amber-600">event_busy</span>
+              Đơn xin nghỉ phép
+            </h3>
+            <button @click="showLeaveModal = false" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          
+          <div class="p-6 bg-slate-50 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+               <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Từ ngày</label>
+                  <input type="date" v-model="leaveForm.startDate" class="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20" />
+               </div>
+               <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Đến ngày</label>
+                  <input type="date" v-model="leaveForm.endDate" class="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20" />
+               </div>
+            </div>
+            <div>
+               <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Lý do</label>
+               <textarea v-model="leaveForm.reason" rows="3" class="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20" placeholder="Lý do xin nghỉ..."></textarea>
+            </div>
+            
+            <!-- List of my requests -->
+            <div class="mt-6 pt-4 border-t border-slate-200">
+               <h4 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-3">Lịch sử xin nghỉ</h4>
+               <div v-if="myLeaveRequests.length === 0" class="text-xs font-bold text-slate-400">Chưa có đơn nào.</div>
+               <div class="space-y-2 max-h-32 overflow-y-auto pr-2">
+                  <div v-for="req in myLeaveRequests" :key="req.id" class="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center">
+                     <div>
+                        <div class="text-[10px] font-bold text-slate-700">{{ req.startDate }} - {{ req.endDate }}</div>
+                        <div class="text-[9px] text-slate-500 truncate max-w-[150px]" :title="req.reason">{{ req.reason }}</div>
+                     </div>
+                     <span class="text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded border" :class="req.status === 'PENDING' ? 'text-amber-600 bg-amber-50 border-amber-200' : (req.status === 'APPROVED' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200')">
+                        {{ req.status }}
+                     </span>
+                  </div>
+               </div>
+            </div>
+          </div>
+          
+          <div class="p-6 bg-white border-t border-slate-100">
+            <button @click="submitLeaveRequest" :disabled="!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-3.5 rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100">
+              GỬI ĐƠN
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import axios from 'axios';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useApi } from '@/composables/useApi';
 
+const api = useApi();
 const authStore = useAuthStore();
 const trips = ref([]);
 const buses = ref([]);
@@ -154,38 +244,100 @@ const getTodayStr = () => {
   return [year, month.padStart(2, '0'), day.padStart(2, '0')].join('-');
 };
 
-const filterDate = ref(getTodayStr()); // Mặc định hiển thị ngày hôm nay
+const filterDate = ref(getTodayStr());
+
+const showLeaveModal = ref(false);
+const leaveForm = ref({ startDate: '', endDate: '', reason: '' });
+const myLeaveRequests = ref([]);
 
 const filteredTrips = computed(() => {
   if (!filterDate.value) return trips.value;
   return trips.value.filter(t => t.departureDate === filterDate.value);
 });
 
+const getStatusColor = (status) => {
+  switch(status) {
+    case 'SCHEDULED': return 'bg-amber-500';
+    case 'IN_PROGRESS': return 'bg-blue-500';
+    case 'COMPLETED': return 'bg-emerald-500';
+    case 'CANCELLED': return 'bg-rose-500';
+    default: return 'bg-slate-300';
+  }
+};
+
+const getStatusTextColor = (status) => {
+  switch(status) {
+    case 'SCHEDULED': return 'text-amber-600';
+    case 'IN_PROGRESS': return 'text-blue-600';
+    case 'COMPLETED': return 'text-emerald-600';
+    case 'CANCELLED': return 'text-rose-600';
+    default: return 'text-slate-500';
+  }
+};
+
+const getStatusText = (status) => {
+  switch(status) {
+    case 'SCHEDULED': return 'Sắp chạy';
+    case 'IN_PROGRESS': return 'Đang chạy';
+    case 'COMPLETED': return 'Hoàn thành';
+    case 'CANCELLED': return 'Đã hủy';
+    default: return 'Sắp chạy';
+  }
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+const fetchMyLeaveRequests = async () => {
+   try {
+      const res = await api.get(`/leave-requests/my/${authStore.currentUser?.phone}`);
+      myLeaveRequests.value = res.data;
+   } catch(e) {
+      console.error(e);
+   }
+};
+
+const submitLeaveRequest = async () => {
+   try {
+      const payload = {
+         driverUsername: authStore.currentUser?.phone,
+         driverFullName: authStore.currentUser?.fullName,
+         startDate: leaveForm.value.startDate,
+         endDate: leaveForm.value.endDate,
+         reason: leaveForm.value.reason
+      };
+      await api.post(`/leave-requests`, payload);
+      alert('Gửi đơn xin nghỉ phép thành công!');
+      leaveForm.value = { startDate: '', endDate: '', reason: '' };
+      fetchMyLeaveRequests();
+   } catch(e) {
+      alert('Lỗi gửi đơn xin nghỉ!');
+   }
+};
+
 const fetchTripsAndBuses = async () => {
   loading.value = true;
   error.value = '';
   try {
-    const userFullName = authStore.currentUser?.fullName;
-    if (!userFullName) {
-      throw new Error("Không xác định được danh tính nhân viên.");
+    const userPhone = authStore.currentUser?.phone;
+    if (!userPhone) {
+      throw new Error("Không xác định được danh tính tài xế.");
     }
     
     // Gọi song song API lấy danh sách toàn bộ chuyến xe và danh sách xe
     const [tripRes, busRes] = await Promise.all([
-       axios.get(`${import.meta.env.VITE_API_BASE_URL}/trips`),
-       axios.get(`${import.meta.env.VITE_API_BASE_URL}/buses`)
+       api.get(`/trips`),
+       api.get(`/buses`)
     ]);
     
     buses.value = busRes.data;
 
-    // Tìm các xe (licensePlate) mà tài xế hiện tại được phân công
-    const myBuses = buses.value
-      .filter(b => b.driverName === userFullName)
-      .map(b => b.licensePlate);
-
-    // Lọc các chuyến xe có biển số nằm trong danh sách myBuses và gán thêm thông tin Bus
+    // Lọc các chuyến xe được gán thẳng cho Username của tài xế HOẶC SĐT của Lơ xe
     const myTrips = tripRes.data
-      .filter(t => myBuses.includes(t.assignedLicensePlate))
+      .filter(t => t.assignedDriverUsername === userPhone || (t.inspector && (t.inspector.phone === userPhone || t.inspector.employeeCode === userPhone)))
       .map(t => {
         const busInfo = buses.value.find(b => b.licensePlate === t.assignedLicensePlate);
         return { ...t, busInfo };
@@ -205,48 +357,52 @@ const fetchTripsAndBuses = async () => {
   }
 };
 
+const acceptTrip = async (tripId) => {
+   try {
+      await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/trips/${tripId}/accept`);
+      alert("Đã nhận chuyến thành công!");
+      fetchTripsAndBuses();
+   } catch(e) {
+      alert("Lỗi khi nhận chuyến!");
+   }
+};
+
+const rejectTrip = async (tripId) => {
+   if(confirm("Bạn có chắc chắn muốn từ chối chuyến xe này? Hệ thống sẽ báo cáo lên Admin.")) {
+      try {
+         await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/trips/${tripId}/reject`);
+         alert("Đã từ chối chuyến!");
+         fetchTripsAndBuses();
+      } catch(e) {
+         alert("Lỗi khi từ chối chuyến!");
+      }
+   }
+};
+
+const updateTripStatus = async (tripId, status) => {
+   const actionMap = {
+     'IN_PROGRESS': 'bắt đầu hành trình',
+     'COMPLETED': 'kết thúc hành trình'
+   };
+   
+   if(confirm(`Xác nhận ${actionMap[status]}?`)) {
+      try {
+         await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/trips/${tripId}/status`, { status });
+         alert(`Đã ${actionMap[status]} thành công!`);
+         fetchTripsAndBuses();
+      } catch(e) {
+         console.error(e);
+         alert("Lỗi khi cập nhật trạng thái!");
+      }
+   }
+};
+
 onMounted(() => {
   fetchTripsAndBuses();
+  fetchMyLeaveRequests();
 });
 
-// Utilities
-const formatDate = (dateStr) => {
-  if(!dateStr) return 'Hôm nay';
-  try {
-    const parts = dateStr.split('-');
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  } catch(e) { return dateStr; }
-};
 
-const getStatusText = (status) => {
-  switch(status) {
-    case 'SCHEDULED': return 'Chưa khởi hành';
-    case 'IN_PROGRESS': return 'Đang chạy';
-    case 'COMPLETED': return 'Đã hoàn thành';
-    case 'CANCELLED': return 'Đã hủy';
-    default: return 'Chưa khởi hành';
-  }
-};
-
-const getStatusColor = (status) => {
-  switch(status) {
-    case 'SCHEDULED': return 'bg-amber-400';
-    case 'IN_PROGRESS': return 'bg-amber-500';
-    case 'COMPLETED': return 'bg-emerald-500';
-    case 'CANCELLED': return 'bg-rose-500';
-    default: return 'bg-amber-400';
-  }
-};
-
-const getStatusTextColor = (status) => {
-  switch(status) {
-    case 'SCHEDULED': return 'text-amber-600';
-    case 'IN_PROGRESS': return 'text-amber-600';
-    case 'COMPLETED': return 'text-emerald-600';
-    case 'CANCELLED': return 'text-rose-600';
-    default: return 'text-amber-600';
-  }
-};
 
 
 </script>

@@ -21,6 +21,7 @@ public class UserController {
     private final com.smartbus.booking.repository.ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+    private final com.smartbus.booking.repository.LeaveRequestRepository leaveRequestRepository;
 
     public UserController(UserRepository userRepository, 
                           com.smartbus.booking.repository.BookingRepository bookingRepository, 
@@ -28,7 +29,8 @@ public class UserController {
                           com.smartbus.booking.repository.TripRepository tripRepository,
                           com.smartbus.booking.repository.ReviewRepository reviewRepository,
                           PasswordEncoder passwordEncoder,
-                          org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate) {
+                          org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate,
+                          com.smartbus.booking.repository.LeaveRequestRepository leaveRequestRepository) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.inspectorRepository = inspectorRepository;
@@ -36,6 +38,7 @@ public class UserController {
         this.reviewRepository = reviewRepository;
         this.passwordEncoder = passwordEncoder;
         this.messagingTemplate = messagingTemplate;
+        this.leaveRequestRepository = leaveRequestRepository;
     }
 
     // 1. Lấy toàn bộ danh sách Người dùng
@@ -56,6 +59,15 @@ public class UserController {
         for (User user : users) {
             user.setTicketCount(userTicketCounts.getOrDefault(user.getId(), 0));
         }
+        return ResponseEntity.ok(users);
+    }
+
+    // 1.2 Lấy danh sách Người dùng theo vai trò
+    @GetMapping("/role/{role}")
+    public ResponseEntity<List<User>> getUsersByRole(@PathVariable("role") String role) {
+        List<User> users = userRepository.findAll().stream()
+                .filter(u -> role.equalsIgnoreCase(u.getRole()))
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(users);
     }
 
@@ -241,5 +253,63 @@ public class UserController {
         }
         
         return ResponseEntity.ok(userBookings);
+    }
+    // 5. LẤY TRẠNG THÁI TÀI XẾ THỜI GIAN THỰC (Driver Status API)
+    @GetMapping("/drivers/status")
+    public ResponseEntity<?> getDriversWithStatus(@RequestParam(value = "date", required = false) String date) {
+        String targetDate = (date != null && !date.isEmpty()) ? date : java.time.LocalDate.now().toString();
+        
+        // Lấy tất cả tài xế
+        List<User> drivers = userRepository.findAll().stream()
+                .filter(u -> "DRIVER".equalsIgnoreCase(u.getRole()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        // Lấy tất cả chuyến xe trong ngày
+        List<com.smartbus.booking.entity.Trip> allTrips = tripRepository.findAll().stream()
+                .filter(t -> targetDate.equals(t.getDepartureDate()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        // Lấy nghỉ phép APPROVED 
+        List<com.smartbus.booking.entity.LeaveRequest> approvedLeaves = leaveRequestRepository.findApprovedLeavesInRange(targetDate, targetDate);
+        java.util.Set<String> onLeaveDrivers = approvedLeaves.stream()
+                .map(com.smartbus.booking.entity.LeaveRequest::getDriverUsername)
+                .collect(java.util.stream.Collectors.toSet());
+        
+        List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+        for (User driver : drivers) {
+            java.util.Map<String, Object> driverInfo = new java.util.HashMap<>();
+            driverInfo.put("id", driver.getId());
+            driverInfo.put("phone", driver.getPhone());
+            driverInfo.put("fullName", driver.getFullName());
+            driverInfo.put("avatarUrl", driver.getAvatarUrl());
+            
+            // Xác định trạng thái
+            String status;
+            if (driver.getIsLocked() != null && driver.getIsLocked()) {
+                status = "SUSPENDED";
+            } else if (onLeaveDrivers.contains(driver.getPhone())) {
+                status = "ON_LEAVE";
+            } else {
+                // Kiểm tra có chuyến IN_PROGRESS không
+                boolean isDriving = allTrips.stream().anyMatch(t -> 
+                    driver.getPhone().equals(t.getAssignedDriverUsername()) && "IN_PROGRESS".equals(t.getStatus()));
+                if (isDriving) {
+                    status = "DRIVING";
+                } else {
+                    status = "FREE";
+                }
+            }
+            driverInfo.put("status", status);
+            
+            // Đếm số chuyến trong ngày
+            long tripCount = allTrips.stream()
+                .filter(t -> driver.getPhone().equals(t.getAssignedDriverUsername()) && !"CANCELLED".equals(t.getStatus()))
+                .count();
+            driverInfo.put("tripCount", tripCount);
+            
+            result.add(driverInfo);
+        }
+        
+        return ResponseEntity.ok(result);
     }
 }

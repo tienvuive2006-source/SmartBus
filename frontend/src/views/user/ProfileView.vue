@@ -1,24 +1,6 @@
 <template>
   <div class="min-h-screen bg-[#f4f7f6] font-sans text-slate-800 pb-20">
-    <!-- Navigation Bar -->
-    <nav class="bg-white text-slate-800 border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-3 cursor-pointer" @click="$router.push('/')">
-          <div class="w-10 h-10 rounded-full bg-[#075955] flex items-center justify-center text-white">
-            <span class="material-symbols-outlined text-xl">directions_bus</span>
-          </div>
-          <div class="flex flex-col">
-            <span class="text-lg font-black text-gray-900 leading-none tracking-tight">Trung - Nam</span>
-            <span class="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-1">Hồ sơ cá nhân</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-6">
-          <button @click="$router.push('/')" class="text-[10px] font-black uppercase tracking-widest bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl transition-all duration-200 hidden sm:block">
-            Trang chủ
-          </button>
-        </div>
-      </div>
-    </nav>
+
     
     <div class="px-4 py-8 animate-fade-in">
     

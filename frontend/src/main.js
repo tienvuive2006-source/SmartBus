@@ -6,6 +6,9 @@ import App from './App.vue'
 import router from './router'
 import vue3GoogleLogin from 'vue3-google-login'
 
+// Clear old blurry sample images from localStorage automatically for the user
+localStorage.removeItem('smartbus_route_images');
+
 const app = createApp(App)
 
 app.use(createPinia())

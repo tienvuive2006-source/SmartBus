@@ -67,15 +67,15 @@
               </div>
             </td>
             <td class="px-6 py-5 text-right font-black text-[#075955] text-base tabular-nums">
-              {{ trip.price.toLocaleString() }}<span class="text-[10px] ml-0.5">đ</span>
+              {{ trip.price ? trip.price.toLocaleString() : '0' }}<span class="text-[10px] ml-0.5">đ</span>
             </td>
             <td class="px-6 py-5 text-center">
-              <div v-if="isTripPassed(trip)" class="inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm bg-slate-100 border-slate-200 text-slate-500">
+              <div v-if="isTripPassed(trip)" class="inline-flex whitespace-nowrap px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm bg-slate-100 border-slate-200 text-slate-500">
                 Đã khởi hành
               </div>
               <div v-else
                 :class="[
-                  'inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm',
+                  'inline-flex whitespace-nowrap px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm',
                   trip.availableSeats <= 0 
                     ? 'bg-rose-50 border-rose-100 text-rose-600' 
                     : trip.availableSeats < 10 
@@ -173,18 +173,32 @@ const simplifyLocation = (loc) => {
 
 const formatDate = (d) => {
   if (!d) return '';
-  return d.split('T')[0].split('-').reverse().join('/');
+  try {
+    const parts = d.split('T');
+    if (parts.length > 0 && parts[0].includes('-')) {
+      return parts[0].split('-').reverse().join('/');
+    }
+    return d;
+  } catch (e) {
+    return d;
+  }
 };
 
 const isTripPassed = (trip) => {
   if (!trip || !trip.departureDate || !trip.departureTime) return false;
   try {
-    const [year, month, day] = trip.departureDate.split('T')[0].split('-');
-    const [hour, minute] = trip.departureTime.split(':');
+    const dateParts = trip.departureDate.split('T')[0].split('-');
+    if (dateParts.length !== 3) return false;
+    const [year, month, day] = dateParts;
+    const timeParts = trip.departureTime.split(':');
+    if (timeParts.length < 2) return false;
+    const [hour, minute] = timeParts;
     const depTime = new Date(year, month - 1, day, hour, minute);
     return new Date() > depTime;
   } catch (e) {
+    console.error("Lỗi parse ngày tháng trip:", trip.id, e);
     return false;
   }
 };
 </script>
+

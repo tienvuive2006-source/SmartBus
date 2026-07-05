@@ -33,6 +33,8 @@ public class Route {
     private Double arrivalLng;
 
     private String duration;
+
+    private Double basePrice;
     
     @Column(length = 1000)
     private String imageUrl;

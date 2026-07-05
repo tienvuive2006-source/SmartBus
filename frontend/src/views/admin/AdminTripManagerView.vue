@@ -27,8 +27,27 @@
     />
 
     <!-- Filters Section -->
-    <div class="flex flex-col sm:flex-row gap-4 mb-6">
-      <div class="relative flex-1">
+    <div class="flex flex-col sm:flex-row flex-wrap gap-4 mb-6">
+      <div class="relative flex-1 min-w-[200px] sm:max-w-[260px]">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">search</span>
+        <input 
+          v-model="filterSearch" 
+          type="text" 
+          placeholder="Tìm tài xế, biển số xe..." 
+          class="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm transition-all" 
+        />
+      </div>
+
+      <div class="relative flex-1 min-w-[160px] sm:max-w-[200px]">
+        <select v-model="filterStatus" class="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm appearance-none cursor-pointer transition-all">
+          <option value="">Tất cả trạng thái</option>
+          <option value="upcoming">Đang mở bán</option>
+          <option value="passed">Đã khởi hành</option>
+        </select>
+        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+      </div>
+
+      <div class="relative flex-1 min-w-[200px]">
         <select v-model="filterRoute" class="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm appearance-none cursor-pointer transition-all">
           <option value="">Tất cả tuyến đường</option>
           <option v-for="route in uniqueRoutesForFilter" :key="route" :value="route">{{ route }}</option>
@@ -36,7 +55,7 @@
         <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
       </div>
       
-      <div class="relative flex-1 sm:max-w-[280px]">
+      <div class="relative flex-1 min-w-[180px] sm:max-w-[280px]">
         <select v-model="filterBusType" class="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-[#075955] focus:ring-2 focus:ring-[#075955]/20 shadow-sm appearance-none cursor-pointer transition-all">
           <option value="">Tất cả dòng xe</option>
           <option v-for="b in busTypes" :key="b.id" :value="b.name">{{ b.name }}</option>
@@ -44,7 +63,7 @@
         <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
       </div>
       
-      <div class="relative flex-1 sm:max-w-[180px] flex items-center gap-2">
+      <div class="relative flex-1 min-w-[160px] sm:max-w-[180px] flex items-center gap-2">
         <input 
           type="date" 
           v-model="filterDate" 
@@ -80,6 +99,7 @@
       :mapLoading="adminMapLoading"
       :savedRoutes="savedRoutes"
       :inspectors="inspectors"
+      :drivers="drivers"
       @close="closeModal"
       @submit="handleFormSubmit"
       @geocode="autoGeocode"
@@ -133,12 +153,17 @@ const leafletMap = ref(null);
 const fileInput = ref(null);
 const inspectors = ref([]);
 
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
 const defaultForm = {
   id: null, companyName: 'Trung - Nam', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
   assignedLicensePlate: '',
-  departureDate: new Date().toISOString().split('T')[0], departureTime: '08:00', arrivalTime: '12:00',
-  duration: '4h', price: 250000, rating: 4.8, availableSeats: 36, imageUrl: '', instantConfirmation: true,
-  departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, inspectorId: '', routeData: ''
+  departureDate: tomorrowStr, departureTime: '08:00', arrivalTime: '12:00',
+  duration: '4h', price: null, rating: 4.8, availableSeats: 36, imageUrl: '', instantConfirmation: true,
+  departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, inspectorId: '', routeData: '',
+  createReturnTrip: false, returnDate: tomorrowStr, returnTime: '14:00', returnBusType: ''
 };
 
 const form = ref({ ...defaultForm });
@@ -282,6 +307,25 @@ const averagePrice = computed(() => {
 const filterRoute = ref('');
 const filterBusType = ref('');
 const filterDate = ref('');
+const filterSearch = ref('');
+const filterStatus = ref('');
+
+const isTripPassed = (trip) => {
+  if (!trip || !trip.departureDate || !trip.departureTime) return false;
+  try {
+    const dateParts = trip.departureDate.split('T')[0].split('-');
+    if (dateParts.length !== 3) return false;
+    const [year, month, day] = dateParts;
+    const timeParts = trip.departureTime.split(':');
+    if (timeParts.length < 2) return false;
+    const [hour, minute] = timeParts;
+    const depTime = new Date(year, month - 1, day, hour, minute);
+    return new Date() > depTime;
+  } catch (e) {
+    console.error("Lỗi parse ngày tháng trip:", trip.id, e);
+    return false;
+  }
+};
 
 const uniqueRoutesForFilter = computed(() => {
   const routes = new Set();
@@ -297,6 +341,13 @@ const uniqueRoutesForFilter = computed(() => {
 const filteredTrips = computed(() => {
   return trips.value.filter(t => {
     let pass = true;
+    
+    if (filterStatus.value) {
+      const passed = isTripPassed(t);
+      if (filterStatus.value === 'passed' && !passed) pass = false;
+      if (filterStatus.value === 'upcoming' && passed) pass = false;
+    }
+    
     if (filterBusType.value && t.busType !== filterBusType.value) {
       pass = false;
     }
@@ -309,6 +360,16 @@ const filteredTrips = computed(() => {
     }
     if (filterDate.value) {
       if (!t.departureDate || !t.departureDate.startsWith(filterDate.value)) {
+        pass = false;
+      }
+    }
+    // 🔍 Tìm kiếm đa luồng: tên tài xế, SĐT tài xế, biển số xe
+    if (filterSearch.value) {
+      const q = filterSearch.value.toLowerCase();
+      const driverName = (t.assignedDriverFullName || '').toLowerCase();
+      const driverPhone = (t.assignedDriverUsername || '').toLowerCase();
+      const plate = (t.assignedLicensePlate || '').toLowerCase();
+      if (!driverName.includes(q) && !driverPhone.includes(q) && !plate.includes(q)) {
         pass = false;
       }
     }
@@ -338,6 +399,29 @@ const updateTripImage = (isManualChange = false) => {
 watch(() => form.value.busType, (newVal, oldVal) => {
   // Nếu oldVal có giá trị, tức là người dùng vừa đổi select trên UI
   updateTripImage(!!oldVal);
+});
+
+// 💰 TỰ ĐỘNG TÍNH GIÁ VÉ ĐỀ XUẤT DỰA TRÊN TUYẾN ĐƯỜNG VÀ DÒNG XE
+watch([() => form.value.departurePoint, () => form.value.arrivalPoint, () => form.value.busType], ([newDep, newArr, newBus]) => {
+  if (!newDep || !newArr || !newBus) return;
+  // Chỉ tự động tính khi đang tạo mới, tránh ghi đè giá admin đã sửa tay khi Edit
+  if (isEditMode.value) return; 
+  
+  const shortDep = newDep.split(',')[0].trim();
+  const shortArr = newArr.split(',')[0].trim();
+  
+  const matchedRoute = savedRoutes.value.find(r => 
+    r.departurePoint && r.arrivalPoint &&
+    r.departurePoint.includes(shortDep) && r.arrivalPoint.includes(shortArr)
+  );
+  
+  const matchedBus = busTypes.value.find(b => b.name === newBus);
+  
+  if (matchedRoute && matchedBus && matchedRoute.basePrice) {
+    const base = matchedRoute.basePrice || 0;
+    const multiplier = matchedBus.priceMultiplier || 1.0;
+    form.value.price = Math.round(base * multiplier);
+  }
 });
 
 watch(() => form.value.departurePoint, (v) => { searchFrom(v); });
@@ -526,7 +610,8 @@ const renderLeaflet = () => {
     const container = document.getElementById('admin-route-map');
     if (!container) return;
     if (leafletMap.value) leafletMap.value.remove();
-    leafletMap.value = L.map(container).setView([16.0, 108.0], 6);
+    // Tối ưu hóa: Bật preferCanvas để map dùng HTML5 Canvas render hàng vạn điểm mượt hơn SVG
+    leafletMap.value = L.map(container, { preferCanvas: true }).setView([16.0, 108.0], 6);
     L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps'
     }).addTo(leafletMap.value);
@@ -588,10 +673,11 @@ const updateMap = async () => {
          
          if (coords && coords.length > 0) {
            leafletMap.value.removeLayer(fallbackLine);
+           // Tối ưu hóa: Bỏ dashArray và dùng nét liền để Canvas khỏi phải vẽ hàng ngàn hình tròn nhỏ gây lag máy
+           L.polyline(coords, { color: '#000', weight: 6, opacity: 0.15, smoothFactor: 2 }).addTo(leafletMap.value);
            L.polyline(coords, { 
-             color: '#075955', weight: 7, opacity: 0.85, lineJoin: 'round', dashArray: '1, 12', lineCap: 'round'
+             color: '#075955', weight: 5, opacity: 0.9, lineJoin: 'round', smoothFactor: 2
            }).addTo(leafletMap.value);
-           L.polyline(coords, { color: '#000', weight: 8, opacity: 0.1 }).addTo(leafletMap.value);
            leafletMap.value.fitBounds(coords, { padding: [100, 100] });
            return;
          }
@@ -648,10 +734,11 @@ const updateMap = async () => {
           });
           
           const coords = decodePolyline(encodedPolyline);
+          // Tối ưu hóa: Bỏ dashArray và dùng nét liền để Canvas khỏi phải vẽ hàng ngàn hình tròn nhỏ gây lag máy
+          L.polyline(coords, { color: '#000', weight: 6, opacity: 0.15, smoothFactor: 2 }).addTo(leafletMap.value);
           L.polyline(coords, { 
-            color: '#075955', weight: 7, opacity: 0.85, lineJoin: 'round', dashArray: '1, 12', lineCap: 'round'
+            color: '#075955', weight: 5, opacity: 0.9, lineJoin: 'round', smoothFactor: 2
           }).addTo(leafletMap.value);
-          L.polyline(coords, { color: '#000', weight: 8, opacity: 0.1 }).addTo(leafletMap.value);
           leafletMap.value.fitBounds(coords, { padding: [100, 100] });
         } else {
            console.warn("OSRM returned NoRoute. Falling back to straight line.");
@@ -711,12 +798,20 @@ const fetchInspectors = async () => {
   } catch (err) { console.error('Lỗi tải danh sách lơ xe:', err); }
 };
 
+const drivers = ref([]);
+const fetchDrivers = async () => {
+  try {
+    const res = await api.get('/users/role/DRIVER');
+    drivers.value = res.data;
+  } catch (err) { console.error('Lỗi tải danh sách tài xế:', err); }
+};
+
 const openAddModal = async () => { 
   isEditMode.value = false; 
   form.value = { ...defaultForm }; 
   currentDurationSeconds.value = 0;
   currentDistanceMeters.value = 0;
-  await Promise.all([fetchBusTypes(), fetchBuses(), fetchInspectors()]);
+  await Promise.all([fetchBusTypes(), fetchBuses(), fetchInspectors(), fetchDrivers()]);
   updateTripImage(); // Cập nhật ảnh ngay lập tức
   isModalOpen.value = true; 
   initAdminMap(); 
@@ -738,7 +833,7 @@ const openEditModal = async (trip) => {
   }
   // Try to find the inspector if already assigned
   form.value.inspectorId = trip.inspector ? trip.inspector.id : '';
-  await Promise.all([fetchBusTypes(), fetchBuses(), fetchInspectors()]);
+  await Promise.all([fetchBusTypes(), fetchBuses(), fetchInspectors(), fetchDrivers()]);
   isModalOpen.value = true; 
   initAdminMap(); 
 };
@@ -747,26 +842,74 @@ const closeModal = () => { isModalOpen.value = false; };
 const handleFormSubmit = async () => {
   try {
     let tripRes;
-    if (isEditMode.value) {
-      tripRes = await api.put(`/trips/${form.value.id}`, form.value);
-    } else {
-      tripRes = await api.post('/trips', form.value);
-    }
     
-    const tripId = tripRes.data.id || form.value.id;
-    
-    // Đảm bảo inspectorId hợp lệ (nếu lơ xe đã bị xoá nhưng frontend còn lưu ID cũ)
-    const isValidInspector = inspectors.value.find(i => i.id === form.value.inspectorId);
-    
-    if (form.value.inspectorId && isValidInspector) {
-      await api.put(`/inspector/assign-to-trip/${tripId}/${form.value.inspectorId}`);
-    } else {
-      await api.put(`/inspector/unassign-trip/${tripId}`);
-    }
+    // Loại bỏ các field không cần thiết gửi lên BE
+    const { createReturnTrip, returnDate, returnTime, returnBusType, originalAvailableSeats, originalTotalSeats, ...payload } = form.value;
 
+    if (isEditMode.value) {
+      tripRes = await api.put(`/trips/${form.value.id}`, payload);
+    } else {
+      tripRes = await api.post('/trips', payload);
+      
+      // Tính năng tạo luôn chuyến khứ hồi (chỉ khi tạo mới)
+      if (form.value.createReturnTrip) {
+        
+        // Tính toán giờ đến cho chuyến về
+        let returnArrTime = '19:00'; // Default
+        if (form.value.returnTime && form.value.duration) {
+          const match = form.value.duration.match(/(\d+)h(?:\s*(\d+)m)?/);
+          if (match) {
+            const durationH = parseInt(match[1]) || 0;
+            const durationM = parseInt(match[2]) || 0;
+            const [depH, depM] = form.value.returnTime.split(':').map(Number);
+            if (!isNaN(depH) && !isNaN(depM)) {
+              let arrH = depH + durationH;
+              let arrM = depM + durationM;
+              if (arrM >= 60) {
+                arrH += Math.floor(arrM / 60);
+                arrM = arrM % 60;
+              }
+              arrH = arrH % 24;
+              returnArrTime = `${String(arrH).padStart(2, '0')}:${String(arrM).padStart(2, '0')}`;
+            }
+          }
+        }
+        
+        const returnPayload = {
+          ...payload,
+          departurePoint: payload.arrivalPoint,
+          arrivalPoint: payload.departurePoint,
+          departureLat: payload.arrivalLat,
+          departureLng: payload.arrivalLng,
+          arrivalLat: payload.departureLat,
+          arrivalLng: payload.departureLng,
+          departureDate: form.value.returnDate,
+          departureTime: form.value.returnTime,
+          arrivalTime: returnArrTime,
+          routeData: '' // OSRM or UI might need to re-render, but usually backend doesn't strictly need it or we can pass a swapped one. We'll leave it blank to be safe or keep it.
+        };
+        
+        if (form.value.returnBusType) {
+          returnPayload.busType = form.value.returnBusType;
+          const rbt = busTypes.value.find(t => t.name === form.value.returnBusType);
+          if (rbt) {
+             returnPayload.availableSeats = rbt.seatCount;
+             returnPayload.totalSeats = rbt.seatCount;
+             if (rbt.imageUrl) returnPayload.imageUrl = rbt.imageUrl;
+          }
+        }
+        
+        await api.post('/trips', returnPayload);
+        alert('Đã tạo thành công 2 chuyến xe: Đi và Về!');
+      }
+    }
+    
     closeModal(); fetchTrips();
+    if (!form.value.createReturnTrip && !isEditMode.value) alert('Tạo chuyến xe thành công!');
+    if (isEditMode.value) alert('Cập nhật chuyến xe thành công!');
   } catch (err) { 
-    alert(err.response?.data?.message || 'Lỗi lưu dữ liệu! Vui lòng tải lại trang và thử lại.'); 
+    console.error("Lỗi:", err);
+    alert(err.response?.data?.message || 'Lỗi lưu dữ liệu! Vui lòng kiểm tra lại.'); 
   }
 };
 
@@ -784,3 +927,5 @@ onMounted(() => { fetchTrips(); fetchBusTypes(); fetchBuses(); fetchSavedRoutes(
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
 </style>
+
+

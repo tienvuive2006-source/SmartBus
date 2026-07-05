@@ -24,8 +24,6 @@ public class Bus {
     @Column(nullable = false)
     private String busType; // Loại xe (Limousine VIP, Giường Nằm, etc.)
 
-    private String driverName; // Tên tài xế đảm nhiệm
-
     @Column(nullable = false)
     private String status; // Trạng thái: "ĐANG CHẠY", "BẢO TRÌ", "ĐANG NGHỈ"
     
