@@ -204,6 +204,7 @@ public class AuthController {
                     "role", user.getRole(),
                     "email", user.getEmail() != null ? user.getEmail() : "",
                     "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
+                    "loyaltyPoints", user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0,
                     "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL",
                     "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : ""
             ));
@@ -279,7 +280,13 @@ public class AuthController {
     // API HỦY VÉ & HOÀN TIỀN VÀO VÍ (ME)
     // ============================================================
     @Autowired
+    private com.smartbus.booking.service.FundService fundService;
+
+    @Autowired
     private com.smartbus.booking.service.SeatService seatService;
+
+    @Autowired
+    private com.smartbus.booking.repository.UserVoucherRepository userVoucherRepository;
 
     @com.smartbus.booking.annotation.AuditAction(action = "CANCEL_BOOKING", entityName = "Booking")
     @PostMapping("/me/bookings/{id}/cancel")
@@ -328,11 +335,46 @@ public class AuthController {
                     return ResponseEntity.status(400).body("Vé " + booking.getId() + " không ở trạng thái cho phép hủy!");
                 }
 
+                // Calculate hours to departure
+                long hoursToDeparture = 24; // Default safe value
+                try {
+                    if (booking.getTrip().getDepartureDate() != null && booking.getTrip().getDepartureTime() != null) {
+                        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+                        java.time.LocalDateTime departureDateTime = java.time.LocalDateTime.parse(
+                                booking.getTrip().getDepartureDate() + " " + booking.getTrip().getDepartureTime(), formatter);
+                        hoursToDeparture = java.time.temporal.ChronoUnit.HOURS.between(java.time.LocalDateTime.now(), departureDateTime);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Lỗi parse ngày giờ chuyến đi: " + e.getMessage());
+                }
+
+                if (hoursToDeparture < 12) {
+                    return ResponseEntity.status(400).body("Không thể hủy vé vì chuyến đi sắp khởi hành (dưới 12 tiếng)!");
+                }
+
                 // Calculate refund if paid and not cash
                 double refundAmount = 0.0;
                 if ("PAID".equals(booking.getStatus()) && !"CASH".equals(booking.getPaymentMethod())) {
-                    refundAmount = booking.getTotalPrice() * 0.9;
+                    if (hoursToDeparture < 24) {
+                        refundAmount = booking.getTotalPrice() * 0.7; // 30% fee
+                    } else {
+                        refundAmount = booking.getTotalPrice() * 0.9; // 90% refund
+                    }
                     totalRefundAmount += refundAmount;
+                }
+
+                // Deduct loyalty points if previously paid
+                if ("PAID".equals(booking.getStatus()) || "CHECKED_IN".equals(booking.getStatus())) {
+                    int earnedPoints = (int) (booking.getTotalPrice() / 1000);
+                    user.setLoyaltyPoints(Math.max(0, (user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) - earnedPoints));
+                }
+
+                // Refund voucher
+                if (booking.getAppliedUserVoucherId() != null) {
+                    userVoucherRepository.findById(booking.getAppliedUserVoucherId()).ifPresent(uv -> {
+                        uv.setIsUsed(false);
+                        userVoucherRepository.save(uv);
+                    });
                 }
 
                 // Free seats
@@ -340,8 +382,21 @@ public class AuthController {
 
                 // Update booking status
                 booking.setStatus("CANCELLED");
+                booking.setRefundAmount(refundAmount);
                 booking.setCancellationReason(payload.get("reason"));
                 bookingRepository.save(booking);
+
+                // Ghi nhận chi hoàn tiền (nếu có refundAmount > 0)
+                if (refundAmount > 0) {
+                    fundService.recordTransaction(
+                        booking.getPaymentMethod(), 
+                        "EXPENSE", 
+                        refundAmount, 
+                        "Hoàn tiền hủy vé #" + booking.getId(), 
+                        String.valueOf(booking.getId()), 
+                        user.getFullName()
+                    );
+                }
 
                 // Xóa đánh giá (nếu có) do chuyến đi bị hủy
                 reviewRepository.findByBookingId(booking.getId()).ifPresent(review -> {
@@ -377,6 +432,7 @@ public class AuthController {
                 "role", user.getRole(),
                 "email", user.getEmail() != null ? user.getEmail() : "",
                 "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
+                "loyaltyPoints", user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0,
                 "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL",
                 "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : ""
         );

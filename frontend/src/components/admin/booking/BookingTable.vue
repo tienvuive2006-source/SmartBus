@@ -46,7 +46,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50">
-          <tr v-for="booking in bookings" :key="booking.id" class="group hover:bg-[#075955]/[0.02] transition-all duration-200">
+          <tr v-for="booking in paginatedBookings" :key="booking.id" class="group hover:bg-[#075955]/[0.02] transition-all duration-200">
             <td class="px-6 py-5 border-b border-slate-50">
               <div class="font-bold text-slate-800 text-sm group-hover:text-[#075955] transition-colors">#{{ booking.id }}</div>
               <div class="text-[10px] font-semibold text-slate-400 uppercase mt-0.5 tracking-tighter">{{ formatDate(booking.createdAt) }}</div>
@@ -78,7 +78,13 @@
             </td>
             <td class="px-6 py-5 border-b border-slate-50">
               <div class="font-bold text-[#075955] text-base tabular-nums">{{ booking.totalPrice.toLocaleString('vi-VN') }}<span class="text-[10px] ml-0.5">đ</span></div>
-              <div class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">{{ booking.paymentMethod }}</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">{{ booking.paymentMethod }}</span>
+                <span v-if="booking.discountAmount > 0" class="flex items-center gap-0.5 text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100" title="Đã áp dụng mã giảm giá">
+                  <span class="material-symbols-outlined text-[10px]">redeem</span>
+                  -{{ booking.discountAmount.toLocaleString('vi-VN') }}đ
+                </span>
+              </div>
             </td>
             <td class="px-6 py-5 text-center">
               <span :class="[
@@ -136,11 +142,41 @@
       <h4 class="text-lg font-black text-slate-400 uppercase tracking-widest">Không có dữ liệu đơn hàng</h4>
       <p class="text-xs text-slate-400 mt-1">Dữ liệu từ SQL Server đang trống hoặc không khớp với bộ lọc</p>
     </div>
+
+    <!-- Pagination Controls -->
+    <div v-if="totalPages > 1" class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <span class="text-xs font-semibold text-slate-500">
+        Đang xem {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, bookings.length) }} trong tổng số {{ bookings.length }} vé
+      </span>
+      <div class="flex items-center gap-2">
+        <button 
+          @click="currentPage--" 
+          :disabled="currentPage === 1"
+          class="w-8 h-8 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          <span class="material-symbols-outlined text-sm">chevron_left</span>
+        </button>
+        
+        <span class="text-xs font-bold text-slate-700 px-3">
+          Trang {{ currentPage }} / {{ totalPages }}
+        </span>
+
+        <button 
+          @click="currentPage++" 
+          :disabled="currentPage === totalPages"
+          class="w-8 h-8 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
+        >
+          <span class="material-symbols-outlined text-sm">chevron_right</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { ref, computed, watch } from 'vue';
+
+const props = defineProps({
   bookings: Array,
   searchQuery: String,
   statusFilter: String,
@@ -148,7 +184,24 @@ defineProps({
   statusStyles: Object
 });
 
-defineEmits(['update:searchQuery', 'update:statusFilter', 'view', 'update-status']);
+defineEmits(['update:searchQuery', 'update:statusFilter', 'view', 'update-status', 'view-reason']);
+
+// Pagination Logic
+const currentPage = ref(1);
+const itemsPerPage = 20;
+
+const totalPages = computed(() => Math.ceil(props.bookings.length / itemsPerPage));
+
+const paginatedBookings = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return props.bookings.slice(start, end);
+});
+
+// Reset về trang 1 khi lọc hoặc tìm kiếm (khi danh sách bookings thay đổi)
+watch(() => props.bookings, () => {
+  currentPage.value = 1;
+});
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '';

@@ -39,6 +39,10 @@ public class Route {
     @Column(length = 1000)
     private String imageUrl;
 
+    @Builder.Default
+    @Column(name = "is_visible", columnDefinition = "boolean default true")
+    private Boolean isVisible = true;
+
     @Column(columnDefinition = "TEXT")
     private String routeData;
 }

@@ -53,11 +53,12 @@
               </div>
             </td>
             <td class="px-6 py-5">
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col gap-1 items-start">
                 <span class="text-[10px] font-black text-slate-700 uppercase">{{ trip.busType }}</span>
-                <div class="flex gap-1">
+                <div class="flex gap-1 mb-1">
                    <span v-for="i in 3" :key="i" class="w-1.5 h-1.5 rounded-full bg-emerald-400/30"></span>
                 </div>
+
               </div>
             </td>
             <td class="px-6 py-5">
@@ -102,8 +103,16 @@
             <td class="px-6 py-5">
               <div class="flex items-center justify-center gap-2">
                 <button 
+                  @click="$emit('report', trip)" 
+                  class="w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-100"
+                  title="Báo cáo tài chính chuyến xe"
+                >
+                  <span class="material-symbols-outlined text-lg">monitoring</span>
+                </button>
+                <button 
                   @click="$emit('edit', trip)" 
                   class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-[#075955] hover:text-white transition-all shadow-sm border border-slate-100"
+                  title="Sửa chuyến xe"
                 >
                   <span class="material-symbols-outlined text-lg">edit_note</span>
                 </button>
@@ -153,7 +162,7 @@ defineProps({
   trips: Array
 });
 
-const emit = defineEmits(['edit', 'delete']);
+const emit = defineEmits(['edit', 'delete', 'report']);
 
 const toggleVisibility = async (trip) => {
   try {

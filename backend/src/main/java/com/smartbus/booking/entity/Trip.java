@@ -107,6 +107,7 @@ public class Trip {
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "userAccount"})
     private Inspector inspector;
 
+
     @Column(nullable = true)
     @Builder.Default
     private String status = "PENDING"; // PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED

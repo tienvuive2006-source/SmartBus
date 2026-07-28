@@ -81,6 +81,9 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
   - Cho phép khách hàng chấm điểm (Rating) và để lại bình luận cho các chuyến xe đã hoàn thành.
 - **Trợ lý ảo AI (Chatbot AI):**
   - Tích hợp khung chat AI hỗ trợ tư vấn lịch trình, chính sách nhà xe và giải đáp câu hỏi tự động.
+- **Tích điểm & Khuyến mãi (Loyalty & Vouchers):**
+  - Tích điểm tự động (Loyalty Points) ngay khi thanh toán thành công (1.000đ = 1 điểm). Hỗ trợ dùng điểm đổi lấy mã Voucher giảm giá.
+  - Tự động thu hồi điểm và hoàn lại (kích hoạt lại) mã Voucher nếu khách hàng thực hiện hủy vé.
 - **Hệ thống thông báo (Notifications):** Theo dõi các cảnh báo hoặc cập nhật từ hệ thống.
 
 ### 3. Phân hệ Quản trị viên (Admin Panel)
@@ -96,6 +99,7 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
   - Gửi thông báo (Notification) thay đổi lịch trình ngay lập tức đến ứng dụng của tài xế.
 - **Quản lý Tuyến đường (Route Manager):**
   - Thêm, sửa, xóa các điểm đi/đến.
+  - Cung cấp nút gạt Bật/Tắt hiển thị (Toggle Visibility) giúp linh hoạt điều khiển các tuyến đường xuất hiện ở Trang chủ.
   - Tích hợp chuỗi tọa độ (Polyline/Geometry) để vẽ bản đồ lộ trình (lưu file chuỗi lên Cloudinary để tối ưu hóa DB).
   - Tải ảnh đại diện cho các tuyến đường phổ biến.
 - **Quản lý Chuyến xe (Trip Manager):**
@@ -109,10 +113,20 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
   - Xem toàn bộ danh sách đơn đặt vé của khách hàng theo thời gian thực.
   - Bộ lọc tìm kiếm vé theo mã vé, số điện thoại, trạng thái.
   - Xuất báo cáo danh sách đặt vé sang định dạng **PDF**.
+- **Quản lý Quỹ & Dòng tiền (Fund Manager):**
+  - Kiểm soát luồng thu/chi, nạp tiền ví, và đối soát quỹ tiền mặt từ Lơ xe sau mỗi chuyến đi.
+  - Admin xét duyệt (Approve/Reject) các khoản chi phí phát sinh dọc đường (đổ xăng, sửa xe, cầu đường) kèm biên lai do Lơ xe báo cáo.
+- **Quản lý Tin tức & Blog AI (News & SEO):**
+  - Tạo và xuất bản các bài viết khuyến mãi, thông báo.
+  - Tích hợp AI (Trí tuệ nhân tạo) tự động sinh nội dung bài viết và tối ưu hóa thẻ meta (SEO).
 - **Quản lý Người dùng (User Manager):**
   - Bố cục quản lý động theo từng nhóm (Khách hàng, Tài xế, Lơ xe, Admin).
   - Xem danh sách toàn bộ người dùng, số dư ví điện tử của từng người.
   - Phân quyền tài khoản, Xóa/Khóa tài khoản.
+- **Quản lý Khuyến mãi & Nạp ví (Voucher & Topup Promotion):**
+  - Tạo và phát hành mã giảm giá quy đổi từ điểm thưởng (Loyalty Points).
+  - Theo dõi trực quan **Lượt dùng** thực tế của từng mã Voucher để đánh giá hiệu quả khuyến mãi.
+  - Cấu hình linh hoạt các mức thưởng nạp ví (Ví dụ: Nạp từ 50.000đ - 100.000đ thưởng 10%) bằng thuật toán dò khoảng (Range-based matching).
 - **Quản lý Đánh giá (Review Manager):**
   - Kiểm duyệt phản hồi của khách hàng.
   - Xóa hoặc ẩn các đánh giá không phù hợp.
@@ -135,15 +149,17 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
   - Tự động nhận diện tính hợp lệ của vé và cập nhật trạng thái "Đã lên xe" (CHECKED_IN).
 
 ### 6. Cải tiến Kỹ thuật & Tối ưu Trải nghiệm (Mới cập nhật)
+- **Hệ thống Điểm thưởng & Khuyến mãi (Loyalty & Vouchers):**
+  - Quản lý khép kín luồng tích/trừ điểm: Tự động thu hồi điểm thưởng và hoàn lại (kích hoạt lại) mã Voucher khi khách hàng/Admin hủy vé, tránh lỗ hổng trục lợi.
+  - Tích hợp theo dõi **Lượt dùng** Voucher trực quan ngay trên bảng điều khiển dành cho Admin.
+- **Quản lý Hiển thị Tuyến đường Động:**
+  - Cung cấp nút chuyển đổi (Toggle) `isVisible` tại màn hình quản lý, giúp Admin dễ dàng kiểm soát việc bật/tắt các chuyến xe nổi bật trên Trang chủ (Landing Page) theo thời gian thực mà không cần can thiệp code.
 - **Thiết kế Thích ứng (Responsive UI/UX):** 
   - Giao diện đặt vé (Trip Cards) và thanh điều hướng (Navbar) tự động co giãn và hiển thị tối ưu trên đa màn hình (Điện thoại, Tablet, PC).
   - Tối ưu hóa trạng thái cuộn (Scroll state) và hiển thị thông minh các thành phần như Chuông thông báo (Notification Bell).
 - **Hệ thống Thông báo & Email Mượt mà:**
   - Hoàn thiện luồng xác nhận đặt vé tự động qua Email (EmailService).
   - Giải quyết triệt để lỗi đồng bộ thời gian thực (Reflection / `-parameters`) trong Spring Boot giúp tín hiệu WebSockets hoạt động ổn định.
-- **Tương thích Hệ thống Cũ (Legacy PHP System):**
-  - Cấu hình và hỗ trợ chạy song song với mã nguồn PHP 5.6 (XAMPP) cũ của nhà xe, giải quyết các lỗi thẻ mở ngắn (`short_open_tag`) và nâng cấp dần lên nền tảng mới.
-
 ---
 
 ## ⚙️ HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY DỰ ÁN (LOCAL)
@@ -187,6 +203,7 @@ cd SmartBus
 ## 🚀 TRIỂN KHAI THỰC TẾ (DEPLOYMENT)
 Dự án đã được triển khai (Deploy) thành công lên môi trường Cloud thực tế:
 - **Frontend:** Lưu trữ và tự động triển khai tĩnh trên nền tảng **Vercel** (Tham khảo: [smart-bus-navy.vercel.app](https://smart-bus-navy.vercel.app/))
+  - *Lưu ý khi deploy:* Cấu hình biến môi trường `VITE_API_BASE_URL` trên dashboard của Vercel trỏ về đường dẫn Backend.
 - **Backend:** Chạy dưới dạng Web Service 24/7 trên **Render**
 - **Database:** Hoạt động ổn định với Cloud PostgreSQL của **Supabase**
 

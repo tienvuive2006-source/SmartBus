@@ -9,6 +9,7 @@ import com.smartbus.booking.repository.ReviewRepository;
 import com.smartbus.booking.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,9 @@ public class ReviewController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     // Tạo đánh giá mới (chỉ gọi từ client đã login)
     @PostMapping("/create")
@@ -87,6 +91,15 @@ public class ReviewController {
                     .build();
 
             reviewRepository.save(review);
+            
+            // Gửi thông báo WebSocket cho Admin
+            try {
+                messagingTemplate.convertAndSend("/topic/admin/reviews/new", "NEW_REVIEW");
+            } catch (Exception wsEx) {
+                // Log lỗi nhưng không làm fail quá trình đánh giá
+                wsEx.printStackTrace();
+            }
+            
             return ResponseEntity.ok(Map.of("message", "Cảm ơn bạn đã đánh giá chuyến đi!"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

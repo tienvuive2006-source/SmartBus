@@ -117,7 +117,7 @@
                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-50"></div>
                    
                    <div class="relative w-48 h-48 sm:w-56 sm:h-56 shrink-0 bg-white p-2 rounded-2xl shadow-md border border-gray-100 group-hover:shadow-lg transition-shadow">
-                      <img :src="`https://img.vietqr.io/image/mb-0367093771-compact2.png?amount=${totalAmount}&addInfo=${activePaymentCode || 'VEXE' + seatNames.replace(/[, \-]/g, '')}&accountName=HUYNH%20DUC%20TIEN`" alt="QR Code" class="w-full h-full rounded-xl object-contain" />
+                      <img :src="`https://img.vietqr.io/image/mb-0367093771-compact2.png?amount=${finalAmount}&addInfo=${activePaymentCode || 'VEXE' + seatNames.replace(/[, \-]/g, '')}&accountName=HUYNH%20DUC%20TIEN`" alt="QR Code" class="w-full h-full rounded-xl object-contain" />
                       <!-- Hiệu ứng quét laser (CSS class tự định nghĩa dưới style) -->
                       <div class="absolute top-0 left-0 w-full h-1 bg-[#075955]/80 shadow-[0_0_8px_rgba(7,89,85,0.8)] qr-scan-line rounded-full hidden md:block"></div>
                    </div>
@@ -132,7 +132,7 @@
                       <div class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
                          <div class="flex justify-between items-center mb-3">
                            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Số tiền</span>
-                           <span class="text-lg font-black text-[#f03a17]">{{ totalAmount.toLocaleString() }}đ</span>
+                           <span class="text-lg font-black text-[#f03a17]">{{ finalAmount.toLocaleString() }}đ</span>
                          </div>
                          <div class="flex justify-between items-center">
                            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Nội dung <span class="text-red-500 normal-case font-medium ml-1">(Bắt buộc)</span></span>
@@ -187,11 +187,23 @@
               </template>
             </div>
 
+            <!-- Khuyến mãi / Voucher -->
+            <div class="mb-6" v-if="currentUser && myVouchers.length > 0">
+              <label class="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Mã giảm giá</label>
+              <select v-model="selectedVoucherId" class="w-full bg-amber-50/50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer appearance-none">
+                <option :value="null">Không dùng mã</option>
+                <option v-for="uv in myVouchers" :key="uv.id" :value="uv.id">
+                  {{ uv.voucher.code }} - Giảm {{ uv.voucher.discountAmount.toLocaleString() }}đ
+                </option>
+              </select>
+            </div>
+
             <div class="flex justify-between items-end mb-8">
               <div>
                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1.5">Tổng thanh toán</p>
-                <div class="flex items-center gap-2">
-                  <p class="text-3xl font-black text-[#f03a17] leading-none">{{ totalAmount.toLocaleString() }}<span class="text-xl ml-0.5">đ</span></p>
+                <div class="flex flex-col">
+                  <p v-if="discountAmount > 0" class="text-xs text-gray-400 line-through mb-1">{{ totalAmount.toLocaleString() }}đ</p>
+                  <p class="text-3xl font-black text-[#f03a17] leading-none">{{ finalAmount.toLocaleString() }}<span class="text-xl ml-0.5">đ</span></p>
                 </div>
               </div>
             </div>
@@ -274,6 +286,19 @@ const isProcessing = ref(false);
 const selectedMethod = ref('QR');
 const showQrCode = ref(false);
 
+const myVouchers = ref([]);
+const selectedVoucherId = ref(null);
+
+const discountAmount = computed(() => {
+  if (!selectedVoucherId.value) return 0;
+  const uv = myVouchers.value.find(v => v.id === selectedVoucherId.value);
+  return uv ? uv.voucher.discountAmount : 0;
+});
+
+const finalAmount = computed(() => {
+  return Math.max(0, totalAmount.value - discountAmount.value);
+});
+
 const activePaymentOrderId = ref(null);
 const activePaymentCode = ref('');
 
@@ -353,7 +378,8 @@ const createPaymentOrder = async () => {
     const payload = {
       outboundTripId: tripId,
       outboundSeats: seatsArray.value,
-      user: authStore.currentUser ? { id: authStore.currentUser.id } : null
+      user: authStore.currentUser ? { id: authStore.currentUser.id } : null,
+      userVoucherId: selectedVoucherId.value
     };
     if (returnTripId) {
       payload.returnTripId = returnTripId;
@@ -395,8 +421,8 @@ const processPayment = async () => {
   // 🛡️ KIỂM TRA SỐ DƯ VÍ (NẾU CHỌN THANH TOÁN BẰNG VÍ)
   if (selectedMethod.value === 'WALLET') {
     const balance = authStore.currentUser?.walletBalance || 0;
-    if (balance < totalAmount.value) {
-      return alert(`Số dư Ví Trung - Nam không đủ! Bạn cần thêm ${(totalAmount.value - balance).toLocaleString()}đ nữa để đặt vé này.`);
+    if (balance < finalAmount.value) {
+      return alert(`Số dư Ví Trung - Nam không đủ! Bạn cần thêm ${(finalAmount.value - balance).toLocaleString()}đ nữa để đặt vé này.`);
     }
   }
 
@@ -421,7 +447,8 @@ const processPayment = async () => {
       outboundSeats: seatsArray.value,
       returnTripId: returnTripId,
       returnSeats: returnSeatsArray.value,
-      paymentOrderId: activePaymentOrderId.value
+      paymentOrderId: activePaymentOrderId.value,
+      userVoucherId: selectedVoucherId.value
     };
 
     const res = await api.post('/admin/bookings/confirm-roundtrip', confirmData);
@@ -456,7 +483,7 @@ const processPayment = async () => {
             to: returnTripId ? `${trip.value.arrivalPoint} (Khứ hồi)` : trip.value.arrivalPoint, 
             time: trip.value.departureTime, 
             seats: seatNames.value + (returnTripId ? ` & ${returnSeatNames.value}` : ''), 
-            total: totalAmount.value, 
+            total: finalAmount.value, 
             method: selectedMethod.value,
             customerName: customerName.value,
             customerPhone: customerPhone.value,
@@ -484,7 +511,7 @@ const checkRealBankTransfer = async () => {
     const res = await api.get('/admin/bookings/check-payment', {
       params: {
         expectedContent: expectedContent,
-        expectedAmount: totalAmount.value,
+        expectedAmount: finalAmount.value,
         sessionStartTime: sessionStartTime
       }
     });
@@ -543,6 +570,14 @@ onMounted(() => {
     customerPhone.value = authStore.currentUser?.phone?.startsWith('GG_') ? '' : (authStore.currentUser?.phone || '');
     customerEmail.value = authStore.currentUser?.email || '';
     selectedMethod.value = 'WALLET';
+    
+    // Fetch user vouchers
+    api.get('/vouchers/my-vouchers')
+      .then(res => {
+        // Chỉ hiển thị các mã chưa sử dụng
+        myVouchers.value = res.data.filter(uv => !uv.isUsed);
+      })
+      .catch(console.error);
   } else {
     selectedMethod.value = 'QR';
   }

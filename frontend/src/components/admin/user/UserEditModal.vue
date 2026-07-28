@@ -5,7 +5,7 @@
       <div @click="$emit('close')" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in"></div>
       
       <!-- Modal Content -->
-      <div class="bg-white w-full max-w-md max-h-[90vh] rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-scale-up relative flex flex-col">
+      <div class="bg-white w-full max-w-xl max-h-[95vh] rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-scale-up relative flex flex-col">
         <!-- Header -->
         <div class="p-8 pb-4 flex justify-between items-start">
           <div>
@@ -52,7 +52,8 @@
                 type="email" 
                 autocomplete="off"
                 data-lpignore="true"
-                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50"
+                :disabled="!isCreateMode && form.role === 'USER'"
+                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -63,8 +64,9 @@
                 type="password" 
                 autocomplete="new-password"
                 data-lpignore="true"
-                :placeholder="isCreateMode ? 'Nhập mật khẩu hoặc để trống' : 'Nhập mật khẩu mới'"
-                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-mono"
+                :disabled="!isCreateMode && form.role === 'USER'"
+                :placeholder="(!isCreateMode && form.role === 'USER') ? 'Không thể đổi mật khẩu khách hàng' : (isCreateMode ? 'Nhập mật khẩu hoặc để trống' : 'Nhập mật khẩu mới')"
+                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-mono disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 

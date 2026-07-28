@@ -111,6 +111,9 @@ const updateStatus = async (id, newStatus) => {
 
 const viewDetail = (booking) => {
   let msg = `CHI TIẾT VÉ #${booking.id}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${booking.seats.join(', ')}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`;
+  if (booking.discountAmount > 0) {
+    msg += `\nĐã giảm giá: -${booking.discountAmount.toLocaleString()}đ (Mã Voucher)`;
+  }
   if (booking.status === 'CANCELLED' && booking.cancellationReason) {
     msg += `\nLý do hủy: ${booking.cancellationReason}`;
   }

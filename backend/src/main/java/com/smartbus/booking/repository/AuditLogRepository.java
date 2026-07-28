@@ -10,6 +10,15 @@ import java.util.List;
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     List<AuditLog> findAllByOrderByIdDesc();
     
+    org.springframework.data.domain.Page<AuditLog> findAllByActionNameNotOrderByIdDesc(String actionName, org.springframework.data.domain.Pageable pageable);
+    
+    org.springframework.data.domain.Page<AuditLog> findAllByActionNameOrderByIdDesc(String actionName, org.springframework.data.domain.Pageable pageable);
+    
+    long countByActionName(String actionName);
+    
     @org.springframework.transaction.annotation.Transactional
     void deleteAllByActionName(String actionName);
+
+    @org.springframework.transaction.annotation.Transactional
+    void deleteAllByActionNameNot(String actionName);
 }

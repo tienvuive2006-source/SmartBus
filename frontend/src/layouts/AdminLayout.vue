@@ -22,7 +22,22 @@
             :class="{'text-white/70': !isActiveLink(item.path), 'text-white': isActiveLink(item.path)}"
           >
             <span class="material-symbols-outlined text-[22px] transition-transform" :class="{'text-amber-400': isActiveLink(item.path)}">{{ item.icon }}</span>
-            <span class="text-[15px]">{{ item.name }}</span>
+            <span class="text-[15px] flex-1">{{ item.name }}</span>
+            
+            <!-- Badge Đặt vé (Thông báo khách mới) -->
+            <span v-if="item.name === 'Đặt vé' && authStore.newBookingsCount > 0" class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+              {{ authStore.newBookingsCount > 99 ? '99+' : authStore.newBookingsCount }}
+            </span>
+            
+            <!-- Badge Quỹ (Thông báo chi phí mới) -->
+            <span v-if="item.name === 'Quản lý quỹ' && authStore.newExpensesCount > 0" class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+              {{ authStore.newExpensesCount > 99 ? '99+' : authStore.newExpensesCount }}
+            </span>
+            
+            <!-- Badge Đánh giá (Thông báo review mới) -->
+            <span v-if="item.name === 'Đánh giá' && authStore.newReviewsCount > 0" class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+              {{ authStore.newReviewsCount > 99 ? '99+' : authStore.newReviewsCount }}
+            </span>
           </router-link>
 
           <!-- Dropdown Wrapper -->
@@ -111,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -134,6 +149,16 @@ onMounted(() => {
     openMenus['Tài khoản'] = true
   }
 })
+
+// Clear unread booking/expense/review notifications when entering the page
+watch(route, (newRoute) => {
+  if (newRoute.path.startsWith('/admin/booking-manager')) {
+    authStore.clearNewBookingsCount()
+  }
+  if (newRoute.path.startsWith('/admin/reviews')) {
+    authStore.clearNewReviewsCount()
+  }
+}, { immediate: true })
 
 const isActiveLink = (path) => {
   if (path === '/admin') return route.path === '/admin'
@@ -162,10 +187,13 @@ const handleLogout = () => {
 
 const menuItems = [
   { name: 'Tổng quan', path: '/admin', icon: 'dashboard' },
+  { name: 'Quản lý quỹ', path: '/admin/funds', icon: 'account_balance_wallet' },
   { name: 'Tuyến đường', path: '/admin/route-manager', icon: 'route' },
   { name: 'Chuyến xe', path: '/admin/trip-manager', icon: 'directions_bus' },
   { name: 'Đặt vé', path: '/admin/booking-manager', icon: 'book_online' },
+  { name: 'Khuyến mãi', path: '/admin/vouchers', icon: 'local_offer' },
   { name: 'Đánh giá', path: '/admin/reviews', icon: 'star' },
+  { name: 'Tin tức', path: '/admin/articles', icon: 'article' },
   { name: 'Đội xe & Cấu hình', path: '/admin/fleet-status', icon: 'local_shipping' },
   { name: 'Phân công', path: '/admin/drivers', icon: 'assignment_ind' },
   { 

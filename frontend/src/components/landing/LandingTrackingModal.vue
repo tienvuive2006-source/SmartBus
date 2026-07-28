@@ -1,9 +1,10 @@
 <template>
   <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-    <div v-if="isOpen" class="fixed inset-0 z-[999] flex items-center justify-center p-4">
+    <div v-if="isOpen" class="fixed inset-0 z-[1000] overflow-y-auto">
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
       
-      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden transform transition-all">
+      <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10 text-left overflow-hidden transform transition-all my-8">
         <!-- Header -->
         <div class="bg-emerald-600 px-6 py-5 flex items-center justify-between text-white relative overflow-hidden">
           <div class="absolute -right-4 -top-10 text-emerald-500 opacity-20">
@@ -109,6 +110,7 @@
             </button>
           </div>
 
+        </div>
         </div>
       </div>
     </div>

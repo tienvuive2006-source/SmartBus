@@ -23,7 +23,7 @@
       <!-- Thông tin xe & Lơ xe -->
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex gap-4 items-center mb-4 mt-2">
         <div class="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-200 border border-slate-200 shadow-sm relative">
-          <img v-if="trip.imageUrl" :src="trip.imageUrl" class="w-full h-full object-cover" />
+          <img v-if="getBusImageUrl(trip)" :src="getBusImageUrl(trip)" class="w-full h-full object-cover" />
           <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
              <span class="material-symbols-outlined text-[24px]">directions_bus</span>
           </div>
@@ -96,6 +96,15 @@
           </div>
           <span class="font-black text-body-sm text-center">BÁO SỰ CỐ</span>
         </button>
+      </div>
+
+      <!-- Expenses List -->
+      <div class="mt-8">
+        <InspectorExpensesList 
+          :expenses="expenses" 
+          :loading="expensesLoading"
+          @open-expense-modal="showExpenseModal = true"
+        />
       </div>
 
       <div class="mt-8 items-start">
@@ -331,6 +340,14 @@
           </div>
         </div>
       </Teleport>
+
+      <!-- Expense Modal -->
+      <InspectorExpenseModal
+        :show="showExpenseModal"
+        :tripId="trip.id"
+        @close="showExpenseModal = false"
+        @refresh="fetchExpenses"
+      />
     </template>
   </div>
 </template>
@@ -341,6 +358,8 @@ import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import { decodePolyline, fetchPolylineFromCloudinary } from '@/utils/polyline';
+import InspectorExpensesList from '@/components/inspector/InspectorExpensesList.vue';
+import InspectorExpenseModal from '@/components/inspector/InspectorExpenseModal.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -357,6 +376,10 @@ const leafletMap = ref(null);
 const showIncidentModal = ref(false);
 const incidentForm = ref({ severity: '', description: '' });
 const incidents = ref([]);
+
+const showExpenseModal = ref(false);
+const expenses = ref([]);
+const expensesLoading = ref(false);
 
 const fetchIncidents = async () => {
   try {
@@ -417,8 +440,21 @@ const fetchData = async () => {
   }
 };
 
+const fetchExpenses = async () => {
+  if (expenses.value.length === 0) expensesLoading.value = true;
+  try {
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/inspector/trips/${tripId}/expenses`, authStore.authHeader);
+    expenses.value = res.data;
+  } catch (error) { 
+    console.error("Lỗi tải chi phí:", error); 
+  } finally {
+    expensesLoading.value = false;
+  }
+};
+
 onMounted(() => {
   fetchData();
+  fetchExpenses();
 });
 
 const checkedInCount = computed(() => {
@@ -596,5 +632,14 @@ const renderLeaflet = async () => {
     L.marker(from, { icon: startIcon }).addTo(leafletMap.value); 
     leafletMap.value.setView(from, 13);
   }
+};
+
+const getBusImageUrl = (t) => {
+   if (t?.imageUrl) return t.imageUrl;
+   if (t?.assignedLicensePlate && buses.value) {
+       const bus = buses.value.find(b => b.licensePlate === t.assignedLicensePlate);
+       if (bus && bus.imageUrl) return bus.imageUrl;
+   }
+   return null;
 };
 </script>

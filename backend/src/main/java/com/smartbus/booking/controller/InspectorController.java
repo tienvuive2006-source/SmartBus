@@ -21,6 +21,7 @@ public class InspectorController {
     private final BookingRepository bookingRepository;
     private final com.smartbus.booking.repository.InspectorRepository inspectorRepository;
     private final com.smartbus.booking.repository.TripRepository tripRepository;
+    private final com.smartbus.booking.service.FundService fundService;
 
     // 0. Lấy danh sách tất cả lơ xe (Dành cho Admin chọn)
     @GetMapping("/all")
@@ -82,9 +83,24 @@ public class InspectorController {
     public ResponseEntity<?> checkInBooking(@PathVariable("bookingId") Long bookingId) {
         return bookingRepository.findById(bookingId)
                 .map(booking -> {
+                    boolean wasPending = "PENDING".equals(booking.getStatus());
+                    
                     // Cập nhật trạng thái
                     booking.setStatus("CHECKED_IN");
                     bookingRepository.save(booking);
+                    
+                    // Nếu vé chưa thanh toán (PENDING) thì khi check-in đồng nghĩa với việc lơ xe đã thu tiền mặt
+                    if (wasPending && booking.getTotalPrice() != null && booking.getTotalPrice() > 0) {
+                        fundService.recordTransaction(
+                            "CASH",
+                            "INCOME",
+                            booking.getTotalPrice(),
+                            "Thu tiền vé tại xe - Vé #" + booking.getId(),
+                            String.valueOf(booking.getId()),
+                            "Lơ xe thu"
+                        );
+                    }
+                    
                     return ResponseEntity.ok(Map.of("message", "Check-in thành công!", "booking", booking));
                 })
                 .orElse(ResponseEntity.notFound().build());

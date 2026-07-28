@@ -79,6 +79,11 @@ public class AuditLogAspect {
                     .replaceAll("(?i)(password\\s*[=:]\\s*)[^,\\}\\]\\n\\r]+", "$1***")
                     .replaceAll("(?i)(token\\s*[=:]\\s*)[^,\\}\\]\\n\\r]+", "$1***");
 
+            // Cắt bớt nếu chi tiết quá dài (ví dụ: ảnh Base64 khổng lồ) để tránh sập Database
+            if (finalDetails.length() > 2000) {
+                finalDetails = finalDetails.substring(0, 2000) + "\n... [NỘI DUNG QUÁ DÀI ĐÃ BỊ CẮT BỚT ĐỂ BẢO VỆ DATABASE]";
+            }
+
             AuditLog log = AuditLog.builder()
                     .userId(userId)
                     .actionName(auditAction.action())

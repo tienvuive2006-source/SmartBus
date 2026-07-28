@@ -142,7 +142,7 @@ const fetchTopReviews = async () => {
     const res = await api.get('/reviews/all');
     if (res.data && Array.isArray(res.data)) {
       topReviews.value = res.data
-        .filter(r => r.rating >= 4 && r.comment && r.comment.length > 10)
+        .filter(r => r.rating >= 4 && r.comment && r.comment.trim().length >= 3)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 3); // Lấy 3 đánh giá tốt nhất
     }

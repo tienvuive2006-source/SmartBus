@@ -22,6 +22,7 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
     private final com.smartbus.booking.repository.LeaveRequestRepository leaveRequestRepository;
+    private final com.smartbus.booking.service.WalletService walletService;
 
     public UserController(UserRepository userRepository, 
                           com.smartbus.booking.repository.BookingRepository bookingRepository, 
@@ -30,7 +31,8 @@ public class UserController {
                           com.smartbus.booking.repository.ReviewRepository reviewRepository,
                           PasswordEncoder passwordEncoder,
                           org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate,
-                          com.smartbus.booking.repository.LeaveRequestRepository leaveRequestRepository) {
+                          com.smartbus.booking.repository.LeaveRequestRepository leaveRequestRepository,
+                          com.smartbus.booking.service.WalletService walletService) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.inspectorRepository = inspectorRepository;
@@ -39,6 +41,7 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
         this.messagingTemplate = messagingTemplate;
         this.leaveRequestRepository = leaveRequestRepository;
+        this.walletService = walletService;
     }
 
     // 1. Lấy toàn bộ danh sách Người dùng
@@ -311,5 +314,19 @@ public class UserController {
         }
         
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/check-topup")
+    public ResponseEntity<?> checkTopupPayment(
+            @RequestParam("userId") Long userId,
+            @RequestParam("expectedAmount") Double expectedAmount,
+            @RequestParam(value = "sessionStartTime", required = false) String sessionStartTimeStr) {
+        
+        boolean success = walletService.checkAndProcessTopupPolling(userId, expectedAmount, sessionStartTimeStr);
+        if (success) {
+            return ResponseEntity.ok(java.util.Map.of("success", true, "message", "Payment found and processed"));
+        } else {
+            return ResponseEntity.ok(java.util.Map.of("success", false, "message", "Not found yet"));
+        }
     }
 }

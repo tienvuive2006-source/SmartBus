@@ -1,10 +1,11 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="fixed inset-0 z-[1000] overflow-y-auto">
     <!-- Backdrop with smooth blur -->
     <div @click="$emit('close')" class="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300"></div>
     
-    <!-- Modal Box -->
-    <div class="relative bg-white/95 backdrop-blur-lg rounded-[32px] shadow-2xl border border-slate-100 max-w-2xl w-full overflow-hidden z-10 transform transition-all duration-300 scale-100 p-8 flex flex-col gap-6">
+    <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+      <!-- Modal Box -->
+      <div class="relative bg-white/95 backdrop-blur-lg rounded-[32px] shadow-2xl border border-slate-100 max-w-2xl w-full text-left overflow-hidden z-10 transform transition-all duration-300 scale-100 p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 my-8">
       <!-- Close Button -->
       <button @click="$emit('close')" class="absolute top-6 right-6 w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all bg-transparent border-none cursor-pointer">
         <span class="material-symbols-outlined text-slate-500">close</span>
@@ -26,7 +27,7 @@
       </div>
 
       <!-- Modal Body Content -->
-      <div class="text-slate-600 text-sm leading-relaxed overflow-y-auto max-h-[380px] pr-2 space-y-4 text-left">
+      <div class="text-slate-600 text-sm leading-relaxed overflow-y-auto pr-2 space-y-4 text-left flex-1 min-h-0">
         
         <!-- BẾN XE DYNAMIC LIST -->
         <div v-if="activeModalType === 'benxe'" class="space-y-4">
@@ -150,6 +151,7 @@
         <button @click="$emit('book-now')" class="px-6 py-2.5 bg-[#075955] hover:bg-[#05403d] text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-2 border-none cursor-pointer">
           <span class="material-symbols-outlined text-sm">directions_bus</span> Đặt vé ngay
         </button>
+      </div>
       </div>
     </div>
   </div>

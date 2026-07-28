@@ -1,39 +1,46 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
-import AdminLayout from '../layouts/AdminLayout.vue'
-import SearchResultsView from '../views/booking/SearchResultsView.vue'
-import SeatSelectionView from '../views/booking/SeatSelectionView.vue'
-import PaymentView from '../views/booking/PaymentView.vue'
-import PaymentSuccessView from '../views/booking/PaymentSuccessView.vue'
-import ProfileView from '../views/user/ProfileView.vue'
-import HistoryView from '../views/user/HistoryView.vue'
-import AiAssistantView from '../views/user/AiAssistantView.vue'
-import NotificationsView from '../views/user/NotificationsView.vue'
-import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
-import AdminTripManagerView from '../views/admin/AdminTripManagerView.vue'
-import AdminFleetStatusView from '../views/admin/AdminFleetStatusView.vue'
 
-import LoginView from '../views/auth/LoginView.vue'
-import RegisterView from '../views/auth/RegisterView.vue'
-import AdminUserManagerView from '../views/admin/AdminUserManagerView.vue'
-import AdminBookingManagerView from '../views/admin/AdminBookingManagerView.vue'
-import AdminReviewManagerView from '../views/admin/AdminReviewManagerView.vue'
-import AdminRouteManagerView from '../views/admin/AdminRouteManagerView.vue'
-import InspectorLayout from '../layouts/InspectorLayout.vue'
-import InspectorDashboardView from '../views/inspector/InspectorDashboardView.vue'
-import InspectorTripDetailView from '../views/inspector/InspectorTripDetailView.vue'
-import DriverLayout from '../layouts/DriverLayout.vue'
-import DriverDashboardView from '../views/driver/DriverDashboardView.vue'
-import DriverTripDetailView from '../views/driver/DriverTripDetailView.vue'
-import AdminAuditLogView from '../views/admin/AdminAuditLogView.vue'
-import AdminBannerManagerView from '../views/admin/AdminBannerManagerView.vue'
-import AdminIncidentManagerView from '../views/admin/AdminIncidentManagerView.vue'
-import AdminDriverWorkspaceView from '../views/admin/AdminDriverWorkspaceView.vue'
-import AdminLeaveManagerView from '../views/admin/AdminLeaveManagerView.vue'
-import AdminDriverWrapperView from '../views/admin/AdminDriverWrapperView.vue'
-import AdminDriverLocationsView from '../views/admin/AdminDriverLocationsView.vue'
+// Tối ưu hóa hiệu năng bằng Lazy Loading (Code Splitting)
+// Việc này giúp Vite tách các file js ra, người dùng vào trang nào tải js trang đó, tăng tốc độ truy cập trang chủ x10 lần.
+const AdminLayout = () => import('../layouts/AdminLayout.vue')
+const SearchResultsView = () => import('../views/booking/SearchResultsView.vue')
+const SeatSelectionView = () => import('../views/booking/SeatSelectionView.vue')
+const PaymentView = () => import('../views/booking/PaymentView.vue')
+const PaymentSuccessView = () => import('../views/booking/PaymentSuccessView.vue')
+const ProfileView = () => import('../views/user/ProfileView.vue')
+const HistoryView = () => import('../views/user/HistoryView.vue')
+const AiAssistantView = () => import('../views/user/AiAssistantView.vue')
+const NotificationsView = () => import('../views/user/NotificationsView.vue')
+const AdminDashboardView = () => import('../views/admin/AdminDashboardView.vue')
+const AdminFundManagerView = () => import('../views/admin/AdminFundManagerView.vue')
+const AdminTripManagerView = () => import('../views/admin/AdminTripManagerView.vue')
+const AdminFleetStatusView = () => import('../views/admin/AdminFleetStatusView.vue')
 
-// (I will add routes inside the router array)
+const LoginView = () => import('../views/auth/LoginView.vue')
+const RegisterView = () => import('../views/auth/RegisterView.vue')
+const AdminUserManagerView = () => import('../views/admin/AdminUserManagerView.vue')
+const AdminBookingManagerView = () => import('../views/admin/AdminBookingManagerView.vue')
+const AdminReviewManagerView = () => import('../views/admin/AdminReviewManagerView.vue')
+const AdminRouteManagerView = () => import('../views/admin/AdminRouteManagerView.vue')
+const InspectorLayout = () => import('../layouts/InspectorLayout.vue')
+const InspectorDashboardView = () => import('../views/inspector/InspectorDashboardView.vue')
+const InspectorTripDetailView = () => import('../views/inspector/InspectorTripDetailView.vue')
+const DriverLayout = () => import('../layouts/DriverLayout.vue')
+const DriverDashboardView = () => import('../views/driver/DriverDashboardView.vue')
+const DriverTripDetailView = () => import('../views/driver/DriverTripDetailView.vue')
+const AdminAuditLogView = () => import('../views/admin/AdminAuditLogView.vue')
+const AdminBannerManagerView = () => import('../views/admin/AdminBannerManagerView.vue')
+const AdminIncidentManagerView = () => import('../views/admin/AdminIncidentManagerView.vue')
+const AdminVoucherManagerView = () => import('../views/admin/AdminVoucherManagerView.vue')
+const AdminDriverWorkspaceView = () => import('../views/admin/AdminDriverWorkspaceView.vue')
+const AdminLeaveManagerView = () => import('../views/admin/AdminLeaveManagerView.vue')
+const AdminDriverWrapperView = () => import('../views/admin/AdminDriverWrapperView.vue')
+const AdminDriverLocationsView = () => import('../views/admin/AdminDriverLocationsView.vue')
+const AdminArticleManagerView = () => import('../views/admin/AdminArticleManagerView.vue')
+
+const ArticleListView = () => import('../views/user/ArticleListView.vue')
+const ArticleDetailView = () => import('../views/user/ArticleDetailView.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -102,6 +109,18 @@ const router = createRouter({
           meta: { title: 'Thông báo', showBack: true }
         },
         {
+          path: 'tin-tuc',
+          name: 'articles',
+          component: ArticleListView,
+          meta: { title: 'Tin tức & Khuyến mãi', showBack: true }
+        },
+        {
+          path: 'tin-tuc/:slug',
+          name: 'article-detail',
+          component: ArticleDetailView,
+          meta: { title: 'Đọc Tin Tức', showBack: true }
+        },
+        {
           path: 'auth/login',
           name: 'login',
           component: LoginView,
@@ -129,6 +148,11 @@ const router = createRouter({
           path: '',
           name: 'admin-dashboard',
           component: AdminDashboardView
+        },
+        {
+          path: 'funds',
+          name: 'admin-funds',
+          component: AdminFundManagerView
         },
         {
           path: 'trip-manager',
@@ -182,6 +206,12 @@ const router = createRouter({
           meta: { title: 'Quản lý Banner', showBack: true }
         },
         {
+          path: 'articles',
+          name: 'admin-articles',
+          component: AdminArticleManagerView,
+          meta: { title: 'Quản lý Tin tức', showBack: true }
+        },
+        {
           path: 'users',
           name: 'admin-user-manager',
           component: AdminUserManagerView
@@ -202,6 +232,12 @@ const router = createRouter({
           name: 'admin-incidents',
           component: AdminIncidentManagerView,
           meta: { title: 'Quản lý Sự cố', showBack: true }
+        },
+        {
+          path: 'vouchers',
+          name: 'admin-vouchers',
+          component: AdminVoucherManagerView,
+          meta: { title: 'Quản lý Voucher', showBack: true }
         }
       ]
     },

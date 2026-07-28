@@ -85,21 +85,6 @@
               <div class="flex gap-2">
                 
                 <button 
-                  v-if="(ticket.status === 'PAID' || ticket.status === 'CHECKED_IN' || ticket.status === 'COMPLETED') && !ticket.isReviewed"
-                  @click="openReviewModal(ticket)"
-                  class="p-3 bg-amber-50 border border-amber-100 rounded-2xl text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
-                >
-                  <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">star</span>
-                  <span class="text-[9px] font-black tracking-widest">ĐÁNH GIÁ</span>
-                </button>
-                <div 
-                  v-else-if="(ticket.status === 'PAID' || ticket.status === 'CHECKED_IN' || ticket.status === 'COMPLETED') && ticket.isReviewed"
-                  class="p-3 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 flex flex-col items-center gap-0.5 cursor-not-allowed opacity-70"
-                >
-                  <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                  <span class="text-[9px] font-black tracking-widest">ĐÃ ĐÁNH GIÁ</span>
-                </div>
-<button 
                   v-if="ticket.status === 'PAID' || ticket.status === 'PENDING'"
                   @click="openCancelModal(ticket)"
                   class="p-3 bg-rose-50 border border-rose-100 rounded-2xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
@@ -202,7 +187,7 @@
 
               <div class="flex gap-2">
                 <button 
-                  v-if="!ticket.isReviewed && ticket.status !== 'CANCELLED'"
+                  v-if="!ticket.isReviewed && (ticket.status === 'COMPLETED' || ticket.status === 'CHECKED_IN')"
                   @click="openReviewModal(ticket)"
                   class="p-3 bg-amber-50 border border-amber-100 rounded-2xl text-amber-500 hover:bg-amber-500 hover:text-white transition-all duration-300 shadow-sm active:scale-95 flex flex-col items-center gap-0.5"
                 >
@@ -210,7 +195,7 @@
                   <span class="text-[9px] font-black tracking-widest">ĐÁNH GIÁ</span>
                 </button>
                 <div 
-                  v-else-if="ticket.isReviewed && ticket.status !== 'CANCELLED'"
+                  v-else-if="ticket.isReviewed && (ticket.status === 'COMPLETED' || ticket.status === 'CHECKED_IN')"
                   class="p-3 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 flex flex-col items-center gap-0.5 cursor-not-allowed opacity-70"
                 >
                   <span class="material-symbols-outlined text-[28px] font-black" style="font-variation-settings: 'FILL' 1;">check_circle</span>
@@ -354,28 +339,55 @@
         <h3 class="text-headline-sm font-black text-rose-600 mb-2 flex items-center gap-2">
           <span class="material-symbols-outlined">warning</span> Hủy vé xe
         </h3>
-        <p class="text-xs text-gray-500 font-medium mb-6 leading-relaxed">
-          Mã vé: <b>#{{ selectedTicket.id }}</b>. {{ selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH' ? 'Bạn sẽ được hoàn lại 90% số tiền vào Ví Trung Nam.' : 'Thao tác này không thể hoàn tác.' }}
-        </p>
-
-        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Lý do hủy vé (Bắt buộc)</label>
-        <select v-model="cancelReason" class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700 outline-none focus:border-[#075955] mb-4">
-          <option value="" disabled>-- Chọn lý do --</option>
-          <option value="Thay đổi lịch trình">Thay đổi lịch trình</option>
-          <option value="Tìm được xe khác phù hợp hơn">Tìm được xe khác phù hợp hơn</option>
-          <option value="Đặt nhầm ngày/giờ">Đặt nhầm ngày/giờ</option>
-          <option value="Lý do cá nhân">Lý do cá nhân</option>
-        </select>
-
-        <div v-if="selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH'" class="bg-amber-50 p-3 rounded-xl border border-amber-100 mb-6 flex items-start gap-2">
-           <span class="material-symbols-outlined text-amber-500 text-lg">account_balance_wallet</span>
-           <div>
-             <p class="text-xs font-bold text-amber-700">Số tiền hoàn lại (90%)</p>
-             <p class="text-base font-black text-amber-600">+{{ (selectedTicket.total * 0.9).toLocaleString('vi-VN') }}đ</p>
-           </div>
+        
+        <div v-if="hoursToDeparture < 12" class="bg-rose-50 p-4 rounded-xl border border-rose-200 mb-6">
+          <p class="text-sm font-bold text-rose-700 mb-1">Không hỗ trợ hủy vé trực tuyến</p>
+          <p class="text-xs text-rose-600 leading-relaxed">
+            Chuyến xe của bạn sẽ khởi hành trong vòng chưa tới 12 tiếng nữa. 
+            Theo quy định, hệ thống không hỗ trợ hoàn tiền khi hủy vé sát giờ khởi hành.
+            <br/><br/>Mã vé của bạn: <b>#{{ selectedTicket.id }}</b>. Vui lòng liên hệ tổng đài 1900 1234 nếu cần hỗ trợ khẩn cấp.
+          </p>
         </div>
+        
+        <template v-else>
+          <p class="text-xs text-gray-500 font-medium mb-6 leading-relaxed">
+            Mã vé: <b>#{{ selectedTicket.id }}</b>.<br/>
+            <span v-if="selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH'">
+              <span v-if="hoursToDeparture >= 12 && hoursToDeparture < 24">
+                Bạn hủy vé trước giờ khởi hành 12-24 tiếng. Phí hủy là 30%. Bạn sẽ được hoàn lại 70% số tiền vào Ví.
+              </span>
+              <span v-else-if="hoursToDeparture >= 24">
+                Bạn hủy vé trước giờ khởi hành 24 tiếng. Phí hủy là 10%. Bạn sẽ được hoàn lại 90% số tiền vào Ví.
+              </span>
+            </span>
+            <span v-else>Thao tác này không thể hoàn tác.</span>
+          </p>
+
+          <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Lý do hủy vé (Bắt buộc)</label>
+          <select v-model="cancelReason" class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700 outline-none focus:border-[#075955] mb-4">
+            <option value="" disabled>-- Chọn lý do --</option>
+            <option value="Thay đổi lịch trình">Thay đổi lịch trình</option>
+            <option value="Tìm được xe khác phù hợp hơn">Tìm được xe khác phù hợp hơn</option>
+            <option value="Đặt nhầm ngày/giờ">Đặt nhầm ngày/giờ</option>
+            <option value="Lý do cá nhân">Lý do cá nhân</option>
+          </select>
+
+          <div v-if="selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH'" class="bg-amber-50 p-3 rounded-xl border border-amber-100 mb-6 flex items-start gap-2">
+             <span class="material-symbols-outlined text-amber-500 text-lg">account_balance_wallet</span>
+             <div>
+               <p class="text-xs font-bold text-amber-700">
+                 Số tiền hoàn lại 
+                 ({{ hoursToDeparture >= 24 ? '90%' : '70%' }})
+               </p>
+               <p class="text-base font-black text-amber-600">
+                 +{{ (selectedTicket.total * (hoursToDeparture >= 24 ? 0.9 : 0.7)).toLocaleString('vi-VN') }}đ
+               </p>
+             </div>
+          </div>
+        </template>
 
         <button 
+          v-if="hoursToDeparture >= 12"
           @click="confirmCancel" 
           :disabled="!cancelReason || isCancelling"
           class="w-full bg-rose-500 text-white font-black py-3.5 rounded-xl text-sm uppercase tracking-widest shadow-md hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -437,7 +449,7 @@ const loadHistory = async () => {
             status: b.status,
             imageUrl: b.trip.imageUrl,
             licensePlate: b.trip.assignedLicensePlate,
-            driverName: bus ? bus.driverName : 'Đang cập nhật',
+            driverName: b.trip.assignedDriverFullName ? b.trip.assignedDriverFullName : (bus && bus.driverName ? bus.driverName : 'Đang cập nhật'),
             isReviewed: b.reviewed || b.isReviewed || false,
             userReview: b.userReview || null
           };
@@ -530,6 +542,7 @@ const submitReview = async () => {
 const isCancelModalOpen = ref(false);
 const cancelReason = ref('');
 const isCancelling = ref(false);
+const hoursToDeparture = ref(24);
 
 const openCancelModal = (ticket) => {
   if (!authStore.isLoggedIn) {
@@ -538,6 +551,18 @@ const openCancelModal = (ticket) => {
   }
   selectedTicket.value = ticket;
   cancelReason.value = '';
+  
+  // Tính toán số giờ còn lại trước khi xe chạy
+  try {
+    const depDateTime = new Date(`${ticket.date}T${ticket.time}`);
+    const now = new Date();
+    const diffMs = depDateTime.getTime() - now.getTime();
+    hoursToDeparture.value = Math.max(0, diffMs / (1000 * 60 * 60));
+  } catch (e) {
+    console.error("Lỗi tính giờ hủy:", e);
+    hoursToDeparture.value = 24;
+  }
+
   isCancelModalOpen.value = true;
 };
 

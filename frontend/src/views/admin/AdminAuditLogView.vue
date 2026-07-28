@@ -53,6 +53,11 @@
           <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Dọn sạch lỗi
         </button>
       </div>
+      <div v-if="activeTab === 'audit' && logs.length > 0">
+        <button @click="clearNormalLogs" class="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 active:scale-95">
+          <span class="material-symbols-outlined text-[16px]">delete_sweep</span> Xóa tất cả nhật ký
+        </button>
+      </div>
     </div>
 
     <!-- Table -->
@@ -77,12 +82,12 @@
                 Đang tải dữ liệu...
               </td>
             </tr>
-            <tr v-else-if="filteredLogs.length === 0">
+            <tr v-else-if="logs.length === 0">
               <td colspan="7" class="py-12 text-center text-gray-400 font-bold">
                 Chưa có dữ liệu cho mục này
               </td>
             </tr>
-            <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-gray-50 transition-colors">
+            <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50 transition-colors">
               <td class="py-4 px-6 font-black text-gray-400">#{{ log.id }}</td>
               <td class="py-4 px-6 font-bold">{{ new Date(log.createdAt).toLocaleString('vi-VN') }}</td>
               <td class="py-4 px-6 font-bold text-indigo-600">{{ log.userId || 'Hệ thống / Ẩn danh' }}</td>
@@ -110,6 +115,21 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+        <div class="text-sm font-semibold text-gray-500">
+          Trang <span class="text-indigo-600 font-black">{{ currentPage + 1 }}</span> / <span class="font-black">{{ totalPages }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button @click="prevPage" :disabled="currentPage === 0" class="px-4 py-2 rounded-lg text-sm font-bold transition-all" :class="currentPage === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'">
+            Trước
+          </button>
+          <button @click="nextPage" :disabled="currentPage >= totalPages - 1" class="px-4 py-2 rounded-lg text-sm font-bold transition-all" :class="currentPage >= totalPages - 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'">
+            Sau
+          </button>
+        </div>
       </div>
     </div>
 
@@ -194,15 +214,16 @@ const selectedLog = ref(null)
 const activeTab = ref('audit')
 const modalTab = ref('summary')
 
-const filteredLogs = computed(() => {
-  if (activeTab.value === 'error') {
-    return logs.value.filter(log => log.actionName === 'SYSTEM_ERROR')
-  }
-  return logs.value.filter(log => log.actionName !== 'SYSTEM_ERROR')
-})
+// Pagination state
+const currentPage = ref(0)
+const totalPages = ref(0)
+const errorCount = ref(0)
 
-const errorCount = computed(() => {
-  return logs.value.filter(log => log.actionName === 'SYSTEM_ERROR').length
+import { watch } from 'vue'
+
+watch(activeTab, () => {
+  currentPage.value = 0
+  fetchLogs()
 })
 
 const generateHumanReadableSummary = (log) => {
@@ -391,12 +412,36 @@ const openDetails = (log) => {
 const fetchLogs = async () => {
   loading.value = true
   try {
-    const response = await api.get('/admin/audit-logs')
-    logs.value = response.data
+    const response = await api.get(`/admin/audit-logs?type=${activeTab.value}&page=${currentPage.value}&size=20`)
+    logs.value = response.data.content
+    totalPages.value = response.data.totalPages
   } catch (error) {
     console.error("Lỗi khi tải nhật ký hoạt động:", error)
   } finally {
     loading.value = false
+  }
+}
+
+const fetchErrorCount = async () => {
+  try {
+    const response = await api.get('/admin/audit-logs/error-count')
+    errorCount.value = response.data
+  } catch (error) {
+    console.error("Lỗi đếm số lượng lỗi hệ thống:", error)
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value - 1) {
+    currentPage.value++
+    fetchLogs()
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 0) {
+    currentPage.value--
+    fetchLogs()
   }
 }
 
@@ -420,8 +465,19 @@ const clearErrorLogs = async () => {
   }
 }
 
+const clearNormalLogs = async () => {
+  if (!confirm('⚠️ CẢNH BÁO: Bạn có chắc chắn muốn dọn sạch TẤT CẢ nhật ký hoạt động thường không? Hành động này không thể hoàn tác!')) return;
+  try {
+    await api.delete(`/admin/audit-logs/clear-normal`);
+    fetchLogs();
+  } catch (err) {
+    alert('Không thể dọn dẹp nhật ký!');
+  }
+}
+
 onMounted(() => {
   fetchLogs()
+  fetchErrorCount()
 })
 </script>
 

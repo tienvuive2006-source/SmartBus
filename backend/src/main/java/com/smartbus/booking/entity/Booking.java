@@ -37,11 +37,22 @@ public class Booking {
     @Column(nullable = false)
     private Double totalPrice;
 
+    @Column(name = "discount_amount")
+    @Builder.Default
+    private Double discountAmount = 0.0;
+
+    @Column(name = "applied_user_voucher_id")
+    private Long appliedUserVoucherId;
+
     @Column(nullable = false)
     private String paymentMethod; // CASH, BANK_TRANSFER, WALLET
 
     @Column(nullable = false)
     private String status; // PENDING, PAID, CANCELLED, CHECKED_IN
+
+    @Column(name = "refund_amount")
+    @Builder.Default
+    private Double refundAmount = 0.0;
 
     @Column(columnDefinition = "TEXT")
     private String cancellationReason;

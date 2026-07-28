@@ -5,6 +5,7 @@ import com.smartbus.booking.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,6 +25,9 @@ public class BookingController {
     private TripRepository tripRepository;
 
     @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -36,10 +40,16 @@ public class BookingController {
     private com.smartbus.booking.service.EmailService emailService;
 
     @Autowired
+    private com.smartbus.booking.service.FundService fundService;
+
+    @Autowired
     private com.smartbus.booking.repository.PaymentOrderRepository paymentOrderRepository;
 
     @Autowired
     private com.smartbus.booking.repository.RoundTripGroupRepository roundTripGroupRepository;
+
+    @Autowired
+    private com.smartbus.booking.repository.UserVoucherRepository userVoucherRepository;
 
     @GetMapping
     public List<Booking> getAllBookings() {
@@ -86,18 +96,32 @@ public class BookingController {
                             boolean isPaidViaQR = "BANK_TRANSFER".equals(booking.getPaymentMethod());
                             boolean isAlreadyPaid = "PAID".equals(oldStatus) || "CHECKED_IN".equals(oldStatus);
                             
-                            // Nếu đã thanh toán qua Ví, hoặc quét mã QR (thường mặc định PENDING chờ duyệt/PAID) 
-                            // Ở đây ta hoàn tiền nếu Phương thức là Ví hoặc nếu đơn QR/Tiền mặt đã được đánh dấu PAID
+                            // Hoàn tiền vào ví
                             if (isPaidViaWallet || (isPaidViaQR) || isAlreadyPaid) {
                                 com.smartbus.booking.entity.User user = booking.getUser();
                                 double currentBalance = user.getWalletBalance() != null ? user.getWalletBalance() : 0.0;
                                 
-                                // Áp dụng chính sách phí hủy vé 10%, hoàn lại 90%
                                 double refundAmount = booking.getTotalPrice() != null ? (booking.getTotalPrice() * 0.9) : 0.0;
                                 
                                 user.setWalletBalance(currentBalance + refundAmount);
                                 userRepository.save(user);
                             }
+
+                            // Trừ điểm thưởng nếu đã thanh toán
+                            if (isAlreadyPaid) {
+                                com.smartbus.booking.entity.User user = booking.getUser();
+                                int earnedPoints = (int) ((booking.getTotalPrice() != null ? booking.getTotalPrice() : 0) / 1000);
+                                user.setLoyaltyPoints(Math.max(0, (user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) - earnedPoints));
+                                userRepository.save(user);
+                            }
+                        }
+
+                        // Hoàn trả Voucher
+                        if (booking.getAppliedUserVoucherId() != null) {
+                            userVoucherRepository.findById(booking.getAppliedUserVoucherId()).ifPresent(uv -> {
+                                uv.setIsUsed(false);
+                                userVoucherRepository.save(uv);
+                            });
                         }
                     }
 
@@ -106,6 +130,42 @@ public class BookingController {
                         reviewRepository.findByBookingId(booking.getId()).ifPresent(review -> {
                             reviewRepository.delete(review);
                         });
+                    }
+                    
+                    // Tích điểm khi đơn chuyển sang Đã thanh toán (PAID) hoặc Đã lên xe (CHECKED_IN)
+                    if (("PAID".equals(newStatus) || "CHECKED_IN".equals(newStatus)) 
+                        && (!"PAID".equals(oldStatus) && !"CHECKED_IN".equals(oldStatus))) {
+                        
+                        String performedBy = "Admin";
+                        try {
+                            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                            if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+                                Long currentUserId = Long.parseLong(auth.getName());
+                                com.smartbus.booking.entity.User currentUser = userRepository.findById(currentUserId).orElse(null);
+                                if (currentUser != null && !"ADMIN".equals(currentUser.getRole())) {
+                                    performedBy = currentUser.getFullName();
+                                }
+                            }
+                        } catch (Exception ignored) {}
+
+                        // Fallback nếu không xác định được
+                        if ("Admin".equals(performedBy) && ("BANK_TRANSFER".equals(booking.getPaymentMethod()) || "WALLET".equals(booking.getPaymentMethod()))) {
+                            if (booking.getUser() != null) {
+                                performedBy = booking.getUser().getFullName();
+                            } else {
+                                performedBy = booking.getCustomerName();
+                            }
+                        }
+
+                        // Ghi nhận doanh thu
+                        fundService.recordTransaction(booking.getPaymentMethod(), "INCOME", booking.getTotalPrice(), "Thanh toán vé #" + booking.getId(), String.valueOf(booking.getId()), performedBy);
+
+                        if (booking.getUser() != null && booking.getTotalPrice() != null) {
+                             com.smartbus.booking.entity.User user = booking.getUser();
+                             int earnedPoints = (int) (booking.getTotalPrice() / 1000);
+                             user.setLoyaltyPoints((user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) + earnedPoints);
+                             userRepository.save(user);
+                        }
                     }
 
                     booking.setStatus(newStatus);
@@ -154,6 +214,25 @@ public class BookingController {
             if (selectedSeats != null && !selectedSeats.isEmpty()) {
                 serverCalculatedPrice = (trip.getPrice() != null ? trip.getPrice() : 0.0) * selectedSeats.size();
             }
+
+            // Xử lý áp dụng mã giảm giá (Voucher)
+            if (payload.get("userVoucherId") != null && payload.get("user") != null) {
+                Long userVoucherId = Long.valueOf(payload.get("userVoucherId").toString());
+                Long customerId = Long.valueOf(((Map<?, ?>) payload.get("user")).get("id").toString());
+                
+                com.smartbus.booking.entity.UserVoucher uv = userVoucherRepository.findById(userVoucherId).orElse(null);
+                if (uv != null && !uv.getIsUsed() && uv.getUser().getId().equals(customerId) && uv.getVoucher().getIsActive()) {
+                    double discountAmount = uv.getVoucher().getDiscountAmount();
+                    serverCalculatedPrice = Math.max(0, serverCalculatedPrice - discountAmount);
+                    booking.setDiscountAmount(discountAmount);
+                    booking.setAppliedUserVoucherId(uv.getId());
+                    
+                    // Đánh dấu đã sử dụng
+                    uv.setIsUsed(true);
+                    userVoucherRepository.save(uv);
+                }
+            }
+
             booking.setTotalPrice(serverCalculatedPrice);
             booking.setPaymentMethod((String) payload.get("paymentMethod"));
             booking.setStatus((String) payload.get("status"));
@@ -188,6 +267,45 @@ public class BookingController {
             }
 
             Booking saved = bookingRepository.save(booking);
+            messagingTemplate.convertAndSend("/topic/admin/bookings/new", "NEW_BOOKING");
+
+            // Tích điểm và Ghi nhận doanh thu ngay nếu trạng thái là PAID hoặc CHECKED_IN
+            if ("PAID".equals(saved.getStatus()) || "CHECKED_IN".equals(saved.getStatus())) {
+                 String performedBy = "Admin";
+                 try {
+                     org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                     if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+                         Long currentUserId = Long.parseLong(auth.getName());
+                         com.smartbus.booking.entity.User currentUser = userRepository.findById(currentUserId).orElse(null);
+                         if (currentUser != null && !"ADMIN".equals(currentUser.getRole())) {
+                             performedBy = currentUser.getFullName();
+                         }
+                     }
+                 } catch (Exception ignored) {}
+
+                 if ("Admin".equals(performedBy)) {
+                     if ("CHECKED_IN".equals(saved.getStatus())) {
+                         performedBy = "Lơ xe thu";
+                     } else if ("BANK_TRANSFER".equals(saved.getPaymentMethod()) || "WALLET".equals(saved.getPaymentMethod())) {
+                         if (saved.getUser() != null) {
+                             performedBy = saved.getUser().getFullName();
+                         } else {
+                             performedBy = saved.getCustomerName();
+                         }
+                     }
+                 }
+
+                 String description = "CHECKED_IN".equals(saved.getStatus()) ? "Thu tiền vé tại xe - Vé #" + saved.getId() : "Thanh toán vé #" + saved.getId();
+                 
+                 fundService.recordTransaction(saved.getPaymentMethod(), "INCOME", saved.getTotalPrice(), description, String.valueOf(saved.getId()), performedBy);
+
+                 if (saved.getUser() != null) {
+                     com.smartbus.booking.entity.User user = saved.getUser();
+                     int earnedPoints = (int) (saved.getTotalPrice() / 1000);
+                     user.setLoyaltyPoints((user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) + earnedPoints);
+                     userRepository.save(user);
+                 }
+            }
 
             // 3. GỬI EMAIL XÁC NHẬN KÈM MÃ QR
             try {
@@ -239,6 +357,17 @@ public class BookingController {
             seatService.holdSeats(outboundTripId, outboundSeats);
             if (returnTripId != null && returnSeats != null) {
                 seatService.holdSeats(returnTripId, returnSeats);
+            }
+
+            // Áp dụng voucher
+            Long userVoucherId = payload.containsKey("userVoucherId") && payload.get("userVoucherId") != null ? 
+                                Long.valueOf(payload.get("userVoucherId").toString()) : null;
+            if (userVoucherId != null && payload.get("user") != null) {
+                Long customerId = Long.valueOf(((Map<?, ?>) payload.get("user")).get("id").toString());
+                com.smartbus.booking.entity.UserVoucher uv = userVoucherRepository.findById(userVoucherId).orElse(null);
+                if (uv != null && !uv.getIsUsed() && uv.getUser().getId().equals(customerId) && uv.getVoucher().getIsActive()) {
+                    totalAmount = Math.max(0, totalAmount - uv.getVoucher().getDiscountAmount());
+                }
             }
             
             // 3. Tạo PaymentOrder
@@ -305,16 +434,40 @@ public class BookingController {
             
             Map<String, Object> customerInfo = (Map<String, Object>) payload.get("customerInfo");
             
+            // Lấy thông tin voucher nếu có
+            Long userVoucherId = payload.containsKey("userVoucherId") && payload.get("userVoucherId") != null ? 
+                                Long.valueOf(payload.get("userVoucherId").toString()) : null;
+            Double voucherDiscountAmount = 0.0;
+            if (userVoucherId != null) {
+                com.smartbus.booking.entity.UserVoucher uv = userVoucherRepository.findById(userVoucherId).orElse(null);
+                if (uv != null && !uv.getIsUsed() && uv.getUser().getId().equals(po.getCustomerId()) && uv.getVoucher().getIsActive()) {
+                    voucherDiscountAmount = uv.getVoucher().getDiscountAmount();
+                    uv.setIsUsed(true);
+                    userVoucherRepository.save(uv);
+                } else {
+                    userVoucherId = null; // Reset nếu không hợp lệ
+                }
+            }
+            
             // Tạo vé OUTBOUND
             Long outboundTripId = Long.valueOf(payload.get("outboundTripId").toString());
             List<String> outboundSeats = (List<String>) payload.get("outboundSeats");
-            createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId());
+            
+            // Chia đôi discount nếu là khứ hồi
+            Double outDiscount = voucherDiscountAmount;
+            Double retDiscount = 0.0;
+            if (payload.containsKey("returnTripId") && payload.get("returnTripId") != null) {
+                outDiscount = voucherDiscountAmount / 2;
+                retDiscount = voucherDiscountAmount / 2;
+            }
+            
+            createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId(), userVoucherId, outDiscount);
             
             // Tạo vé RETURN
             if (payload.containsKey("returnTripId") && payload.get("returnTripId") != null) {
                 Long returnTripId = Long.valueOf(payload.get("returnTripId").toString());
                 List<String> returnSeats = (List<String>) payload.get("returnSeats");
-                createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId());
+                createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId(), userVoucherId, retDiscount);
             }
             
             po.setStatus("COMPLETED");
@@ -329,14 +482,22 @@ public class BookingController {
         }
     }
     
-    private void createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId) {
+    private void createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId, Long userVoucherId, Double discountAmount) {
         com.smartbus.booking.entity.Trip trip = tripRepository.findById(tripId).orElseThrow();
         Booking b = new Booking();
         b.setCustomerName((String) cust.get("customerName"));
         b.setCustomerPhone((String) cust.get("customerPhone"));
         b.setCustomerEmail((String) cust.get("customerEmail"));
         b.setSeatNumbers(seats);
-        b.setTotalPrice((trip.getPrice() != null ? trip.getPrice() : 0.0) * seats.size());
+        
+        double originalPrice = (trip.getPrice() != null ? trip.getPrice() : 0.0) * seats.size();
+        b.setTotalPrice(Math.max(0, originalPrice - discountAmount));
+        
+        if (userVoucherId != null && discountAmount > 0) {
+            b.setAppliedUserVoucherId(userVoucherId);
+            b.setDiscountAmount(discountAmount);
+        }
+        
         b.setPaymentMethod(pm);
         if ("CASH".equals(pm)) {
             b.setStatus("PENDING");
@@ -354,6 +515,45 @@ public class BookingController {
         seatService.bookSeats(tripId, seats); // Khóa ghế vĩnh viễn (sẽ tự động xóa Reservation)
         
         Booking saved = bookingRepository.save(b);
+        messagingTemplate.convertAndSend("/topic/admin/bookings/new", "NEW_BOOKING");
+        
+        // Tích điểm và Ghi nhận doanh thu ngay nếu trạng thái là PAID hoặc CHECKED_IN
+        if ("PAID".equals(saved.getStatus()) || "CHECKED_IN".equals(saved.getStatus())) {
+             String performedBy = "Admin";
+             try {
+                 org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                 if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+                     Long currentUserId = Long.parseLong(auth.getName());
+                     com.smartbus.booking.entity.User currentUser = userRepository.findById(currentUserId).orElse(null);
+                     if (currentUser != null && !"ADMIN".equals(currentUser.getRole())) {
+                         performedBy = currentUser.getFullName();
+                     }
+                 }
+             } catch (Exception ignored) {}
+
+             if ("Admin".equals(performedBy)) {
+                 if ("CHECKED_IN".equals(saved.getStatus())) {
+                     performedBy = "Lơ xe thu";
+                 } else if ("BANK_TRANSFER".equals(saved.getPaymentMethod()) || "WALLET".equals(saved.getPaymentMethod())) {
+                     if (saved.getUser() != null) {
+                         performedBy = saved.getUser().getFullName();
+                     } else {
+                         performedBy = saved.getCustomerName();
+                     }
+                 }
+             }
+
+             String description = "CHECKED_IN".equals(saved.getStatus()) ? "Thu tiền vé tại xe - Vé #" + saved.getId() : "Thanh toán vé #" + saved.getId();
+                 
+             fundService.recordTransaction(saved.getPaymentMethod(), "INCOME", saved.getTotalPrice(), description, String.valueOf(saved.getId()), performedBy);
+
+             if (saved.getUser() != null) {
+                 com.smartbus.booking.entity.User user = saved.getUser();
+                 int earnedPoints = (int) (saved.getTotalPrice() / 1000);
+                 user.setLoyaltyPoints((user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) + earnedPoints);
+                 userRepository.save(user);
+             }
+        }
         
         try {
             if (b.getCustomerEmail() != null && !b.getCustomerEmail().isEmpty() && !b.getCustomerEmail().equals("no-email@smartbus.com")) {

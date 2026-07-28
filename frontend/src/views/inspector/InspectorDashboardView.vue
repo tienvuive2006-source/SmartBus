@@ -98,7 +98,7 @@
           <!-- Thông tin xe & Tài xế -->
           <div class="mt-5 flex gap-4 items-center bg-slate-50 p-3 rounded-xl border border-slate-100 group-hover:bg-white transition-colors">
             <div class="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-200 border border-slate-200 shadow-sm relative">
-              <img v-if="trip.imageUrl" :src="trip.imageUrl" class="w-full h-full object-cover" />
+              <img v-if="getBusImageUrl(trip)" :src="getBusImageUrl(trip)" class="w-full h-full object-cover" />
               <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
                  <span class="material-symbols-outlined text-[24px]">directions_bus</span>
               </div>
@@ -110,7 +110,7 @@
               </div>
               <div class="text-xs font-medium text-slate-500 flex items-center justify-between">
                  <span>Họ & Tên:</span>
-                 <span class="font-bold text-slate-800">{{ getRealDriverName(trip.assignedLicensePlate) }}</span>
+                 <span class="font-bold text-slate-800">{{ getRealDriverName(trip) }}</span>
               </div>
             </div>
           </div>
@@ -235,9 +235,19 @@ const getStatusTextColor = (status) => {
   }
 };
 
-const getRealDriverName = (licensePlate) => {
-   if (!licensePlate) return 'Chưa phân công xe';
-   const bus = buses.value.find(b => b.licensePlate === licensePlate);
+const getRealDriverName = (trip) => {
+   if (trip?.assignedDriverFullName) return trip.assignedDriverFullName;
+   if (!trip?.assignedLicensePlate) return 'Chưa phân công xe';
+   const bus = buses.value.find(b => b.licensePlate === trip.assignedLicensePlate);
    return bus && bus.driverName ? bus.driverName : 'Chưa cập nhật tài xế';
+};
+
+const getBusImageUrl = (trip) => {
+   if (trip?.imageUrl) return trip.imageUrl;
+   if (trip?.assignedLicensePlate && buses.value) {
+       const bus = buses.value.find(b => b.licensePlate === trip.assignedLicensePlate);
+       if (bus && bus.imageUrl) return bus.imageUrl;
+   }
+   return null;
 };
 </script>

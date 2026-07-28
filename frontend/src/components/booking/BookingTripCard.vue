@@ -233,8 +233,13 @@ const isTripPassed = (trip) => {
 
 const getBusUtilities = (busTypeName) => {
   if (!busTypeName) return '';
-  const btName = busTypeName.replace(/Luxyry/g, 'Luxury');
-  const busType = props.allBusTypes.find(bt => bt.name === btName || bt.name.replace(/Luxyry/g, 'Luxury') === btName);
+  const btName = busTypeName.toLowerCase().trim().replace(/luxyry/g, 'luxury');
+  
+  const busType = props.allBusTypes.find(bt => {
+    const dbName = bt.name.toLowerCase().trim().replace(/luxyry/g, 'luxury');
+    return dbName === btName;
+  });
+  
   return busType ? busType.description : '';
 };
 

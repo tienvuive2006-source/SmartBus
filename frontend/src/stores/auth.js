@@ -11,6 +11,9 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('jwt_token') || null)
   const user = ref(JSON.parse(localStorage.getItem('jwt_user') || 'null'))
   const notifications = ref([])
+  const newBookingsCount = ref(0)
+  const newExpensesCount = ref(0)
+  const newReviewsCount = ref(0)
 
   // ✅ Nạp thông báo riêng của User hiện tại
   const loadNotifications = () => {
@@ -94,7 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
           addNotification({
             type: 'WALLET',
             title: `Biến động số dư (${diff > 0 ? '+' : ''}${diff.toLocaleString('vi-VN')}đ)`,
-            message: `Quản trị viên đã ${diff > 0 ? 'cộng' : 'trừ'} ${Math.abs(diff).toLocaleString('vi-VN')}đ ${diff > 0 ? 'vào' : 'khỏi'} ví của bạn.`,
+            message: `Tài khoản của bạn vừa ${diff > 0 ? 'được cộng' : 'bị trừ'} ${Math.abs(diff).toLocaleString('vi-VN')}đ.`,
             amount: diff,
             date: new Date().toISOString()
           })
@@ -145,6 +148,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const clearNewBookingsCount = () => {
+    newBookingsCount.value = 0
+  }
+
+  const clearNewExpensesCount = () => {
+    newExpensesCount.value = 0
+  }
+
+  const clearNewReviewsCount = () => {
+    newReviewsCount.value = 0
+  }
+
   // ─── PRIVATE ──────────────────────────────────────────────────────
   const _saveSession = (data) => {
     token.value = data.token
@@ -155,6 +170,7 @@ export const useAuthStore = defineStore('auth', () => {
       role: data.role,
       email: data.email,
       walletBalance: data.walletBalance,
+      loyaltyPoints: data.loyaltyPoints || 0,
       authProvider: data.authProvider || 'LOCAL',
       avatarUrl: data.avatarUrl || null
     }
@@ -179,6 +195,27 @@ export const useAuthStore = defineStore('auth', () => {
             fetchMe() // Nhận tín hiệu từ Admin -> cập nhật số dư ngay lập tức
           }
         })
+        
+        // Nhận tín hiệu khi có vé mới (Chỉ dành cho Admin)
+        if (user.value.role === 'ADMIN') {
+          stompClient.subscribe(`/topic/admin/bookings/new`, (message) => {
+            if (message.body === 'NEW_BOOKING') {
+              newBookingsCount.value++
+            }
+          })
+          
+          stompClient.subscribe(`/topic/admin/expenses/new`, (message) => {
+            if (message.body === 'NEW_EXPENSE') {
+              newExpensesCount.value++
+            }
+          })
+          
+          stompClient.subscribe(`/topic/admin/reviews/new`, (message) => {
+            if (message.body === 'NEW_REVIEW') {
+              newReviewsCount.value++
+            }
+          })
+        }
       }
     })
 
@@ -210,6 +247,9 @@ export const useAuthStore = defineStore('auth', () => {
     currentUser,
     authHeader,
     unreadNotificationsCount,
+    newBookingsCount,
+    newExpensesCount,
+    newReviewsCount,
     // actions
     login,
     googleLogin,
@@ -220,6 +260,9 @@ export const useAuthStore = defineStore('auth', () => {
     updateUser,
     addNotification,
     markAllNotificationsRead,
-    clearNotifications
+    clearNotifications,
+    clearNewBookingsCount,
+    clearNewExpensesCount,
+    clearNewReviewsCount
   }
 })

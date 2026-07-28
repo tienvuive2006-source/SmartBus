@@ -46,6 +46,10 @@ public class User {
     private int ticketCount;
 
     @Builder.Default
+    @Column(name = "loyalty_points")
+    private Integer loyaltyPoints = 0;
+
+    @Builder.Default
     @Column(name = "is_locked")
     private Boolean isLocked = false;
 

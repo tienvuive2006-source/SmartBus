@@ -23,7 +23,7 @@
       <!-- Thông tin xe & Tài xế -->
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex gap-4 items-center mb-4">
         <div class="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-200 border border-slate-200 shadow-sm relative">
-          <img v-if="trip.imageUrl" :src="trip.imageUrl" class="w-full h-full object-cover" />
+          <img v-if="getBusImageUrl(trip)" :src="getBusImageUrl(trip)" class="w-full h-full object-cover" />
           <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
              <span class="material-symbols-outlined text-[24px]">directions_bus</span>
           </div>
@@ -71,7 +71,7 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <button class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-2 text-indigo-600 hover:bg-indigo-50 transition-colors active:scale-95" @click="showSeatMap = true">
           <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
             <span class="material-symbols-outlined text-3xl">airline_seat_recline_normal</span>
@@ -84,7 +84,7 @@
           </div>
           <span class="font-black text-body-sm text-center">QUÉT MÃ QR</span>
         </button>
-        <button class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-2 text-emerald-600 hover:bg-emerald-50 transition-colors active:scale-95" @click="handleBuyOffline">
+        <button class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-2 text-emerald-600 hover:bg-emerald-50 transition-colors active:scale-95" @click="showSeatMap = true">
           <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
             <span class="material-symbols-outlined text-3xl">point_of_sale</span>
           </div>
@@ -98,64 +98,17 @@
         </button>
       </div>
 
+      <!-- Expenses List -->
+      <InspectorExpensesList 
+        :expenses="expenses" 
+        :loading="expensesLoading"
+        @open-expense-modal="showExpenseModal = true"
+      />
+
       <div class="mt-8 items-start">
         
         <!-- Danh sách hành khách -->
-        <div class="w-full">
-          <div class="flex justify-between items-end mb-4 px-1">
-            <h3 class="text-title-md font-black">Danh sách hành khách</h3>
-            <span class="text-body-sm font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded-md">
-              {{ checkedInCount }}/{{ bookings.length }} Đã lên xe
-            </span>
-          </div>
-
-          <div v-if="bookings.length === 0" class="bg-white p-8 rounded-3xl text-center border border-slate-100 text-slate-500 font-medium">
-            Chưa có hành khách nào đặt vé.
-          </div>
-          
-          <div v-else class="space-y-3">
-            <div 
-              v-for="booking in bookings" 
-              :key="booking.id"
-              class="bg-white p-4 rounded-2xl border transition-all"
-              :class="booking.status === 'CHECKED_IN' ? 'border-primary shadow-[0_0_0_1px_rgba(var(--color-primary),0.2)]' : 'border-slate-100'"
-            >
-            <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-2">
-              <div class="min-w-0 flex-1">
-                <h4 class="font-bold text-body-lg text-slate-800 truncate">{{ booking.customerName }}</h4>
-                <p class="text-body-sm text-slate-500 flex flex-wrap items-center gap-1 mt-0.5">
-                  <span class="material-symbols-outlined text-[16px]">call</span>
-                  {{ booking.customerPhone }}
-                  <span class="mx-1 text-slate-300 hidden sm:inline">•</span>
-                  <span class="font-black text-primary w-full sm:w-auto mt-1 sm:mt-0">{{ booking.seatNumbers.length }} vé</span>
-                </p>
-              </div>
-              <div class="text-left sm:text-right shrink-0 bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-lg w-full sm:w-auto mt-2 sm:mt-0">
-                <span class="block text-title-md font-black text-primary">{{ booking.seatNumbers.join(', ') }}</span>
-                <span class="text-label-xs font-bold uppercase block mt-1" :class="booking.status === 'CHECKED_IN' ? 'text-primary' : (booking.status === 'PAID' ? 'text-emerald-500' : 'text-amber-500')">
-                  {{ booking.status === 'CHECKED_IN' ? 'ĐÃ LÊN XE' : (booking.status === 'PAID' ? 'ĐÃ THANH TOÁN' : 'CHỜ T.TOÁN') }}
-                </span>
-              </div>
-            </div>
-              
-              <hr class="border-slate-100 my-3" />
-              
-              <div class="flex justify-between items-center">
-                <span class="text-body-sm font-medium text-slate-600">ID: #{{ booking.id }}</span>
-                <button 
-                  v-if="booking.status !== 'CHECKED_IN'"
-                  @click="manualCheckIn(booking)"
-                  class="px-4 py-1.5 bg-slate-800 text-white font-bold text-body-sm rounded-xl active:scale-95 transition-transform"
-                >
-                  XÁC NHẬN LÊN XE
-                </button>
-                <button v-else disabled class="px-4 py-1.5 bg-primary/10 text-primary font-bold text-body-sm rounded-xl flex items-center gap-1">
-                  <span class="material-symbols-outlined text-[18px]">check_circle</span> Hoàn tất
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <InspectorPassengerList :bookings="bookings" @manual-checkin="manualCheckIn" />
 
         </div>
 
@@ -180,164 +133,29 @@
         </div>
 
       <!-- Modal Sơ đồ ghế -->
-        <Teleport to="body">
-          <div v-if="showSeatMap" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
-            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showSeatMap = false"></div>
-            <div class="relative w-full sm:max-w-[700px] bg-white sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl overflow-hidden animate-slide-up sm:animate-fade-in-up flex flex-col max-h-[90vh]">
-              
-              <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 sticky top-0 z-10">
-                <h3 class="text-title-md font-black text-slate-800">Sơ đồ ghế trên xe</h3>
-                <button @click="showSeatMap = false" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors">
-                  <span class="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              
-              <div class="p-6 overflow-y-auto bg-slate-50">
-
-          <!-- Legend -->
-          <div class="bg-white p-4 border border-slate-100 rounded-2xl flex flex-wrap items-center justify-center gap-6 md:gap-12 shadow-sm mb-6">
-               <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg border-2 border-slate-200 bg-white"></div>
-                  <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Trống</span>
-               </div>
-               <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg border-2 border-amber-300 bg-amber-100"></div>
-                  <span class="text-xs font-black text-amber-600 uppercase tracking-widest">Đã bán</span>
-               </div>
-               <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg border-2 border-emerald-500 bg-emerald-500"></div>
-                  <span class="text-xs font-black text-emerald-600 uppercase tracking-widest">Đã lên xe</span>
-               </div>
-          </div>
-
-          <!-- Grid chứa 2 tầng cố định nằm ngang -->
-          <div class="grid grid-cols-2 gap-4 overflow-x-auto pb-4">
-            <!-- Tầng Dưới -->
-            <div class="bg-white border border-slate-100 rounded-2xl p-4 relative shadow-sm min-w-[220px]">
-              <div class="flex justify-between items-center mb-6">
-                 <h2 class="text-sm font-black text-slate-900 uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">Tầng Dưới</h2>
-                 <span class="material-symbols-outlined text-slate-400">airline_seat_recline_normal</span>
-              </div>
-              
-              <div class="max-w-[240px] mx-auto border-4 border-slate-200 rounded-t-[40px] p-4 pb-8 bg-[#f8faf9] relative">
-                 <div class="flex justify-between items-center mb-6 px-1 border-b-2 border-dashed border-slate-200 pb-3">
-                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border-2 border-slate-200">
-                       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                         <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /><path d="M12 14.5v6.5" /><path d="M9.8 10.8L3.5 7" /><path d="M14.2 10.8L20.5 7" />
-                       </svg>
-                    </div>
-                    <div class="flex flex-col items-center">
-                       <div class="w-8 h-10 bg-slate-200 border-2 border-slate-300 rounded-lg flex items-center justify-center mb-1">
-                          <span class="material-symbols-outlined text-[14px] text-slate-400">person</span>
-                       </div>
-                       <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tài xế</span>
-                    </div>
-                 </div>
-
-                 <div class="grid grid-cols-3 gap-y-3 gap-x-2">
-                   <div v-for="seat in floor1Seats" :key="seat.id" class="flex justify-center">
-                      <div 
-                        :class="['w-12 h-14 shrink-0 border-2 rounded-xl flex flex-col items-center justify-center font-black relative overflow-hidden',
-                          getSeatStatus(seat.seatNumber) === 'CHECKED_IN' ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' : 
-                          getSeatStatus(seat.seatNumber) === 'BOOKED' ? 'bg-amber-100 border-amber-300 text-amber-700 shadow-sm' : 
-                          'bg-white border-slate-200 text-slate-400']"
-                      >
-                        <span class="text-xs z-10">{{ seat.seatNumber }}</span>
-                        <div :class="['absolute top-1.5 w-6 h-1.5 rounded-full', getSeatStatus(seat.seatNumber) === 'CHECKED_IN' ? 'bg-white/30' : 'bg-slate-300/50']"></div>
-                        <div :class="['absolute bottom-1.5 w-8 h-1 rounded-full', getSeatStatus(seat.seatNumber) === 'CHECKED_IN' ? 'bg-white/50' : 'bg-slate-300']"></div>
-                      </div>
-                   </div>
-                 </div>
-                 
-                 <div class="mt-8 flex justify-center opacity-40">
-                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] rotate-90 my-10">Lối đi chung</span>
-                 </div>
-              </div>
-            </div>
-
-            <!-- Tầng Trên -->
-            <div class="bg-white border border-slate-100 rounded-2xl p-4 relative shadow-sm min-w-[220px]">
-              <div class="flex justify-between items-center mb-6">
-                 <h2 class="text-sm font-black text-slate-900 uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">Tầng Trên</h2>
-                 <span class="material-symbols-outlined text-slate-400">airline_seat_flat</span>
-              </div>
-              
-              <div class="max-w-[240px] mx-auto border-4 border-slate-200 rounded-t-[40px] p-4 pb-8 bg-[#f8faf9] relative">
-                 <div class="flex justify-between items-center mb-6 px-1 border-b-2 border-dashed border-slate-200 pb-3">
-                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border-2 border-slate-200 opacity-50">
-                       <span class="material-symbols-outlined text-slate-400">deck</span>
-                    </div>
-                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border-2 border-slate-200 opacity-50">
-                       <span class="material-symbols-outlined text-slate-400">ac_unit</span>
-                    </div>
-                 </div>
-
-                 <div class="grid grid-cols-3 gap-y-3 gap-x-2">
-                   <div v-for="seat in floor2Seats" :key="seat.id" class="flex justify-center">
-                      <div 
-                        :class="['w-12 h-14 shrink-0 border-2 rounded-xl flex flex-col items-center justify-center font-black relative overflow-hidden',
-                          getSeatStatus(seat.seatNumber) === 'CHECKED_IN' ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' : 
-                          getSeatStatus(seat.seatNumber) === 'BOOKED' ? 'bg-amber-100 border-amber-300 text-amber-700 shadow-sm' : 
-                          'bg-white border-slate-200 text-slate-400']"
-                      >
-                        <span class="text-xs z-10">{{ seat.seatNumber }}</span>
-                        <div :class="['absolute top-1.5 w-6 h-1.5 rounded-full', getSeatStatus(seat.seatNumber) === 'CHECKED_IN' ? 'bg-white/30' : 'bg-slate-300/50']"></div>
-                        <div :class="['absolute bottom-1.5 w-8 h-1 rounded-full', getSeatStatus(seat.seatNumber) === 'CHECKED_IN' ? 'bg-white/50' : 'bg-slate-300']"></div>
-                      </div>
-                   </div>
-                 </div>
-                 
-                 <div class="mt-8 flex justify-center opacity-40">
-                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] rotate-90 my-10">Lối đi chung</span>
-                 </div>
-              </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Teleport>
+      <InspectorSeatMapModal 
+        v-model:show="showSeatMap"
+        :tripId="tripId"
+        :trip="trip"
+        :bookings="bookings"
+        :floor1Seats="floor1Seats"
+        :floor2Seats="floor2Seats"
+        @checkout-success="fetchData"
+      />
 
       <!-- Modal Báo cáo sự cố -->
-      <Teleport to="body">
-        <div v-if="showIncidentModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showIncidentModal = false"></div>
-          <div class="relative w-full sm:max-w-md bg-white sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl overflow-hidden flex flex-col animate-slide-up sm:animate-fade-in-up">
-            
-            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
-              <h3 class="text-title-md font-black text-error flex items-center gap-2">
-                <span class="material-symbols-outlined">warning</span>
-                Báo cáo sự cố khẩn cấp
-              </h3>
-              <button @click="showIncidentModal = false" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors">
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            
-            <div class="p-6 overflow-y-auto bg-slate-50 space-y-4">
-              <div>
-                <label class="block text-label-md font-bold text-slate-700 mb-1">Mức độ sự cố</label>
-                <select v-model="incidentForm.severity" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-body-md font-bold focus:outline-none focus:border-error focus:ring-2 focus:ring-error/20">
-                  <option value="" disabled>-- Chọn mức độ sự cố --</option>
-                  <option value="LOW">Thấp (Trễ giờ, Tắc đường)</option>
-                  <option value="HIGH">Cao (Hư hỏng nhẹ, Khách ốm)</option>
-                  <option value="CRITICAL">Khẩn cấp (Tai nạn, Hư hỏng nặng)</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-label-md font-bold text-slate-700 mb-1">Mô tả chi tiết</label>
-                <textarea v-model="incidentForm.description" rows="4" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-body-md focus:outline-none focus:border-error focus:ring-2 focus:ring-error/20" placeholder="Nhập chi tiết sự cố xảy ra..."></textarea>
-              </div>
-            </div>
+      <InspectorIncidentModal 
+        v-model:show="showIncidentModal"
+        @submit="submitIncident"
+      />
 
-            <div class="p-6 bg-white border-t border-slate-100">
-              <button @click="submitIncident" :disabled="!incidentForm.description || !incidentForm.severity" class="w-full bg-error text-white font-black py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-50">
-                GỬI BÁO CÁO NGAY
-              </button>
-            </div>
-          </div>
-        </div>
-      </Teleport>
+      <!-- Expense Modal -->
+      <InspectorExpenseModal
+        :show="showExpenseModal"
+        :tripId="trip.id"
+        @close="showExpenseModal = false"
+        @refresh="fetchExpenses"
+      />
 
       <QRScannerModal 
         :isOpen="showQRScanner"
@@ -351,11 +169,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import QRScannerModal from '@/components/inspector/QRScannerModal.vue';
+import InspectorSeatMapModal from '@/components/inspector/InspectorSeatMapModal.vue';
+import InspectorIncidentModal from '@/components/inspector/InspectorIncidentModal.vue';
+import InspectorPassengerList from '@/components/inspector/InspectorPassengerList.vue';
+import InspectorExpensesList from '@/components/inspector/InspectorExpensesList.vue';
+import InspectorExpenseModal from '@/components/inspector/InspectorExpenseModal.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -372,8 +195,11 @@ const showQRScanner = ref(false);
 const qrFeedback = ref(null);
 
 const showIncidentModal = ref(false);
-const incidentForm = ref({ severity: '', description: '' });
 const incidents = ref([]);
+
+const showExpenseModal = ref(false);
+const expenses = ref([]);
+const expensesLoading = ref(false);
 
 const fetchIncidents = async () => {
   try {
@@ -382,20 +208,19 @@ const fetchIncidents = async () => {
   } catch (error) { console.error("Lỗi tải sự cố:", error); }
 };
 
-const submitIncident = async () => {
-  if (!incidentForm.value.description) return;
+const submitIncident = async (form) => {
+  if (!form.description) return;
   try {
     const payload = {
       tripId: tripId,
       driverId: authStore.currentUser?.id,
       driverName: authStore.currentUser?.fullName,
-      severity: incidentForm.value.severity,
-      description: incidentForm.value.description
+      severity: form.severity,
+      description: form.description
     };
     await axios.post(`${import.meta.env.VITE_API_BASE_URL}/driver/incidents`, payload, authStore.authHeader);
     alert('Đã gửi báo cáo sự cố thành công! Bộ phận điều phối sẽ liên hệ ngay.');
     showIncidentModal.value = false;
-    incidentForm.value = { severity: '', description: '' };
     await fetchIncidents();
   } catch (error) {
     console.error(error);
@@ -404,7 +229,7 @@ const submitIncident = async () => {
 };
 
 const fetchData = async () => {
-  loading.value = true;
+  if (!trip.value) loading.value = true;
   try {
     // Lấy thông tin chuyến (Lấy từ mảng trips phân công)
     const inspectorId = authStore.currentUser?.id;
@@ -430,23 +255,25 @@ const fetchData = async () => {
   }
 };
 
+const fetchExpenses = async () => {
+  if (expenses.value.length === 0) expensesLoading.value = true;
+  try {
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/inspector/trips/${tripId}/expenses`, authStore.authHeader);
+    expenses.value = res.data;
+  } catch (error) { 
+    console.error("Lỗi tải chi phí:", error); 
+  } finally {
+    expensesLoading.value = false;
+  }
+};
+
 onMounted(() => {
   fetchData();
-});
-
-const checkedInCount = computed(() => {
-  return bookings.value.filter(b => b.status === 'CHECKED_IN').length;
+  fetchExpenses();
 });
 
 const floor1Seats = computed(() => seats.value.filter(s => s.seatFloor === 1));
 const floor2Seats = computed(() => seats.value.filter(s => s.seatFloor === 2));
-
-const getSeatStatus = (seatNumber) => {
-  const booking = bookings.value.find(b => b.seatNumbers.includes(seatNumber));
-  if (!booking || booking.status === 'CANCELLED') return 'EMPTY';
-  if (booking.status === 'CHECKED_IN') return 'CHECKED_IN';
-  return 'BOOKED';
-};
 
 const isTimeValidToDepart = computed(() => {
   if (!trip.value) return false;
@@ -589,10 +416,6 @@ const playBeep = (isSuccess) => {
   }
 };
 
-const handleBuyOffline = () => {
-  alert("Tính năng bán vé trực tiếp trên xe sẽ được liên kết tới màn hình Chọn ghế trong tương lai.");
-};
-
 // Utils
 const getStatusText = (status) => {
   switch(status) {
@@ -614,8 +437,18 @@ const getStatusColorClass = (status) => {
 };
 
 const getRealDriverName = (licensePlate) => {
+   if (trip.value?.assignedDriverFullName) return trip.value.assignedDriverFullName;
    if (!licensePlate) return 'Chưa phân công xe';
    const bus = buses.value.find(b => b.licensePlate === licensePlate);
    return bus && bus.driverName ? bus.driverName : 'Chưa cập nhật tài xế';
+};
+
+const getBusImageUrl = (t) => {
+   if (t?.imageUrl) return t.imageUrl;
+   if (t?.assignedLicensePlate && buses.value) {
+       const bus = buses.value.find(b => b.licensePlate === t.assignedLicensePlate);
+       if (bus && bus.imageUrl) return bus.imageUrl;
+   }
+   return null;
 };
 </script>

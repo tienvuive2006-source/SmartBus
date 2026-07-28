@@ -21,6 +21,7 @@
 	</properties>
 	
 	<dependencies>
+
 		<!-- Spring Web for creating API endpoints -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

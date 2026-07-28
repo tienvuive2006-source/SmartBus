@@ -18,6 +18,7 @@
         <button @click="openInfoModal('benxe')" class="transition-colors duration-300 border-none bg-transparent cursor-pointer font-bold" :class="(isScrolled || forceSolid) ? 'hover:text-yellow-600' : 'hover:text-yellow-400'">Bến Xe</button>
         <button @click="openInfoModal('nhaxe')" class="transition-colors duration-300 border-none bg-transparent cursor-pointer font-bold" :class="(isScrolled || forceSolid) ? 'hover:text-yellow-600' : 'hover:text-yellow-400'">Nhà Xe</button>
         <button @click="openInfoModal('thongtin')" class="transition-colors duration-300 border-none bg-transparent cursor-pointer font-bold" :class="(isScrolled || forceSolid) ? 'hover:text-yellow-600' : 'hover:text-yellow-400'">Thông tin</button>
+        <button @click="router.push('/tin-tuc')" class="transition-colors duration-300 border-none bg-transparent cursor-pointer font-bold" :class="(isScrolled || forceSolid) ? 'hover:text-yellow-600' : 'hover:text-yellow-400'">Tin Tức</button>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3">
@@ -40,16 +41,18 @@
         </button>
       </div>
     </div>
-    <!-- Modals -->
-    <LandingInfoModal 
-      v-if="showInfoModal"
-      :activeModalType="infoModalType" 
-      :uniqueStations="uniqueStations"
-      :uniqueCompanies="uniqueCompanies"
-      @close="showInfoModal = false" 
-      @book-now="scrollToTop(); showInfoModal = false"
-    />
-    <LandingTrackingModal :is-open="showTrackingModal" @close="showTrackingModal = false" />
+    <!-- Modals (Teleported to body to prevent cutoff) -->
+    <Teleport to="body">
+      <LandingInfoModal 
+        v-if="showInfoModal"
+        :activeModalType="infoModalType" 
+        :uniqueStations="uniqueStations"
+        :uniqueCompanies="uniqueCompanies"
+        @close="showInfoModal = false" 
+        @book-now="scrollToTop(); showInfoModal = false"
+      />
+      <LandingTrackingModal :is-open="showTrackingModal" @close="showTrackingModal = false" />
+    </Teleport>
   </nav>
 </template>
 

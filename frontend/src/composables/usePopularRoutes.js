@@ -69,6 +69,7 @@ export function usePopularRoutes(trips, filterFrom, filterTo, filterCompany, fil
     };
 
     savedRoutes.value.forEach(r => {
+      if (r.isVisible === false) return;
       if (filterFrom.value && r.departurePoint !== filterFrom.value) return;
       if (filterTo.value && r.arrivalPoint !== filterTo.value) return;
 

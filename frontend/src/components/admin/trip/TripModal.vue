@@ -7,16 +7,16 @@
              <span class="material-symbols-outlined">{{ isEditMode ? 'edit_square' : 'add_circle' }}</span>
              <h3 class="text-sm font-black uppercase tracking-widest">{{ isEditMode ? 'Cập nhật lộ trình' : 'Tạo lộ trình mới' }}</h3>
           </div>
-          <button @click="$emit('close')" class="hover:rotate-90 transition-transform bg-white/10 p-1.5 rounded-full flex items-center justify-center">
+          <button @click="closeModal" class="hover:rotate-90 transition-transform bg-white/10 p-1.5 rounded-full flex items-center justify-center">
             <span class="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
         
         <div class="flex-1 flex overflow-hidden">
           <!-- Left: Form Column -->
-          <form @submit.prevent="$emit('submit')" class="w-1/2 p-8 space-y-6 overflow-y-auto border-r border-slate-100 bg-white">
+          <form @submit.prevent="handleFormSubmit" class="w-1/2 p-8 space-y-6 overflow-y-auto border-r border-slate-100 bg-white">
             
-            <div class="space-y-1.5 mb-6">
+            <div class="space-y-1.5 mb-6 relative">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center justify-between">
                  <span>
                    Chọn Tuyến Đường Cố Định <span class="text-rose-500">*</span>
@@ -28,7 +28,7 @@
                 :value="form.departurePoint && form.arrivalPoint ? `${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}` : ''"
                 @change="(e) => {
                   const selectedRoute = savedRoutes.find(r => r.name === e.target.value);
-                  if(selectedRoute) $emit('apply-template', selectedRoute);
+                  if(selectedRoute) applyRouteTemplate(selectedRoute);
                 }"
                 required
                 :disabled="isEditMode && form.originalAvailableSeats < form.originalTotalSeats"
@@ -76,8 +76,6 @@
                 </select>
               </div>
             </div>
-
-
 
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1.5">
@@ -215,10 +213,8 @@
               </div>
             </div>
 
-
-
             <div class="pt-8 flex justify-end gap-3 shrink-0">
-              <button type="button" @click="$emit('close')" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">Hủy bỏ</button>
+              <button type="button" @click="closeModal" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">Hủy bỏ</button>
               <button type="submit" class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all">Lưu & Đăng tải</button>
             </div>
           </form>
@@ -243,13 +239,12 @@
                          <span>Lộ trình: <strong class="text-[#075955] font-black">{{ form.duration }}</strong></span>
                        </div>
                      </div>
-                     <div class="mt-2 text-[9px] italic text-slate-400">Mẹo: Click lên bản đồ để tinh chỉnh vị trí nếu cần</div>
                   </div>
                  <div v-else class="text-[10px] font-bold text-rose-500 flex flex-col gap-1 animate-pulse">
                     <div class="flex items-center gap-1">
                       <span class="material-symbols-outlined text-[12px]">warning</span> Chờ xác định tọa độ...
                     </div>
-                    <div class="text-[9px] text-slate-400 font-normal">Hãy nhập địa chỉ hoặc click trực tiếp lên bản đồ</div>
+                    <div class="text-[9px] text-slate-400 font-normal">Vui lòng chọn Tuyến đường cố định ở cột bên trái</div>
                  </div>
               </div>
 
@@ -266,19 +261,252 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch, nextTick } from 'vue';
+import { useApi } from '@/composables/useApi';
+import { decodePolyline, fetchPolylineFromCloudinary } from '@/utils/polyline';
 
 const props = defineProps({
-  isOpen: Boolean,
-  isEditMode: Boolean,
-  form: Object,
   busTypes: Array,
-  geocoding: Object,
-  mapLoading: Boolean,
-  savedRoutes: Array
+  buses: Array,
+  inspectors: Array,
+  drivers: Array
 });
 
-defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-click', 'swap-route', 'save-template', 'apply-template', 'delete-template']);
+const emit = defineEmits(['saved']);
+const api = useApi();
+
+const isOpen = ref(false);
+const isEditMode = ref(false);
+const mapLoading = ref(false);
+const leafletMap = ref(null);
+const savedRoutes = ref([]);
+
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+const defaultForm = {
+  id: null, companyName: 'Trung - Nam', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
+  assignedLicensePlate: '',
+  departureDate: tomorrowStr, departureTime: '08:00', arrivalTime: '12:00',
+  duration: '4h', price: null, rating: 4.8, availableSeats: 36, imageUrl: '', instantConfirmation: true,
+  departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, inspectorId: '', routeData: '',
+  createReturnTrip: false, returnDate: tomorrowStr, returnTime: '14:00', returnBusType: ''
+};
+
+const form = ref({ ...defaultForm });
+
+const fetchSavedRoutes = async () => {
+  try {
+    const res = await api.get('/routes');
+    savedRoutes.value = res.data;
+  } catch (err) {
+    console.error('Lỗi tải danh sách tuyến đường mẫu:', err);
+  }
+};
+
+const applyRouteTemplate = (route) => {
+  form.value.departurePoint = route.departurePoint;
+  form.value.arrivalPoint = route.arrivalPoint;
+  form.value.departureLat = route.departureLat;
+  form.value.departureLng = route.departureLng;
+  form.value.arrivalLat = route.arrivalLat;
+  form.value.arrivalLng = route.arrivalLng;
+  form.value.routeData = route.routeData;
+  form.value.duration = route.duration || '4h';
+  
+  if (route.basePrice) {
+     const matchedBus = props.busTypes.find(b => b.name === form.value.busType);
+     const multiplier = matchedBus?.priceMultiplier || 1.0;
+     form.value.price = Math.round(route.basePrice * multiplier);
+  }
+
+  updateMap();
+};
+
+const openModal = async (trip = null) => {
+  await fetchSavedRoutes();
+  if (trip) {
+    isEditMode.value = true;
+    form.value = { 
+      ...trip,
+      originalAvailableSeats: trip.availableSeats,
+      originalTotalSeats: trip.totalSeats,
+      inspectorId: trip.inspector ? trip.inspector.id : ''
+    };
+  } else {
+    isEditMode.value = false;
+    form.value = { ...defaultForm };
+  }
+  isOpen.value = true;
+  initAdminMap();
+};
+
+const closeModal = () => {
+  isOpen.value = false;
+};
+
+// --- Map Logic ---
+const initAdminMap = () => {
+  if (!document.getElementById('leaflet-css')) {
+    const link = document.createElement('link');
+    link.id = 'leaflet-css'; link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
+  }
+  const scriptId = 'leaflet-script';
+  if (!window.L && !document.getElementById(scriptId)) {
+    const script = document.createElement('script');
+    script.id = scriptId; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => renderLeaflet();
+    document.head.appendChild(script);
+  } else { setTimeout(renderLeaflet, 400); }
+};
+
+const renderLeaflet = () => {
+  const L = window.L; if (!L) return;
+  nextTick(() => {
+    const container = document.getElementById('admin-route-map');
+    if (!container) return;
+    if (leafletMap.value) leafletMap.value.remove();
+    leafletMap.value = L.map(container, { preferCanvas: true }).setView([16.0, 108.0], 6);
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps'
+    }).addTo(leafletMap.value);
+    
+    setTimeout(() => { if (leafletMap.value) { leafletMap.value.invalidateSize(); updateMap(); } }, 500);
+  });
+};
+
+const updateMap = async () => {
+  const L = window.L; if (!L || !leafletMap.value) return;
+  leafletMap.value.eachLayer((layer) => { if (layer instanceof L.Marker || layer instanceof L.Polyline) leafletMap.value.removeLayer(layer); });
+  
+  const from = [form.value.departureLat, form.value.departureLng];
+  const to = [form.value.arrivalLat, form.value.arrivalLng];
+  
+  const startIcon = L.divIcon({ 
+    html: `<div class="w-8 h-8 bg-emerald-500 border-4 border-white rounded-full shadow-2xl flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">trip_origin</span></div>`, 
+    className: '', iconSize: [32, 32] 
+  });
+  
+  const endIcon = L.divIcon({ 
+    html: `<div class="w-8 h-8 bg-rose-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">location_on</span></div>`, 
+    className: '', iconSize: [32, 32] 
+  });
+
+  if (from[0] > 1 && to[0] > 1) {
+    L.marker(from, { icon: startIcon }).addTo(leafletMap.value).bindPopup('<b>Điểm đi:</b> ' + form.value.departurePoint);
+    L.marker(to, { icon: endIcon }).addTo(leafletMap.value).bindPopup('<b>Điểm đến:</b> ' + form.value.arrivalPoint);
+    
+    const fallbackLine = L.polyline([from, to], { 
+      color: '#075955', weight: 2, dashArray: '5, 10', opacity: 0.5 
+    }).addTo(leafletMap.value);
+    leafletMap.value.fitBounds([from, to], { padding: [100, 100] });
+
+    if (form.value.routeData) {
+       try {
+         let routeStr = form.value.routeData;
+         if (routeStr.startsWith('http')) {
+             routeStr = await fetchPolylineFromCloudinary(routeStr);
+         }
+         
+         let coords = [];
+         if (routeStr.startsWith('[')) {
+             coords = JSON.parse(routeStr);
+         } else if (routeStr) {
+             coords = decodePolyline(routeStr);
+         }
+         
+         if (coords && coords.length > 0) {
+           leafletMap.value.removeLayer(fallbackLine);
+           L.polyline(coords, { color: '#000', weight: 6, opacity: 0.15, smoothFactor: 2 }).addTo(leafletMap.value);
+           L.polyline(coords, { 
+             color: '#075955', weight: 5, opacity: 0.9, lineJoin: 'round', smoothFactor: 2
+           }).addTo(leafletMap.value);
+           leafletMap.value.fitBounds(coords, { padding: [100, 100] });
+         }
+       } catch (e) { console.error("Lỗi parse routeData", e); }
+    }
+  } else if (from[0] > 1) { 
+    leafletMap.value.setView(from, 13); 
+    L.marker(from, { icon: startIcon }).addTo(leafletMap.value); 
+  } else if (to[0] > 1) { 
+    leafletMap.value.setView(to, 13); 
+    L.marker(to, { icon: endIcon }).addTo(leafletMap.value); 
+  }
+};
+
+const handleFormSubmit = async () => {
+  try {
+    const { createReturnTrip, returnDate, returnTime, returnBusType, originalAvailableSeats, originalTotalSeats, ...payload } = form.value;
+
+    if (isEditMode.value) {
+      await api.put(`/trips/${form.value.id}`, payload);
+    } else {
+      await api.post('/trips', payload);
+      
+      if (form.value.createReturnTrip) {
+        let returnArrTime = '19:00'; 
+        if (form.value.returnTime && form.value.duration) {
+          const match = form.value.duration.match(/(\d+)h(?:\s*(\d+)m)?/);
+          if (match) {
+            const durationH = parseInt(match[1]) || 0;
+            const durationM = parseInt(match[2]) || 0;
+            const [depH, depM] = form.value.returnTime.split(':').map(Number);
+            if (!isNaN(depH) && !isNaN(depM)) {
+              let arrH = depH + durationH;
+              let arrM = depM + durationM;
+              if (arrM >= 60) {
+                arrH += Math.floor(arrM / 60);
+                arrM = arrM % 60;
+              }
+              arrH = arrH % 24;
+              returnArrTime = `${String(arrH).padStart(2, '0')}:${String(arrM).padStart(2, '0')}`;
+            }
+          }
+        }
+        
+        const returnPayload = {
+          ...payload,
+          departurePoint: payload.arrivalPoint,
+          arrivalPoint: payload.departurePoint,
+          departureLat: payload.arrivalLat,
+          departureLng: payload.arrivalLng,
+          arrivalLat: payload.departureLat,
+          arrivalLng: payload.departureLng,
+          departureDate: form.value.returnDate,
+          departureTime: form.value.returnTime,
+          arrivalTime: returnArrTime,
+          routeData: ''
+        };
+        
+        if (form.value.returnBusType) {
+          returnPayload.busType = form.value.returnBusType;
+          const rbt = props.busTypes.find(t => t.name === form.value.returnBusType);
+          if (rbt) {
+             returnPayload.availableSeats = rbt.seatCount;
+             returnPayload.totalSeats = rbt.seatCount;
+             if (rbt.imageUrl) returnPayload.imageUrl = rbt.imageUrl;
+          }
+        }
+        
+        await api.post('/trips', returnPayload);
+        alert('Đã tạo thành công 2 chuyến xe: Đi và Về!');
+      }
+    }
+    
+    closeModal(); 
+    emit('saved');
+    if (!form.value.createReturnTrip && !isEditMode.value) alert('Tạo chuyến xe thành công!');
+    if (isEditMode.value) alert('Cập nhật chuyến xe thành công!');
+  } catch (err) { 
+    console.error("Lỗi:", err);
+    alert(err.response?.data?.message || 'Lỗi lưu dữ liệu! Vui lòng kiểm tra lại.'); 
+  }
+};
+
+defineExpose({ openModal, closeModal });
 </script>
 
 <style scoped>
@@ -289,5 +517,6 @@ defineEmits(['close', 'submit', 'geocode', 'from-focus', 'to-focus', 'upload-cli
 .animate-scale-up {
   animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in-up { animation: fadeIn 0.4s ease-out forwards; }
 </style>
-

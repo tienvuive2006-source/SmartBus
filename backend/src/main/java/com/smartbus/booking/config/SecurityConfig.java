@@ -50,9 +50,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/buses/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/seats/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/reviews/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/articles/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/settings/**").permitAll()
                 // Cho phép khách vãng lai đặt vé và kiểm tra thanh toán
                 .requestMatchers("/admin/bookings/**").permitAll()
+                // Webhook từ các đối tác thứ 3 (SePay, Momo...)
+                .requestMatchers("/webhook/**").permitAll()
                 // Cho phép kết nối WebSocket
                 .requestMatchers("/ws/**").permitAll()
                 // ⚡ H2 console (chỉ dùng khi dev)

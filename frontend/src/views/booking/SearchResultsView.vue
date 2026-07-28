@@ -369,11 +369,10 @@ const fetchTrips = async () => {
 
 const fetchAdditionalInfo = async () => {
   try {
-    const [busesRes, busTypesRes, statsRes] = await Promise.all([
-      api.get('/buses'),
-      api.get('/bus-types'),
-      api.get('/reviews/stats/all')
-    ]);
+    const busesRes = await api.get('/buses').catch(() => ({ data: [] }));
+    const busTypesRes = await api.get('/bus-types').catch(() => ({ data: [] }));
+    const statsRes = await api.get('/reviews/stats/all').catch(() => ({ data: {} }));
+    
     allBuses.value = busesRes.data;
     allBusTypes.value = busTypesRes.data;
     companyStats.value = statsRes.data || {};
