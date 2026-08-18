@@ -65,6 +65,81 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @GetMapping("/page")
+    public ResponseEntity<?> getUsersPage(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "role", required = false) String role,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "provider", required = false) String provider,
+            @RequestParam(value = "locked", required = false) Boolean locked) {
+        String safeRole = role == null || role.isBlank() || "ALL".equalsIgnoreCase(role)
+                ? "" : role.trim().toUpperCase();
+        String safeSearch = search == null || search.isBlank() ? "" : search.trim();
+        String safeProvider = provider == null || provider.isBlank() || "ALL".equalsIgnoreCase(provider)
+                ? "" : provider.trim().toUpperCase();
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                Math.max(0, page), Math.min(100, Math.max(1, size)),
+                org.springframework.data.domain.Sort.by("id").descending());
+        org.springframework.data.domain.Page<User> result = userRepository.searchAdminUsers(
+                safeRole, safeSearch, safeProvider, locked, pageable);
+
+        List<User> users = result.getContent();
+        List<Long> userIds = users.stream().map(User::getId).toList();
+        if (!userIds.isEmpty()) {
+            java.util.Map<Long, Integer> ticketCounts = new java.util.HashMap<>();
+            bookingRepository.countTicketsPerUserIds(userIds).forEach(row ->
+                    ticketCounts.put((Long) row[0], ((Number) row[1]).intValue()));
+
+            java.util.Map<Long, Double> totalSpentByUser = new java.util.HashMap<>();
+            bookingRepository.sumTotalSpentPerUserIds(userIds).forEach(row ->
+                    totalSpentByUser.put((Long) row[0], ((Number) row[1]).doubleValue()));
+
+            java.util.Map<String, Long> driverTripCounts = new java.util.HashMap<>();
+            List<String> phones = users.stream().map(User::getPhone).filter(java.util.Objects::nonNull).toList();
+            if (!phones.isEmpty()) {
+                tripRepository.findActiveTripsByDriverPhones(phones).forEach(trip -> {
+                    if (trip.getAssignedDriverUsername() != null) {
+                        driverTripCounts.merge(trip.getAssignedDriverUsername(), 1L, Long::sum);
+                    }
+                    if (trip.getSecondaryDriverUsername() != null
+                            && !trip.getSecondaryDriverUsername().equals(trip.getAssignedDriverUsername())) {
+                        driverTripCounts.merge(trip.getSecondaryDriverUsername(), 1L, Long::sum);
+                    }
+                });
+            }
+
+            java.util.Map<Long, Long> inspectorTripCounts = new java.util.HashMap<>();
+            tripRepository.countActiveTripsByInspectorUserIds(userIds).forEach(row ->
+                    inspectorTripCounts.put((Long) row[0], ((Number) row[1]).longValue()));
+
+            users.forEach(user -> {
+                user.setTicketCount(ticketCounts.getOrDefault(user.getId(), 0));
+                user.setTotalSpent(totalSpentByUser.getOrDefault(user.getId(), 0.0));
+                user.setActiveTripCount("DRIVER".equalsIgnoreCase(user.getRole())
+                        ? driverTripCounts.getOrDefault(user.getPhone(), 0L)
+                        : inspectorTripCounts.getOrDefault(user.getId(), 0L));
+            });
+        }
+
+        java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("content", users);
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        if (!safeRole.isBlank()) {
+            java.util.Map<String, Object> summary = new java.util.LinkedHashMap<>();
+            summary.put("totalUsers", userRepository.countByRoleIgnoreCase(safeRole));
+            summary.put("activeUsers", userRepository.countByRoleIgnoreCaseAndIsLockedFalse(safeRole));
+            summary.put("googleUsers", userRepository.countByRoleIgnoreCaseAndAuthProviderIgnoreCase(safeRole, "GOOGLE"));
+            summary.put("totalWalletBalance", java.util.Optional.ofNullable(userRepository.sumWalletBalanceByRole(safeRole)).orElse(0.0));
+            summary.put("totalSpent", java.util.Optional.ofNullable(bookingRepository.sumTotalSpentByUserRole(safeRole)).orElse(0.0));
+            response.put("summary", summary);
+        }
+        return ResponseEntity.ok(response);
+    }
+
     // 1.2 Lấy danh sách Người dùng theo vai trò
     @GetMapping("/role/{role}")
     public ResponseEntity<List<User>> getUsersByRole(@PathVariable("role") String role) {
@@ -295,7 +370,9 @@ public class UserController {
             } else {
                 // Kiểm tra có chuyến IN_PROGRESS không
                 boolean isDriving = allTrips.stream().anyMatch(t -> 
-                    driver.getPhone().equals(t.getAssignedDriverUsername()) && "IN_PROGRESS".equals(t.getStatus()));
+                    (driver.getPhone().equals(t.getAssignedDriverUsername())
+                            || driver.getPhone().equals(t.getSecondaryDriverUsername()))
+                            && "IN_PROGRESS".equals(t.getStatus()));
                 if (isDriving) {
                     status = "DRIVING";
                 } else {
@@ -306,7 +383,9 @@ public class UserController {
             
             // Đếm số chuyến trong ngày
             long tripCount = allTrips.stream()
-                .filter(t -> driver.getPhone().equals(t.getAssignedDriverUsername()) && !"CANCELLED".equals(t.getStatus()))
+                .filter(t -> (driver.getPhone().equals(t.getAssignedDriverUsername())
+                        || driver.getPhone().equals(t.getSecondaryDriverUsername()))
+                        && !"CANCELLED".equals(t.getStatus()))
                 .count();
             driverInfo.put("tripCount", tripCount);
             

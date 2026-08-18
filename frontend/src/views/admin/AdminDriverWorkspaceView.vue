@@ -19,6 +19,7 @@
       :weekDays="weekDays"
       :weekLabel="weekLabel"
       :loadingSchedule="loadingSchedule"
+      :statsTrips="statsTrips"
       :getTripsForDay="getTripsForDay"
       :getLeavesForDay="getLeavesForDay"
       @change-week="changeWeek"
@@ -164,13 +165,20 @@ const processedDriversList = computed(() => {
     }
     
     // 2. Check if driving now
-    const drivingTrip = trips.value.find(t => t.assignedDriverUsername === driver.phone && t.status === 'IN_PROGRESS');
+    const drivingTrip = trips.value.find(t =>
+      (t.assignedDriverUsername === driver.phone || t.secondaryDriverUsername === driver.phone)
+      && t.status === 'IN_PROGRESS'
+    );
     if (drivingTrip) {
       return { ...driver, computedStatus: 'DRIVING', computedStatusLabel: 'Đang chạy', statusColor: 'bg-blue-100 text-blue-700' };
     }
     
     // 3. Check if assigned today or future
-    const assignedTrip = trips.value.find(t => t.assignedDriverUsername === driver.phone && (t.status === 'ASSIGNED' || t.status === 'PENDING') && t.departureDate >= today);
+    const assignedTrip = trips.value.find(t =>
+      (t.assignedDriverUsername === driver.phone || t.secondaryDriverUsername === driver.phone)
+      && (t.status === 'ASSIGNED' || t.status === 'PENDING')
+      && t.departureDate >= today
+    );
     if (assignedTrip) {
       return { ...driver, computedStatus: 'ASSIGNED', computedStatusLabel: 'Đã có lịch', statusColor: 'bg-emerald-100 text-emerald-700' };
     }
@@ -220,9 +228,21 @@ const visibleTrips = computed(() => {
     
     // 2. Lọc theo tài xế được chọn
     if (selectedDriver.value) {
-      if (trip.assignedDriverUsername !== selectedDriver.value.phone) return false;
+      if (trip.assignedDriverUsername !== selectedDriver.value.phone
+          && trip.secondaryDriverUsername !== selectedDriver.value.phone) return false;
     }
     return true;
+  });
+});
+
+// Thống kê toàn bộ lịch trình đã tải, không phụ thuộc tuần đang mở.
+// Khi chọn một tài xế, chỉ thống kê các chuyến người đó làm tài xế chính hoặc phụ.
+const statsTrips = computed(() => {
+  return trips.value.filter(trip => {
+    if (trip.status === 'CANCELLED') return false;
+    if (!selectedDriver.value) return true;
+    return trip.assignedDriverUsername === selectedDriver.value.phone
+      || trip.secondaryDriverUsername === selectedDriver.value.phone;
   });
 });
 
@@ -268,6 +288,8 @@ const handleAssignSubmit = async (assignment) => {
       ...selectedAssignTrip.value,
       assignedDriverUsername: assignment.driverUsername,
       assignedDriverFullName: assignment.driverFullName,
+      secondaryDriverUsername: assignment.secondaryDriverUsername,
+      secondaryDriverFullName: assignment.secondaryDriverFullName,
       assignedLicensePlate: assignment.licensePlate,
       inspector: assignment.inspector || null,
       status: 'ASSIGNED'

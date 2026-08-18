@@ -79,7 +79,7 @@ const formatPrice = (price) => {
 const bookPopularRoute = (route) => {
   router.push({
     path: '/booking/search',
-    query: { from: route.from, to: route.to }
+    query: { from: route.shortFrom, to: route.shortTo }
   });
 };
 

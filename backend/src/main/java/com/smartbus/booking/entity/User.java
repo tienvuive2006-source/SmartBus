@@ -2,6 +2,8 @@ package com.smartbus.booking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -45,6 +47,12 @@ public class User {
     @Transient
     private int ticketCount;
 
+    @Transient
+    private Double totalSpent;
+
+    @Transient
+    private long activeTripCount;
+
     @Builder.Default
     @Column(name = "loyalty_points")
     private Integer loyaltyPoints = 0;
@@ -56,4 +64,11 @@ public class User {
     @Builder.Default
     @Column(name = "driver_status")
     private String driverStatus = "FREE"; // FREE, DRIVING, ON_LEAVE, SUSPENDED
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 }

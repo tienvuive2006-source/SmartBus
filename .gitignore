@@ -1,4 +1,4 @@
-﻿# ==========================================
+# ==========================================
 # IDE & System Files (Bá» qua file há»‡ thá»‘ng)
 # ==========================================
 .vscode/
@@ -42,9 +42,21 @@ backend/*.tar.gz
 backend/HELP.md
 
 # ==========================================
-# AI Agents & Debug Files (File rác và g? l?i)
+# AI Agents & Debug Files (File rác và gỡ lỗi)
 # ==========================================
 .agents/
+.codex-tmp/
 .gemini/
 skills-lock.json
 *_debug.json
+temp.json
+*.log
+frontend/*.log
+backend/*.log
+
+# ==========================================
+# Word Reports & Temp Docs (File báo cáo cá nhân)
+# ==========================================
+*.docx
+*.pdf
+login-redesign-*.png

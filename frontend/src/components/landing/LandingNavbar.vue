@@ -32,7 +32,15 @@
                 :class="(isScrolled || forceSolid) ? 'bg-white shadow-sm hover:shadow-md border-zinc-200' : 'bg-black/20 backdrop-blur-md border-white/10 hover:bg-black/30 shadow-sm'">
           <div class="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 relative z-10 shrink-0"
                :class="(isScrolled || forceSolid) ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-500 text-white shadow-inner'">
-            <span class="material-symbols-outlined text-[16px] transition-colors duration-500">person_outline</span>
+            <img
+              v-if="currentUser"
+              :src="currentUser.avatarUrl || createAvatarFallback(currentUser.fullName)"
+              :alt="`Ảnh đại diện ${currentUser.fullName}`"
+              class="h-full w-full rounded-full object-cover"
+              referrerpolicy="no-referrer"
+              @error="handleAvatarError($event, currentUser.fullName)"
+            />
+            <span v-else class="material-symbols-outlined text-[16px] transition-colors duration-500">person_outline</span>
           </div>
           <span class="font-bold text-[11px] tracking-widest relative z-10 transition-colors duration-500 whitespace-nowrap"
                 :class="(isScrolled || forceSolid) ? 'text-zinc-700 group-hover:text-emerald-700' : 'text-white drop-shadow-md group-hover:text-amber-100'">
@@ -60,10 +68,11 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { useApi } from '@/composables/useApi';
+import { useHomeSummary } from '@/composables/useHomeSummary';
 import NotificationBell from '@/components/NotificationBell.vue';
 import LandingInfoModal from '@/components/landing/LandingInfoModal.vue';
 import LandingTrackingModal from '@/components/landing/LandingTrackingModal.vue';
+import { createAvatarFallback, handleAvatarError } from '@/utils/avatar';
 
 const props = defineProps({
   forceSolid: {
@@ -74,7 +83,7 @@ const props = defineProps({
 
 const router = useRouter();
 const route = useRoute();
-const api = useApi();
+const { getHomeSummary } = useHomeSummary();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
@@ -101,9 +110,9 @@ const scrollToTop = () => {
 
 const fetchData = async () => {
   try {
-    const response = await api.get('/trips/home-summary');
-    uniqueStations.value = response.data.uniqueStations || [];
-    uniqueCompanies.value = response.data.uniqueCompanies || [];
+    const summary = await getHomeSummary();
+    uniqueStations.value = summary.uniqueStations || [];
+    uniqueCompanies.value = summary.uniqueCompanies || [];
   } catch (err) {
     console.error(err);
   }

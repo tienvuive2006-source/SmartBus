@@ -44,6 +44,8 @@ public class LeaveRequestService {
             List<Trip> conflictingTrips = allTrips.stream()
                     .filter(t -> ((t.getAssignedDriverUsername() != null
                             && t.getAssignedDriverUsername().equals(request.getDriverUsername())) ||
+                            (t.getSecondaryDriverUsername() != null
+                                    && t.getSecondaryDriverUsername().equals(request.getDriverUsername())) ||
                             (t.getInspector() != null && t.getInspector().getPhone() != null
                                     && t.getInspector().getPhone().equals(request.getDriverUsername())))
                             &&

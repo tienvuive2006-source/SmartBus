@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import com.smartbus.booking.repository.TripRepository;
 import com.smartbus.booking.repository.UserRepository;
+import com.smartbus.booking.service.LoyaltyPointPolicy;
 
 @RestController
 @RequestMapping("/admin/bookings")
@@ -51,9 +52,43 @@ public class BookingController {
     @Autowired
     private com.smartbus.booking.repository.UserVoucherRepository userVoucherRepository;
 
+    @Autowired
+    private com.smartbus.booking.service.RouteStopService routeStopService;
+
     @GetMapping
     public List<Booking> getAllBookings() {
         return bookingRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @GetMapping("/page")
+    public ResponseEntity<?> getBookingsPage(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "status", required = false) String status) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        String safeSearch = search == null || search.isBlank() ? "" : search.trim();
+        String safeStatus = status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)
+                ? "" : status.trim().toUpperCase();
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                safePage, safeSize, org.springframework.data.domain.Sort.by("createdAt").descending());
+        org.springframework.data.domain.Page<Booking> result = bookingRepository.searchAdminBookings(
+                safeSearch, safeStatus, pageable);
+
+        java.util.Map<String, Long> statusCounts = new java.util.HashMap<>();
+        bookingRepository.countByStatusGrouped().forEach(row ->
+                statusCounts.put(String.valueOf(row[0]).toUpperCase(), ((Number) row[1]).longValue()));
+
+        java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("content", result.getContent());
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        response.put("statusCounts", statusCounts);
+        return ResponseEntity.ok(response);
     }
 
     @jakarta.annotation.PostConstruct
@@ -101,7 +136,7 @@ public class BookingController {
                                 com.smartbus.booking.entity.User user = booking.getUser();
                                 double currentBalance = user.getWalletBalance() != null ? user.getWalletBalance() : 0.0;
                                 
-                                double refundAmount = booking.getTotalPrice() != null ? (booking.getTotalPrice() * 0.9) : 0.0;
+                                double refundAmount = booking.getTotalPrice() != null ? (booking.getTotalPrice() * 0.95) : 0.0;
                                 
                                 user.setWalletBalance(currentBalance + refundAmount);
                                 userRepository.save(user);
@@ -110,7 +145,7 @@ public class BookingController {
                             // Trừ điểm thưởng nếu đã thanh toán
                             if (isAlreadyPaid) {
                                 com.smartbus.booking.entity.User user = booking.getUser();
-                                int earnedPoints = (int) ((booking.getTotalPrice() != null ? booking.getTotalPrice() : 0) / 1000);
+                                int earnedPoints = LoyaltyPointPolicy.pointsFor(booking.getTotalPrice() != null ? booking.getTotalPrice() : 0);
                                 user.setLoyaltyPoints(Math.max(0, (user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) - earnedPoints));
                                 userRepository.save(user);
                             }
@@ -162,7 +197,7 @@ public class BookingController {
 
                         if (booking.getUser() != null && booking.getTotalPrice() != null) {
                              com.smartbus.booking.entity.User user = booking.getUser();
-                             int earnedPoints = (int) (booking.getTotalPrice() / 1000);
+                             int earnedPoints = LoyaltyPointPolicy.pointsFor(booking.getTotalPrice());
                              user.setLoyaltyPoints((user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) + earnedPoints);
                              userRepository.save(user);
                         }
@@ -180,6 +215,7 @@ public class BookingController {
     @PostMapping("/create")
     public ResponseEntity<?> createBooking(@RequestBody Map<String, Object> payload) {
         try {
+            requireCurrentAuthenticatedPhone();
             Booking booking = new Booking();
             booking.setCustomerName((String) payload.get("customerName"));
             booking.setCustomerPhone((String) payload.get("customerPhone"));
@@ -244,8 +280,7 @@ public class BookingController {
                 Object userIdObj = ((Map<?, ?>) payload.get("user")).get("id");
                 if (userIdObj != null) {
                     Long userId = Long.valueOf(userIdObj.toString());
-                    com.smartbus.booking.entity.User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                    com.smartbus.booking.entity.User user = requireCompletedBookingPhone(userId);
                     
                     if ("WALLET".equals(payload.get("paymentMethod"))) {
                         double balance = user.getWalletBalance() != null ? user.getWalletBalance() : 0.0;
@@ -301,7 +336,7 @@ public class BookingController {
 
                  if (saved.getUser() != null) {
                      com.smartbus.booking.entity.User user = saved.getUser();
-                     int earnedPoints = (int) (saved.getTotalPrice() / 1000);
+                     int earnedPoints = LoyaltyPointPolicy.pointsFor(saved.getTotalPrice());
                      user.setLoyaltyPoints((user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) + earnedPoints);
                      userRepository.save(user);
                  }
@@ -336,6 +371,7 @@ public class BookingController {
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> createRoundTrip(@RequestBody Map<String, Object> payload) {
         try {
+            requireCurrentAuthenticatedPhone();
             Long outboundTripId = Long.valueOf(payload.get("outboundTripId").toString());
             List<String> outboundSeats = (List<String>) payload.get("outboundSeats");
             
@@ -343,6 +379,11 @@ public class BookingController {
                                 Long.valueOf(payload.get("returnTripId").toString()) : null;
             List<String> returnSeats = payload.containsKey("returnSeats") && payload.get("returnSeats") != null ? 
                                        (List<String>) payload.get("returnSeats") : null;
+
+            Long customerId = extractPayloadUserId(payload);
+            if (customerId != null) {
+                requireCompletedBookingPhone(customerId);
+            }
 
             // 1. Tính toán giá
             com.smartbus.booking.entity.Trip outTrip = tripRepository.findById(outboundTripId).orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến đi"));
@@ -363,9 +404,9 @@ public class BookingController {
             Long userVoucherId = payload.containsKey("userVoucherId") && payload.get("userVoucherId") != null ? 
                                 Long.valueOf(payload.get("userVoucherId").toString()) : null;
             if (userVoucherId != null && payload.get("user") != null) {
-                Long customerId = Long.valueOf(((Map<?, ?>) payload.get("user")).get("id").toString());
+                Long voucherCustomerId = customerId != null ? customerId : Long.valueOf(((Map<?, ?>) payload.get("user")).get("id").toString());
                 com.smartbus.booking.entity.UserVoucher uv = userVoucherRepository.findById(userVoucherId).orElse(null);
-                if (uv != null && !uv.getIsUsed() && uv.getUser().getId().equals(customerId) && uv.getVoucher().getIsActive()) {
+                if (uv != null && !uv.getIsUsed() && uv.getUser().getId().equals(voucherCustomerId) && uv.getVoucher().getIsActive()) {
                     totalAmount = Math.max(0, totalAmount - uv.getVoucher().getDiscountAmount());
                 }
             }
@@ -404,9 +445,14 @@ public class BookingController {
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> confirmRoundTrip(@RequestBody Map<String, Object> payload) {
         try {
+            requireCurrentAuthenticatedPhone();
             Long paymentOrderId = Long.valueOf(payload.get("paymentOrderId").toString());
             com.smartbus.booking.entity.PaymentOrder po = paymentOrderRepository.findById(paymentOrderId)
                 .orElseThrow(() -> new RuntimeException("Giao dịch không tồn tại"));
+
+            if (po.getCustomerId() != null) {
+                requireCompletedBookingPhone(po.getCustomerId());
+            }
                 
             if ("COMPLETED".equals(po.getStatus())) {
                 return ResponseEntity.ok(Map.of("message", "Giao dịch này đã được xử lý thành công trước đó."));
@@ -461,13 +507,15 @@ public class BookingController {
                 retDiscount = voucherDiscountAmount / 2;
             }
             
-            createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId(), userVoucherId, outDiscount);
+            createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId(), userVoucherId, outDiscount,
+                    payload.get("outboundPickupStopId"), payload.get("outboundDropoffStopId"));
             
             // Tạo vé RETURN
             if (payload.containsKey("returnTripId") && payload.get("returnTripId") != null) {
                 Long returnTripId = Long.valueOf(payload.get("returnTripId").toString());
                 List<String> returnSeats = (List<String>) payload.get("returnSeats");
-                createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId(), userVoucherId, retDiscount);
+                createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId(), userVoucherId, retDiscount,
+                        payload.get("returnPickupStopId"), payload.get("returnDropoffStopId"));
             }
             
             po.setStatus("COMPLETED");
@@ -481,8 +529,37 @@ public class BookingController {
              return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
+
+    private Long extractPayloadUserId(Map<String, Object> payload) {
+        if (!(payload.get("user") instanceof Map<?, ?>)) return null;
+        Map<?, ?> userPayload = (Map<?, ?>) payload.get("user");
+        Object userId = userPayload.get("id");
+        return userId == null ? null : Long.valueOf(userId.toString());
+    }
+
+    private void requireCurrentAuthenticatedPhone() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getName())) return;
+        try {
+            requireCompletedBookingPhone(Long.valueOf(authentication.getName()));
+        } catch (NumberFormatException ignored) {
+            // Các cơ chế xác thực khác không dùng ID số sẽ được kiểm tra bằng payload bên dưới.
+        }
+    }
+
+    private com.smartbus.booking.entity.User requireCompletedBookingPhone(Long userId) {
+        com.smartbus.booking.entity.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+        if ("GOOGLE".equalsIgnoreCase(user.getAuthProvider())
+                && (user.getPhone() == null || user.getPhone().startsWith("GG_"))) {
+            throw new RuntimeException("Vui lòng cập nhật số điện thoại trước khi mua vé.");
+        }
+        return user;
+    }
     
-    private void createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId, Long userVoucherId, Double discountAmount) {
+    private void createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId, Long userVoucherId, Double discountAmount, Object pickupStopId, Object dropoffStopId) {
         com.smartbus.booking.entity.Trip trip = tripRepository.findById(tripId).orElseThrow();
         Booking b = new Booking();
         b.setCustomerName((String) cust.get("customerName"));
@@ -515,6 +592,7 @@ public class BookingController {
         seatService.bookSeats(tripId, seats); // Khóa ghế vĩnh viễn (sẽ tự động xóa Reservation)
         
         Booking saved = bookingRepository.save(b);
+        routeStopService.saveBookingSelection(saved, pickupStopId, dropoffStopId);
         messagingTemplate.convertAndSend("/topic/admin/bookings/new", "NEW_BOOKING");
         
         // Tích điểm và Ghi nhận doanh thu ngay nếu trạng thái là PAID hoặc CHECKED_IN
@@ -549,7 +627,7 @@ public class BookingController {
 
              if (saved.getUser() != null) {
                  com.smartbus.booking.entity.User user = saved.getUser();
-                 int earnedPoints = (int) (saved.getTotalPrice() / 1000);
+                 int earnedPoints = LoyaltyPointPolicy.pointsFor(saved.getTotalPrice());
                  user.setLoyaltyPoints((user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) + earnedPoints);
                  userRepository.save(user);
              }
@@ -656,6 +734,6 @@ public class BookingController {
     public ResponseEntity<?> trackBooking(@RequestParam("code") Long code, @RequestParam("phone") String phone) {
         return bookingRepository.findByIdAndCustomerPhone(code, phone)
                 .map(booking -> ResponseEntity.ok(booking))
-                .orElseGet(() -> ResponseEntity.status(404).body((Booking) null));
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

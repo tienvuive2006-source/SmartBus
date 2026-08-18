@@ -22,7 +22,7 @@
           <div class="lg:col-span-1">
             <ProfileSidebar 
               :user="user" 
-              @logout="showLogoutConfirm = true" 
+              @logout="showLogoutConfirm = true"
             />
           </div>
 
@@ -41,7 +41,9 @@
               @open-voucher-store="showVoucherStore = true"
             />
 
-            <VoucherList :myVouchers="myVouchers" />
+            <div id="my-vouchers" ref="myVouchersSection">
+              <VoucherList :myVouchers="myVouchers" />
+            </div>
 
             <TransactionHistory :transactions="transactions" />
 
@@ -71,15 +73,16 @@
       :availableVouchers="availableVouchers"
       :loading="loadingVouchers"
       :redeeming="redeeming"
-      @close="showVoucherStore = false"
+      :feedback="voucherFeedback"
+      @close="closeVoucherStore"
       @redeem="redeemVoucher"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { nextTick, ref, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/composables/useApi';
 
@@ -94,6 +97,7 @@ import VoucherStoreModal from '@/components/user/profile/VoucherStoreModal.vue';
 import LogoutConfirmModal from '@/components/user/profile/LogoutConfirmModal.vue';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const api = useApi();
 
@@ -103,6 +107,7 @@ const transactions = ref([]);
 const myVouchers = ref([]);
 const availableVouchers = ref([]);
 const personalInfoRef = ref(null);
+const myVouchersSection = ref(null);
 
 // Modal states
 const showLogoutConfirm = ref(false);
@@ -111,6 +116,25 @@ const showVoucherStore = ref(false);
 const topupAmount = ref(50000);
 const loadingVouchers = ref(false);
 const redeeming = ref(false);
+const voucherFeedback = ref(null);
+
+const openRequestedProfileDestination = async () => {
+  if (route.query.open === 'voucher-store') showVoucherStore.value = true;
+  if (route.query.section === 'my-vouchers') {
+    await nextTick();
+    myVouchersSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
+
+const closeVoucherStore = () => {
+  showVoucherStore.value = false;
+  voucherFeedback.value = null;
+  if (route.query.open === 'voucher-store') {
+    const query = { ...route.query };
+    delete query.open;
+    router.replace({ query });
+  }
+};
 
 const fetchMyVouchers = async () => {
     try {
@@ -133,17 +157,18 @@ const fetchAvailableVouchers = async () => {
     }
 };
 
+
 const redeemVoucher = async (voucher) => {
-    if (!confirm(`Bạn có chắc muốn dùng ${voucher.pointsCost} điểm để đổi mã ${voucher.code}?`)) return;
     redeeming.value = true;
+    voucherFeedback.value = null;
     try {
         const res = await api.post(`/vouchers/redeem/${voucher.id}`);
-        alert(res.data.message);
         const freshUser = await authStore.fetchMe();
         user.value = freshUser;
         await fetchMyVouchers();
+        voucherFeedback.value = { type: 'success', message: `${res.data.message} Mã ${voucher.code} đã được thêm vào ví voucher.` };
     } catch (error) {
-        alert("Đổi thất bại: " + (error.response?.data?.message || error.message));
+        voucherFeedback.value = { type: 'error', message: error.response?.data?.message || 'Không thể đổi voucher lúc này. Vui lòng thử lại.' };
     } finally {
         redeeming.value = false;
     }
@@ -151,7 +176,13 @@ const redeemVoucher = async (voucher) => {
 
 const fetchTransactions = async () => {
     try {
-        const res = await api.get(`/users/${user.value.id}/bookings?t=${new Date().getTime()}`);
+        const [res, refundsRes] = await Promise.all([
+            api.get(`/users/${user.value.id}/bookings?t=${new Date().getTime()}`),
+            api.get(`/refund-requests/me?t=${new Date().getTime()}`).catch(() => ({ data: [] }))
+        ]);
+        const refundsByBooking = new Map(
+            (Array.isArray(refundsRes.data) ? refundsRes.data : []).map(item => [Number(item.booking?.id), item])
+        );
         const history = [];
         res.data.forEach(b => {
              history.push({
@@ -165,16 +196,19 @@ const fetchTransactions = async () => {
              });
              if (b.status === 'CANCELLED') {
                  const refundValue = b.refundAmount !== undefined && b.refundAmount !== null ? b.refundAmount : 0;
+                 const refundRequest = refundsByBooking.get(Number(b.id));
                  if (refundValue > 0) {
                      const cancelDate = new Date(new Date(b.createdAt).getTime() + 60000).toISOString(); 
                      history.push({
                          id: b.id + '_refund',
-                         title: 'Hoàn tiền hủy vé',
-                         description: `Mã đơn hàng: #${b.id}`,
+                         title: refundRequest?.status === 'COMPLETED' ? 'Hoàn tiền hủy vé' : 'Yêu cầu hoàn tiền',
+                         description: refundRequest?.refundMethod === 'BANK_TRANSFER'
+                             ? `Chuyển khoản ngân hàng, mã vé #${b.id}`
+                             : `Ví Trung Nam, mã vé #${b.id}`,
                          date: cancelDate,
                          amount: refundValue,
-                         status: 'Thành công',
-                         color: 'text-emerald-600'
+                         status: ({ PENDING: 'Chờ xử lý', APPROVED: 'Đã duyệt', COMPLETED: 'Thành công', REJECTED: 'Cần liên hệ' }[refundRequest?.status]) || 'Thành công',
+                         color: refundRequest && refundRequest.status !== 'COMPLETED' ? 'text-amber-600' : 'text-emerald-600'
                      });
                  }
              }
@@ -230,6 +264,7 @@ const checkAuth = async () => {
     await fetchTransactions();
     await fetchMyVouchers();
     await fetchAvailableVouchers();
+    await openRequestedProfileDestination();
   } catch (err) {
     console.error("Lỗi kết nối server, dùng cache:", err);
     user.value = authStore.currentUser;
@@ -248,6 +283,13 @@ const executeLogout = () => {
 onMounted(() => {
   checkAuth();
 });
+
+watch(
+  () => [route.query.open, route.query.section],
+  () => {
+    if (!loading.value && user.value) openRequestedProfileDestination();
+  }
+);
 </script>
 
 <style scoped>

@@ -45,12 +45,12 @@
           
           <!-- ICON Tùy loại thông báo -->
           <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" 
-               :class="notif.amount > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'">
-            <span class="material-symbols-outlined">{{ notif.amount > 0 ? 'add_card' : 'credit_score' }}</span>
+               :class="notificationColor(notif)">
+            <span class="material-symbols-outlined">{{ notificationIcon(notif) }}</span>
           </div>
           
           <div class="pr-4">
-            <h4 class="text-sm font-black tracking-tight" :class="notif.amount > 0 ? 'text-emerald-700' : 'text-rose-700'">{{ notif.title }}</h4>
+            <h4 class="text-sm font-black tracking-tight" :class="notificationTitleColor(notif)">{{ notif.title }}</h4>
             <p class="text-xs font-medium text-gray-800 mt-1 leading-snug" v-html="notif.message"></p>
             <p class="text-[10px] font-bold text-gray-500 mt-2 uppercase tracking-widest">{{ new Date(notif.date).toLocaleString('vi-VN') }}</p>
           </div>
@@ -96,6 +96,30 @@ const toggleDropdown = () => {
 const goToProfile = () => {
   isOpen.value = false;
   router.push('/profile');
+};
+
+const notificationIcon = notif => {
+  if (notif.type === 'EXCHANGE') return 'swap_horiz';
+  if (['REFUND_NEEDS_INFO', 'REFUND_REJECTED'].includes(notif.type)) return 'edit_note';
+  if (notif.type === 'REFUND_APPROVED') return 'hourglass_top';
+  if (notif.type === 'REFUND_COMPLETED') return 'price_check';
+  return notif.amount > 0 ? 'add_card' : 'credit_score';
+};
+
+const notificationColor = notif => {
+  if (notif.type === 'EXCHANGE') return 'bg-blue-100 text-blue-600';
+  if (['REFUND_NEEDS_INFO', 'REFUND_REJECTED'].includes(notif.type)) return 'bg-rose-100 text-rose-600';
+  if (notif.type === 'REFUND_APPROVED') return 'bg-amber-100 text-amber-700';
+  if (notif.type === 'REFUND_COMPLETED') return 'bg-emerald-100 text-emerald-600';
+  return notif.amount > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600';
+};
+
+const notificationTitleColor = notif => {
+  if (notif.type === 'EXCHANGE') return 'text-blue-700';
+  if (['REFUND_NEEDS_INFO', 'REFUND_REJECTED'].includes(notif.type)) return 'text-rose-700';
+  if (notif.type === 'REFUND_APPROVED') return 'text-amber-700';
+  if (notif.type === 'REFUND_COMPLETED') return 'text-emerald-700';
+  return notif.amount > 0 ? 'text-emerald-700' : 'text-rose-700';
 };
 
 const handleClickOutside = (event) => {

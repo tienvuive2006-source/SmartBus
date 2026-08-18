@@ -52,7 +52,8 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
      * Tìm tất cả chuyến xe của 1 tài xế trong cùng 1 ngày (dùng để tính buffer_time ở Service).
      */
     @org.springframework.data.jpa.repository.Query(
-        "SELECT t FROM Trip t WHERE t.assignedDriverUsername = :driverUsername " +
+        "SELECT t FROM Trip t WHERE (t.assignedDriverUsername = :driverUsername " +
+        "OR t.secondaryDriverUsername = :driverUsername) " +
         "AND t.departureDate = :departureDate " +
         "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
@@ -97,4 +98,24 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
      * Lấy tất cả chuyến xe được phân công cho 1 tài xế (Dùng cho Driver Dashboard)
      */
     List<Trip> findByAssignedDriverUsername(String assignedDriverUsername);
+
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE t.assignedDriverUsername = :driverUsername " +
+        "OR t.secondaryDriverUsername = :driverUsername"
+    )
+    List<Trip> findByEitherDriverUsername(
+        @org.springframework.data.repository.query.Param("driverUsername") String driverUsername
+    );
+
+    @org.springframework.data.jpa.repository.Query("SELECT t.assignedDriverUsername, COUNT(t) FROM Trip t WHERE t.assignedDriverUsername IN :phones AND t.status IN ('ASSIGNED', 'PENDING', 'IN_PROGRESS') GROUP BY t.assignedDriverUsername")
+    List<Object[]> countActiveTripsByDriverPhones(@org.springframework.data.repository.query.Param("phones") List<String> phones);
+
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE (t.assignedDriverUsername IN :phones OR t.secondaryDriverUsername IN :phones) " +
+        "AND t.status IN ('ASSIGNED', 'PENDING', 'IN_PROGRESS')"
+    )
+    List<Trip> findActiveTripsByDriverPhones(@org.springframework.data.repository.query.Param("phones") List<String> phones);
+
+    @org.springframework.data.jpa.repository.Query("SELECT t.inspector.userAccount.id, COUNT(t) FROM Trip t WHERE t.inspector.userAccount.id IN :userIds AND t.status IN ('ASSIGNED', 'PENDING', 'IN_PROGRESS') GROUP BY t.inspector.userAccount.id")
+    List<Object[]> countActiveTripsByInspectorUserIds(@org.springframework.data.repository.query.Param("userIds") List<Long> userIds);
 }

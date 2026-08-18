@@ -29,9 +29,9 @@
               {{ authStore.newBookingsCount > 99 ? '99+' : authStore.newBookingsCount }}
             </span>
             
-            <!-- Badge Quỹ (Thông báo chi phí mới) -->
-            <span v-if="item.name === 'Quản lý quỹ' && authStore.newExpensesCount > 0" class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-              {{ authStore.newExpensesCount > 99 ? '99+' : authStore.newExpensesCount }}
+            <!-- Badge Quỹ (chi phí mới + yêu cầu hoàn tiền cần xử lý) -->
+            <span v-if="item.name === 'Quản lý quỹ' && fundAttentionCount > 0" class="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center tabular-nums">
+              {{ fundAttentionCount > 99 ? '99+' : fundAttentionCount }}
             </span>
             
             <!-- Badge Đánh giá (Thông báo review mới) -->
@@ -114,8 +114,8 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-[#f8fafc] min-h-0 relative" :class="[$route.meta.fullScreen ? 'p-0' : 'p-6 lg:p-8']">
-        <div class="relative z-10" :class="[$route.meta.fullScreen ? 'w-full min-h-[calc(100vh-64px)] flex flex-col' : 'max-w-7xl mx-auto']">
+      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-[#f8fafc] min-h-0 relative" :class="[$route.meta.fullScreen ? 'p-0' : ($route.meta.compactContent ? 'p-2 lg:p-3' : 'p-6 lg:p-8')]">
+        <div class="relative z-10" :class="[$route.meta.fullScreen ? 'w-full min-h-[calc(100vh-64px)] flex flex-col' : ($route.meta.compactContent ? 'w-full max-w-none' : 'max-w-7xl mx-auto')]">
           <router-view v-slot="{ Component }">
             <component :is="Component" />
           </router-view>
@@ -126,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -134,6 +134,7 @@ const isSidebarOpen = ref(false)
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const fundAttentionCount = computed(() => authStore.newExpensesCount + authStore.newRefundsCount)
 
 const openMenus = reactive({
   'Tài khoản': false
@@ -145,6 +146,7 @@ const toggleMenu = (name) => {
 
 onMounted(() => {
   authStore.fetchMe()
+  authStore.fetchNewRefundsCount()
   if (route.path.startsWith('/admin/users')) {
     openMenus['Tài khoản'] = true
   }

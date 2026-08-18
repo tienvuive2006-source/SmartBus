@@ -33,6 +33,12 @@ public class Trip {
     @Column(nullable = true)
     private String assignedDriverFullName; // Tên hiển thị của tài xế được phân công
 
+    @Column(nullable = true)
+    private String secondaryDriverUsername;
+
+    @Column(nullable = true)
+    private String secondaryDriverFullName;
+
     @Column(nullable = false, columnDefinition = "boolean DEFAULT false")
     @Builder.Default
     private Boolean driverAccepted = false; // Trạng thái tài xế chấp nhận chuyến

@@ -23,6 +23,7 @@
       @toggle-visibility="toggleVisibility"
       @edit-route="editRoute"
       @delete-route="deleteRoute"
+      @manage-stops="manageStops"
     />
 
     <!-- Create/Edit Route Modal -->
@@ -30,18 +31,36 @@
       ref="routeModal"
       @save="onRouteSaved"
     />
+    <RouteStopManagerModal ref="stopModal" @notify="showStopToast" />
+    <AdminActionToast
+      :show="stopToast.show"
+      :type="stopToast.type"
+      :message="stopToast.message"
+      @close="stopToast.show = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onBeforeUnmount, onMounted } from 'vue';
 import { useApi } from '@/composables/useApi';
 import AdminRouteTable from '@/components/admin/route/AdminRouteTable.vue';
 import AdminRouteModal from '@/components/admin/route/AdminRouteModal.vue';
+import RouteStopManagerModal from '@/components/admin/route/RouteStopManagerModal.vue';
+import AdminActionToast from '@/components/admin/AdminActionToast.vue';
 
 const api = useApi();
 const routes = ref([]);
 const routeModal = ref(null);
+const stopModal = ref(null);
+const stopToast = ref({ show: false, type: 'success', message: '' });
+let stopToastTimer = null;
+
+const showStopToast = ({ type, message }) => {
+  if (stopToastTimer) clearTimeout(stopToastTimer);
+  stopToast.value = { show: true, type, message };
+  stopToastTimer = setTimeout(() => { stopToast.value.show = false; }, 3500);
+};
 
 const loadRoutes = async () => {
   try {
@@ -64,6 +83,8 @@ const editRoute = (idx) => {
     routeModal.value.openModal(routes.value[idx], idx);
   }
 };
+
+const manageStops = idx => stopModal.value?.show(routes.value[idx]);
 
 const deleteRoute = async (idx) => {
   if (confirm("Xóa tuyến đường này?")) {
@@ -130,5 +151,9 @@ const onRouteSaved = async ({ route, index, formImageUrl, shortDep, shortArr }) 
 
 onMounted(() => {
   loadRoutes();
+});
+
+onBeforeUnmount(() => {
+  if (stopToastTimer) clearTimeout(stopToastTimer);
 });
 </script>

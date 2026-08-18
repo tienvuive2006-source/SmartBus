@@ -15,15 +15,29 @@
 
     <!-- 1. Statistics Cards -->
     <BookingStats 
-      :totalCount="bookings.length"
+      v-if="activeTab === 'bookings'"
+      :totalCount="totalElements"
       :paidCount="paidCount"
       :pendingCount="pendingCount"
       :checkedInCount="checkedInCount"
       :cancelledCount="cancelledCount"
     />
 
+    <div class="mb-6 flex w-fit rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+      <button type="button" :class="tabClass('bookings')" @click="activeTab = 'bookings'">
+        <span class="material-symbols-outlined text-lg">receipt_long</span>
+        Danh sách đặt vé
+      </button>
+      <button type="button" :class="tabClass('exchanges')" @click="openExchangeTab">
+        <span class="material-symbols-outlined text-lg">swap_horiz</span>
+        Lịch sử đổi vé
+        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-500">{{ exchanges.length }}</span>
+      </button>
+    </div>
+
     <!-- 2. Main Content: Table -->
     <BookingTable 
+      v-if="activeTab === 'bookings'"
       :bookings="filteredBookings"
       v-model:searchQuery="searchQuery"
       v-model:statusFilter="statusFilter"
@@ -33,19 +47,42 @@
       @update-status="updateStatus"
       @view-reason="viewReason"
     />
+    <AdminPagination
+      v-if="activeTab === 'bookings'"
+      :page="currentPage"
+      :total-pages="totalPages"
+      :total-elements="totalElements"
+      :page-size="pageSize"
+      :current-count="bookings.length"
+      @update:page="changePage"
+    />
+    <BookingExchangeTable v-else :exchanges="exchanges" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
 import BookingStats from '../../components/admin/booking/BookingStats.vue';
 import BookingTable from '../../components/admin/booking/BookingTable.vue';
+import BookingExchangeTable from '../../components/admin/booking/BookingExchangeTable.vue';
+import AdminPagination from '@/components/admin/common/AdminPagination.vue';
+import { useRouteStopApi } from '@/services/routeStopApi';
 
 const api = useApi();
+const routeStopApi = useRouteStopApi();
 const bookings = ref([]);
 const searchQuery = ref('');
 const statusFilter = ref('ALL');
+const activeTab = ref('bookings');
+const exchanges = ref([]);
+const currentPage = ref(0);
+const pageSize = 20;
+const totalPages = ref(0);
+const totalElements = ref(0);
+const statusCounts = ref({});
+let searchTimer = null;
+let requestSequence = 0;
 
 const statusLabels = {
   'PAID': 'Đã thanh toán',
@@ -61,44 +98,111 @@ const statusStyles = {
   'CHECKED_IN': 'bg-blue-50 text-blue-600 border-blue-100'
 };
 
+const mapBooking = b => {
+  let mappedStatus = b.status ? b.status.toUpperCase() : 'PENDING';
+  if (mappedStatus === 'SUCCESS') mappedStatus = 'PAID';
+  return {
+    ...b,
+    status: mappedStatus,
+    exchange: exchanges.value.find(item => Number(item.bookingId) === Number(b.id) && item.status === 'COMPLETED') || null,
+    route: b.trip ? `${b.trip.departurePoint} ➔ ${b.trip.arrivalPoint}` : 'N/A',
+    departureTime: b.trip ? `${b.trip.departureTime} - ${b.trip.departureDate ? b.trip.departureDate.split('-').reverse().join('/') : ''}` : '',
+    seats: b.seatNumbers || []
+  };
+};
+
 const fetchBookings = async () => {
+  const sequence = ++requestSequence;
   try {
-    const response = await api.get('/admin/bookings');
-    bookings.value = response.data.map(b => {
-      let mappedStatus = b.status ? b.status.toUpperCase() : 'PENDING';
-      if (mappedStatus === 'SUCCESS') {
-        mappedStatus = 'PAID';
-      }
-      return {
-        ...b,
-        status: mappedStatus,
-        route: b.trip ? `${b.trip.departurePoint} ➔ ${b.trip.arrivalPoint}` : 'N/A',
-        departureTime: b.trip ? `${b.trip.departureTime} - ${b.trip.departureDate ? b.trip.departureDate.split('-').reverse().join('/') : ''}` : '',
-        seats: b.seatNumbers || []
-      };
-    }).sort((a, b) => b.id - a.id);
+    const response = await api.get('/admin/bookings/page', {
+      params: { page: currentPage.value, size: pageSize, search: searchQuery.value || undefined, status: statusFilter.value }
+    });
+    if (sequence !== requestSequence) return;
+    const payload = response.data || {};
+    bookings.value = (payload.content || []).map(mapBooking);
+    if (bookings.value.length) {
+      const selectionsResponse = await routeStopApi.getAdminBookingSelections(bookings.value.map(item => item.id));
+      const selectionMap = new Map((selectionsResponse.data || []).map(item => [Number(item.bookingId), item]));
+      bookings.value = bookings.value.map(item => ({ ...item, stopSelection: selectionMap.get(Number(item.id)) || null }));
+    }
+    totalPages.value = Number(payload.totalPages || 0);
+    totalElements.value = Number(payload.totalElements || 0);
+    statusCounts.value = payload.statusCounts || {};
   } catch (error) {
     console.error('Lỗi khi tải danh sách vé:', error);
+    try {
+      const legacyResponse = await api.get('/admin/bookings');
+      if (sequence !== requestSequence) return;
+      const allBookings = (legacyResponse.data || []).map(mapBooking);
+      statusCounts.value = allBookings.reduce((counts, booking) => {
+        counts[booking.status] = (counts[booking.status] || 0) + 1;
+        return counts;
+      }, {});
+      const query = searchQuery.value.trim().toLowerCase();
+      const filtered = allBookings.filter(booking => {
+        const matchesStatus = statusFilter.value === 'ALL' || booking.status === statusFilter.value;
+        const matchesSearch = !query
+          || String(booking.id).includes(query)
+          || String(booking.customerName || '').toLowerCase().includes(query)
+          || String(booking.customerPhone || '').includes(query);
+        return matchesStatus && matchesSearch;
+      });
+      totalElements.value = filtered.length;
+      totalPages.value = Math.ceil(filtered.length / pageSize);
+      const start = currentPage.value * pageSize;
+      bookings.value = filtered.slice(start, start + pageSize);
+    } catch (legacyError) {
+      console.error('API danh sách vé dự phòng cũng không khả dụng:', legacyError);
+      bookings.value = [];
+    }
   }
 };
 
-const filteredBookings = computed(() => {
-  return bookings.value.filter(b => {
-    const query = searchQuery.value.toLowerCase();
-    const matchesSearch = b.customerName.toLowerCase().includes(query) ||
-                          b.customerPhone.includes(query) ||
-                          b.id.toString().includes(query);
-    
-    const matchesStatus = statusFilter.value === 'ALL' || b.status === statusFilter.value;
-    
-    return matchesSearch && matchesStatus;
-  });
+const fetchExchanges = async () => {
+  try {
+    const response = await api.get('/ticket-exchanges/admin');
+    exchanges.value = Array.isArray(response.data) ? response.data : [];
+    bookings.value = bookings.value.map(booking => ({
+      ...booking,
+      exchange: exchanges.value.find(item => Number(item.bookingId) === Number(booking.id) && item.status === 'COMPLETED') || null
+    }));
+  } catch (error) {
+    console.error('Lỗi khi tải lịch sử đổi vé:', error);
+  }
+};
+
+const openExchangeTab = () => {
+  activeTab.value = 'exchanges';
+  fetchExchanges();
+};
+
+const tabClass = tab => [
+  'flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition',
+  activeTab.value === tab ? 'bg-[#075955] text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
+];
+
+const filteredBookings = computed(() => bookings.value);
+
+const paidCount = computed(() => Number(statusCounts.value.PAID || 0) + Number(statusCounts.value.SUCCESS || 0));
+const pendingCount = computed(() => Number(statusCounts.value.PENDING || 0));
+const checkedInCount = computed(() => Number(statusCounts.value.CHECKED_IN || 0));
+const cancelledCount = computed(() => Number(statusCounts.value.CANCELLED || 0));
+
+const changePage = page => {
+  currentPage.value = page;
+  fetchBookings();
+};
+
+watch(statusFilter, () => {
+  currentPage.value = 0;
+  fetchBookings();
 });
 
-const paidCount = computed(() => bookings.value.filter(b => b.status === 'PAID').length);
-const pendingCount = computed(() => bookings.value.filter(b => b.status === 'PENDING').length);
-const checkedInCount = computed(() => bookings.value.filter(b => b.status === 'CHECKED_IN').length);
-const cancelledCount = computed(() => bookings.value.filter(b => b.status === 'CANCELLED').length);
+watch(searchQuery, () => {
+  currentPage.value = 0;
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(fetchBookings, 300);
+});
 
 const updateStatus = async (id, newStatus) => {
   if (!confirm(`Xác nhận thay đổi trạng thái đơn #${id}?`)) return;
@@ -117,6 +221,10 @@ const viewDetail = (booking) => {
   if (booking.status === 'CANCELLED' && booking.cancellationReason) {
     msg += `\nLý do hủy: ${booking.cancellationReason}`;
   }
+  if (booking.exchange) {
+    msg += `\nĐã đổi vé: ${booking.exchange.exchangeType === 'SEAT' ? 'Đổi ghế' : 'Đổi chuyến/ngày'}`;
+    msg += `\nGhế cũ/mới: ${booking.exchange.oldSeatNumbers} → ${booking.exchange.newSeatNumbers}`;
+  }
   alert(msg);
 };
 
@@ -124,7 +232,13 @@ const viewReason = (reason) => {
   alert(`LÝ DO HỦY VÉ:\n\n${reason}`);
 };
 
-onMounted(fetchBookings);
+onMounted(async () => {
+  await fetchExchanges();
+  await fetchBookings();
+});
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer);
+});
 </script>
 
 <style scoped>

@@ -100,7 +100,9 @@ const activeDrivers = computed(() => {
   const result = [];
   drivers.value.forEach(driver => {
     // Lấy TẤT CẢ các chuyến của tài xế này
-    const driverTrips = trips.value.filter(t => t.assignedDriverUsername === driver.phone);
+    const driverTrips = trips.value.filter(t =>
+      t.assignedDriverUsername === driver.phone || t.secondaryDriverUsername === driver.phone
+    );
     if (driverTrips.length === 0) return;
     
     // Sắp xếp các chuyến theo thời gian gần nhất đến xa nhất (mới nhất ở đầu)

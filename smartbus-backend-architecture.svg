@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0H0V20" fill="none" stroke="#e8edf3" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#2563eb"/></marker>
+    <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#dc2626"/></marker>
+    <marker id="arrow-orange" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#ea580c"/></marker>
+    <marker id="arrow-purple" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#7e22ce"/></marker>
+    <marker id="arrow-black" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#111827"/></marker>
+    <marker id="arrow-teal" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#0f766e"/></marker>
+    <style>
+      .t{font-family:Arial,'Segoe UI',sans-serif;fill:#172033}.title{font-size:34px;font-weight:800}.h1{font-size:25px;font-weight:800}.h2{font-size:18px;font-weight:800}.body{font-size:14px}.small{font-size:12px}.tiny{font-size:11px}.center{text-anchor:middle}.box{fill:#fff;stroke-width:1.7}.pill{fill:#fff;stroke-width:1.25}.green{stroke:#3b7d34}.blue{stroke:#2563eb}.orange{stroke:#e88b13}.purple{stroke:#7e57c2}.teal{stroke:#14958e}.navy{stroke:#244b7a}.layer-green{fill:#f4fbf2}.layer-blue{fill:#f3f8ff}.layer-orange{fill:#fff9ed}.layer-purple{fill:#faf7ff}.layer-teal{fill:#f2fbfa}.ext{fill:#fbfdff;stroke:#244b7a;stroke-width:1.5}
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#fff"/><rect width="1600" height="900" fill="url(#grid)"/>
+  <text x="800" y="43" class="t title center">SƠ ĐỒ KIẾN TRÚC BACKEND SMARTBUS</text>
+
+  <!-- Frontend -->
+  <rect x="20" y="315" width="175" height="250" rx="12" class="box navy"/>
+  <circle cx="107" cy="382" r="38" fill="#e9f7f4" stroke="#178b77" stroke-width="2"/>
+  <text x="107" y="394" class="t h1 center" fill="#178b77">VUE</text>
+  <text x="107" y="466" class="t center" style="font-size:16px;font-weight:800">Frontend Vue 3 SPA</text>
+  <text x="107" y="493" class="t body center">Trình duyệt / Mobile Web</text>
+
+  <!-- Backend shell -->
+  <rect x="300" y="65" width="850" height="790" rx="14" fill="#fbfefb" stroke="#397a36" stroke-width="2"/>
+  <text x="725" y="101" class="t h1 center" style="fill:#236b2a">BACKEND SPRING BOOT</text>
+
+  <!-- Security -->
+  <rect x="320" y="115" width="810" height="95" rx="11" class="box green layer-green"/>
+  <text x="340" y="143" class="t h2" style="fill:#236b2a">Security &amp; Configuration</text>
+  <g class="t body center">
+    <rect x="355" y="158" width="165" height="35" rx="6" class="pill green"/><text x="437" y="181">JwtAuthFilter</text>
+    <rect x="535" y="158" width="165" height="35" rx="6" class="pill green"/><text x="617" y="181">Spring Security</text>
+    <rect x="715" y="158" width="165" height="35" rx="6" class="pill green"/><text x="797" y="181">CORS</text>
+    <rect x="895" y="158" width="205" height="35" rx="6" class="pill green"/><text x="997" y="181">WebSocket Config</text>
+  </g>
+
+  <!-- Controllers -->
+  <rect x="320" y="230" width="810" height="170" rx="11" class="box blue layer-blue"/>
+  <text x="340" y="260" class="t h2" style="fill:#174d9b">Controllers</text>
+  <g class="t body center">
+    <rect id="auth" x="445" y="248" width="120" height="34" rx="6" class="pill blue"/><text x="505" y="270">Auth</text>
+    <rect x="585" y="248" width="120" height="34" rx="6" class="pill blue"/><text x="645" y="270">Trip</text>
+    <rect x="725" y="248" width="120" height="34" rx="6" class="pill blue"/><text x="785" y="270">Route</text>
+    <rect id="booking" x="865" y="248" width="120" height="34" rx="6" class="pill blue"/><text x="925" y="270">Booking</text>
+    <rect x="445" y="298" width="120" height="34" rx="6" class="pill blue"/><text x="505" y="320">Bus/BusType</text>
+    <rect x="585" y="298" width="120" height="34" rx="6" class="pill blue"/><text x="645" y="320">Seat</text>
+    <rect x="725" y="298" width="120" height="34" rx="6" class="pill blue"/><text x="785" y="320">Review</text>
+    <rect id="wallet" x="865" y="298" width="120" height="34" rx="6" class="pill blue"/><text x="925" y="320">User/Wallet</text>
+    <rect x="515" y="350" width="120" height="34" rx="6" class="pill blue"/><text x="575" y="372">Dashboard</text>
+    <rect x="675" y="350" width="120" height="34" rx="6" class="pill blue"/><text x="735" y="372">AI</text>
+    <rect x="835" y="350" width="120" height="34" rx="6" class="pill blue"/><text x="895" y="372">Incident</text>
+  </g>
+
+  <!-- Broker -->
+  <rect x="320" y="420" width="195" height="180" rx="11" class="box purple layer-purple"/>
+  <text x="417" y="450" class="t h2 center" style="fill:#542a9a">WebSocket/STOMP</text><text x="417" y="472" class="t body center" style="font-weight:700;fill:#542a9a">Simple Broker</text>
+  <g class="t small"><text x="340" y="505">Topic:</text><text x="430" y="505">/topic</text><text x="340" y="532">Queue:</text><text x="430" y="532">/queue</text><text x="340" y="559">Application prefix:</text><text x="470" y="559">/app</text><text x="340" y="586">Endpoint:</text><text x="430" y="586">/ws</text></g>
+
+  <!-- Services -->
+  <rect x="535" y="420" width="595" height="180" rx="11" class="box orange layer-orange"/>
+  <text x="555" y="450" class="t h2" style="fill:#95550a">Services</text>
+  <g class="t small center">
+    <rect x="555" y="468" width="150" height="34" rx="6" class="pill orange"/><text x="630" y="490">Business Services</text>
+    <rect x="715" y="468" width="95" height="34" rx="6" class="pill orange"/><text x="762" y="490">JwtService</text>
+    <rect x="820" y="468" width="95" height="34" rx="6" class="pill orange"/><text x="867" y="490">TripService</text>
+    <rect x="925" y="468" width="95" height="34" rx="6" class="pill orange"/><text x="972" y="490">SeatService</text>
+    <rect x="1030" y="468" width="85" height="34" rx="6" class="pill orange"/><text x="1072" y="490">Wallet</text>
+    <rect id="wsnotify" x="555" y="530" width="185" height="36" rx="6" class="pill orange"/><text x="647" y="553">WebSocket Notification</text>
+    <rect id="email" x="785" y="530" width="130" height="36" rx="6" class="pill orange"/><text x="850" y="553">EmailService</text>
+    <rect id="ai" x="965" y="530" width="130" height="36" rx="6" class="pill orange"/><text x="1030" y="553">AiService</text>
+  </g>
+
+  <!-- Repositories -->
+  <rect x="320" y="620" width="810" height="105" rx="11" class="box purple layer-purple"/>
+  <text x="340" y="649" class="t h2" style="fill:#542a9a">Repositories</text>
+  <g class="t tiny center">
+    <rect x="350" y="665" width="125" height="30" rx="5" class="pill purple"/><text x="412" y="684">UserRepository</text>
+    <rect x="485" y="665" width="125" height="30" rx="5" class="pill purple"/><text x="547" y="684">TripRepository</text>
+    <rect x="620" y="665" width="125" height="30" rx="5" class="pill purple"/><text x="682" y="684">RouteRepository</text>
+    <rect x="755" y="665" width="135" height="30" rx="5" class="pill purple"/><text x="822" y="684">BookingRepository</text>
+    <rect x="900" y="665" width="125" height="30" rx="5" class="pill purple"/><text x="962" y="684">SeatRepository</text>
+    <rect x="1035" y="665" width="75" height="30" rx="5" class="pill purple"/><text x="1072" y="684">Khác</text>
+  </g>
+
+  <!-- Entities -->
+  <rect x="320" y="745" width="810" height="90" rx="11" class="box teal layer-teal"/>
+  <text x="340" y="774" class="t h2" style="fill:#0f766e">Entities &amp; DTOs</text><text x="510" y="774" class="t body">– Mô hình dữ liệu dùng chung</text>
+  <g class="t tiny center">
+    <rect x="345" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="379" y="808">User</text>
+    <rect x="421" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="455" y="808">Trip</text>
+    <rect x="497" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="531" y="808">Route</text>
+    <rect x="573" y="790" width="78" height="27" rx="5" class="pill teal"/><text x="612" y="808">Booking</text>
+    <rect x="659" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="693" y="808">Seat</text>
+    <rect x="735" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="769" y="808">Bus</text>
+    <rect x="811" y="790" width="76" height="27" rx="5" class="pill teal"/><text x="849" y="808">BusType</text>
+    <rect x="895" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="929" y="808">Review</text>
+    <rect x="971" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="1005" y="808">Incident</text>
+    <rect x="1047" y="790" width="68" height="27" rx="5" class="pill teal"/><text x="1081" y="808">Khác</text>
+  </g>
+
+  <!-- Third-party panel -->
+  <rect x="1180" y="65" width="400" height="555" rx="13" class="ext"/>
+  <text x="1380" y="96" class="t h2 center" style="fill:#173d72">DỊCH VỤ BÊN THỨ BA</text>
+  <g class="t">
+    <rect id="cloud" x="1200" y="110" width="360" height="72" rx="9" class="ext"/><text x="1220" y="138" class="h2">Cloudinary</text><text x="1220" y="161" class="body">Lưu trữ hình ảnh và dữ liệu tuyến đường</text>
+    <rect id="google" x="1200" y="220" width="360" height="72" rx="9" class="ext"/><text x="1220" y="248" class="h2">Google OAuth2</text><text x="1220" y="271" class="body">Xác thực tài khoản Google</text>
+    <rect id="sepay" x="1200" y="315" width="360" height="72" rx="9" class="ext"/><text x="1220" y="343" class="h2">SePay API/Webhook</text><text x="1220" y="366" class="body">Xác nhận giao dịch thanh toán</text>
+    <rect id="brevo" x="1200" y="440" width="360" height="72" rx="9" class="ext"/><text x="1220" y="468" class="h2">Brevo Email API</text><text x="1220" y="491" class="body">Gửi email xác nhận và vé QR</text>
+    <rect id="gemini" x="1200" y="530" width="360" height="72" rx="9" class="ext"/><text x="1220" y="558" class="h2">Gemini API</text><text x="1220" y="581" class="body">Trợ lý AI và tạo nội dung</text>
+  </g>
+
+  <!-- Database -->
+  <rect x="1180" y="650" width="400" height="205" rx="13" class="ext"/>
+  <text x="1380" y="685" class="t h2 center" style="fill:#173d72">POSTGRESQL DATABASE</text>
+  <text x="1380" y="711" class="t body center">Triển khai trên Supabase</text>
+  <g class="t body"><text x="1230" y="742">• Người dùng, tuyến và chuyến xe</text><text x="1230" y="769">• Phương tiện, ghế và đơn đặt vé</text><text x="1230" y="796">• Giao dịch, thanh toán và đánh giá</text><text x="1230" y="823">• Sự cố và URL hình ảnh Cloudinary</text></g>
+
+  <!-- Main internal flows -->
+  <path d="M725 210V230" fill="none" stroke="#111827" stroke-width="2" marker-end="url(#arrow-black)"/>
+  <path d="M725 400V420" fill="none" stroke="#111827" stroke-width="2" marker-end="url(#arrow-black)"/>
+  <path d="M830 600V620" fill="none" stroke="#111827" stroke-width="2" marker-end="url(#arrow-black)"/>
+  <path d="M650 725V745M800 725V745M950 725V745" fill="none" stroke="#0f766e" stroke-width="2" marker-start="url(#arrow-teal)" marker-end="url(#arrow-teal)"/>
+  <path d="M1130 675H1158V750H1180" fill="none" stroke="#111827" stroke-width="2.2" marker-end="url(#arrow-black)"/>
+  <text x="1162" y="714" class="t small center">Spring Data</text><text x="1162" y="730" class="t small center">JPA/JDBC</text>
+
+  <!-- Frontend flows -->
+  <path d="M195 355H320" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrow-blue)"/>
+  <text x="255" y="327" class="t body center" style="fill:#1d4ed8">REST API – HTTPS/JSON</text>
+  <path d="M195 500H320" fill="none" stroke="#7e22ce" stroke-width="2.4" marker-start="url(#arrow-purple)" marker-end="url(#arrow-purple)"/>
+  <text x="257" y="478" class="t body center" style="fill:#6b21a8">WebSocket/STOMP – WS/WSS</text>
+  <text x="257" y="522" class="t small center" style="fill:#6b21a8">Cập nhật thời gian thực</text>
+
+  <!-- Exact WebSocket notification flow -->
+  <path d="M555 548H515" fill="none" stroke="#7e22ce" stroke-width="2.4" marker-end="url(#arrow-purple)"/>
+  <text x="535" y="525" class="t tiny center" style="fill:#6b21a8">Phát sự kiện</text>
+
+  <!-- Exact third-party flows -->
+  <path d="M505 248V220H1170V256H1200" fill="none" stroke="#2563eb" stroke-width="2.2" marker-start="url(#arrow-blue)" marker-end="url(#arrow-blue)"/>
+  <text x="1065" y="213" class="t small center" style="fill:#1d4ed8">Xác thực Google</text>
+  <path d="M1200 351H1160V315H985" fill="none" stroke="#dc2626" stroke-width="2.2" marker-end="url(#arrow-red)"/>
+  <text x="1085" y="305" class="t small center" style="fill:#b91c1c">Webhook thanh toán</text>
+  <path d="M915 548V610H1160V476H1200" fill="none" stroke="#ea580c" stroke-width="2.2" marker-end="url(#arrow-orange)"/>
+  <text x="1080" y="466" class="t small center" style="fill:#c2410c">Gửi email</text>
+  <path d="M1095 548H1160V566H1200" fill="none" stroke="#2563eb" stroke-width="2.2" marker-start="url(#arrow-blue)" marker-end="url(#arrow-blue)"/>
+  <text x="1135" y="589" class="t small center" style="fill:#1d4ed8">Xử lý AI</text>
+
+  <!-- Exact Cloudinary flow, one pair only -->
+  <path d="M107 315V52H1160V146H1200" fill="none" stroke="#2563eb" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+  <text x="210" y="48" class="t tiny center" style="fill:#1d4ed8">Tải hình ảnh trực tiếp qua HTTPS</text>
+  <path d="M1200 168H1170V59H90V315" fill="none" stroke="#2563eb" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow-blue)"/>
+  <text x="220" y="75" class="t tiny center" style="fill:#1d4ed8">Trả URL hình ảnh</text>
+</svg>

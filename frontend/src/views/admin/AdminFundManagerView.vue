@@ -38,9 +38,22 @@
             </span>
           </div>
         </button>
+        <button
+          @click="activeMainTab = 'REFUNDS'"
+          class="px-6 py-3 text-sm font-black transition-all border-b-2"
+          :class="activeMainTab === 'REFUNDS' ? 'border-rose-600 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+        >
+          <div class="relative flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">currency_exchange</span>
+            Yêu cầu hoàn tiền
+            <span v-if="authStore.newRefundsCount > 0" class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-black tabular-nums text-white shadow-sm ring-2 ring-white">
+              {{ authStore.newRefundsCount > 99 ? '99+' : authStore.newRefundsCount }}
+            </span>
+          </div>
+        </button>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3" v-if="activeMainTab !== 'EXPENSES'">
+      <div class="flex flex-wrap items-center gap-3" v-if="['TRANSACTIONS', 'RECONCILIATION'].includes(activeMainTab)">
         <button @click="refreshAll" class="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-200 transition-colors" title="Làm mới dữ liệu">
           <span class="material-symbols-outlined text-[20px]" :class="{'animate-spin': loading || reconLoading}">refresh</span>
         </button>
@@ -85,6 +98,9 @@
     <!-- Expenses Tab -->
     <FundExpensesTab v-else-if="activeMainTab === 'EXPENSES'" />
 
+    <!-- Refund requests Tab -->
+    <AdminRefundManagerView v-else-if="activeMainTab === 'REFUNDS'" embedded />
+
   </div>
 </template>
 
@@ -94,10 +110,15 @@ import FundStatsCards from '@/components/admin/fund/FundStatsCards.vue'
 import FundTransactionsTable from '@/components/admin/fund/FundTransactionsTable.vue'
 import FundReconciliationTab from '@/components/admin/fund/FundReconciliationTab.vue'
 import FundExpensesTab from '@/components/admin/fund/FundExpensesTab.vue'
+import AdminRefundManagerView from '@/views/admin/AdminRefundManagerView.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useRoute, useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
-const activeMainTab = ref('TRANSACTIONS')
+const route = useRoute()
+const router = useRouter()
+const tabMap = { transactions: 'TRANSACTIONS', reconciliation: 'RECONCILIATION', expenses: 'EXPENSES', refunds: 'REFUNDS' }
+const activeMainTab = ref(tabMap[String(route.query.tab || '').toLowerCase()] || 'TRANSACTIONS')
 
 const loading = ref(false)
 const syncing = ref(false)
@@ -290,12 +311,19 @@ const exportReport = async () => {
 }
 
 watch(activeMainTab, (newVal) => {
+  const queryTab = newVal.toLowerCase()
+  if (route.query.tab !== queryTab) router.replace({ query: { ...route.query, tab: queryTab } })
   if (newVal === 'RECONCILIATION' && reconciliations.value.length === 0) {
     fetchReconciliations()
   }
   if (newVal === 'EXPENSES') {
     authStore.clearNewExpensesCount()
   }
+})
+
+watch(() => route.query.tab, value => {
+  const nextTab = tabMap[String(value || '').toLowerCase()]
+  if (nextTab && nextTab !== activeMainTab.value) activeMainTab.value = nextTab
 })
 
 onMounted(() => {

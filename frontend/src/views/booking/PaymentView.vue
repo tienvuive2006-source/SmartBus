@@ -68,6 +68,9 @@
             </div>
           </div>
 
+          <BookingStopSelector v-model="outboundStopSelection" :trip-id="tripId" title="Điểm đón và trả · Chuyến đi" />
+          <BookingStopSelector v-if="returnTripId" v-model="returnStopSelection" :trip-id="returnTripId" title="Điểm đón và trả · Chuyến về" />
+
           <!-- Phương thức thanh toán -->
           <div class="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
              <div class="flex items-center gap-3 mb-6">
@@ -261,6 +264,7 @@ import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/composables/useApi';
+import BookingStopSelector from '@/components/booking/BookingStopSelector.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -285,6 +289,8 @@ const loading = ref(true);
 const isProcessing = ref(false);
 const selectedMethod = ref('QR');
 const showQrCode = ref(false);
+const outboundStopSelection = ref({ valid: true });
+const returnStopSelection = ref({ valid: true });
 
 const myVouchers = ref([]);
 const selectedVoucherId = ref(null);
@@ -335,7 +341,9 @@ const wantsEmail = ref(true);
 const isFormComplete = computed(() => {
   return customerName.value.trim() !== '' && 
          customerPhone.value.trim() !== '' && 
-         (!wantsEmail.value || customerEmail.value.trim() !== '');
+         (!wantsEmail.value || customerEmail.value.trim() !== '') &&
+         outboundStopSelection.value.valid !== false &&
+         (!returnTripId || returnStopSelection.value.valid !== false);
 });
 
 const generateQrCode = async () => {
@@ -381,6 +389,8 @@ const createPaymentOrder = async () => {
       user: authStore.currentUser ? { id: authStore.currentUser.id } : null,
       userVoucherId: selectedVoucherId.value
     };
+    payload.outboundPickupStopId = outboundStopSelection.value.pickupStopId || null;
+    payload.outboundDropoffStopId = outboundStopSelection.value.dropoffStopId || null;
     if (returnTripId) {
       payload.returnTripId = returnTripId;
       payload.returnSeats = returnSeatsArray.value;
@@ -450,6 +460,10 @@ const processPayment = async () => {
       paymentOrderId: activePaymentOrderId.value,
       userVoucherId: selectedVoucherId.value
     };
+    confirmData.outboundPickupStopId = outboundStopSelection.value.pickupStopId || null;
+    confirmData.outboundDropoffStopId = outboundStopSelection.value.dropoffStopId || null;
+    confirmData.returnPickupStopId = returnStopSelection.value.pickupStopId || null;
+    confirmData.returnDropoffStopId = returnStopSelection.value.dropoffStopId || null;
 
     const res = await api.post('/admin/bookings/confirm-roundtrip', confirmData);
     if (res.status === 200 || res.status === 201) {

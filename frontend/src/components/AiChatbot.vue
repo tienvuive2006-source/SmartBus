@@ -163,10 +163,12 @@ import { ref, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useApi } from '../composables/useApi';
 import { useAuthStore } from '@/stores/auth';
+import { useHomeSummary } from '@/composables/useHomeSummary';
 
 const router = useRouter();
 const api = useApi();
 const authStore = useAuthStore();
+const { getHomeSummary } = useHomeSummary();
 
 const isOpen = ref(false);
 const hasUnread = ref(true);
@@ -176,6 +178,7 @@ const messagesContainer = ref(null);
 
 const sessionId = ref('');
 const messages = ref([]);
+const suggestionsLoaded = ref(false);
 
 onMounted(async () => {
   // 1. Phục hồi Session ID
@@ -199,7 +202,6 @@ onMounted(async () => {
     resetToWelcome();
   }
 
-  loadSuggestions();
 });
 
 const formatText = (text) => {
@@ -221,13 +223,14 @@ const resetToWelcome = () => {
 
 const loadSuggestions = async () => {
   try {
-    const res = await api.get('/trips');
-    if (res.data && res.data.length > 0) {
+    const summary = await getHomeSummary();
+    const trips = summary.uniqueTrips || [];
+    if (trips.length > 0) {
       // Lọc ra các tuyến đường độc nhất
       const uniqueRoutes = [];
       const seen = new Set();
       
-      res.data.forEach(t => {
+      trips.forEach(t => {
         let fromCity = t.departurePoint.split(',').pop().trim();
         let toCity = t.arrivalPoint.split(',').pop().trim();
         
@@ -264,8 +267,8 @@ const loadSuggestions = async () => {
       });
       
       // 2. Tạo 2 gợi ý động dựa vào Hãng xe và Loại xe thực tế trong DB
-      const uniqueCompanies = [...new Set(res.data.map(t => t.companyName))].filter(Boolean);
-      const uniqueBusTypes = [...new Set(res.data.map(t => t.busType))].filter(Boolean);
+      const uniqueCompanies = [...new Set(trips.map(t => t.companyName))].filter(Boolean);
+      const uniqueBusTypes = [...new Set(trips.map(t => t.busType))].filter(Boolean);
       
       if (uniqueCompanies.length > 0) {
         uniqueCompanies.sort(() => 0.5 - Math.random());
@@ -302,11 +305,13 @@ const loadSuggestions = async () => {
         saveMessages();
       }
     }
+    suggestionsLoaded.value = true;
   } catch (error) {
     console.error('Không thể tải gợi ý tuyến đường:', error);
     if (messages.value.length === 1 && messages.value[0].isBot) {
       messages.value[0].text = 'Xin chào! Tôi là trợ lý AI của SmartBus Trung Nam. Bạn cần tìm vé xe đi đâu?';
       messages.value[0].suggestions = ['Tìm vé Sài Gòn đi Đà Lạt', 'Từ Đà Nẵng đi Nha Trang'];
+      suggestionsLoaded.value = true;
       saveMessages();
     }
   }
@@ -322,7 +327,8 @@ const clearChat = (force = false) => {
   localStorage.setItem('smartbus_chat_session', sessionId.value);
   
   resetToWelcome();
-  loadSuggestions();
+  suggestionsLoaded.value = false;
+  if (isOpen.value) loadSuggestions();
 };
 
 // Theo dõi sự thay đổi tài khoản (Đăng nhập / Đăng xuất)
@@ -337,10 +343,11 @@ const saveMessages = () => {
   localStorage.setItem('smartbus_chat_messages', JSON.stringify(messages.value));
 };
 
-const toggleChat = () => {
+const toggleChat = async () => {
   isOpen.value = !isOpen.value;
   if (isOpen.value) {
     hasUnread.value = false;
+    if (!suggestionsLoaded.value) await loadSuggestions();
     scrollToBottom();
   }
 };

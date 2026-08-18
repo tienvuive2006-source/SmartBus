@@ -182,8 +182,11 @@ public class TripService {
     // Khi lưu chuyến xe mới, tự động sinh ra 24 ghế tương ứng!
     @Transactional
     public Trip saveTrip(Trip trip) {
+        validateDriverPair(trip);
         // 🛡️ KIỂM TRA XUNG ĐỘT TRƯỚC KHI LƯU
         checkDriverConflict(trip.getAssignedDriverUsername(), trip.getDepartureDate(), trip.getDepartureTime(),
+                trip.getArrivalTime(), null);
+        checkDriverConflict(trip.getSecondaryDriverUsername(), trip.getDepartureDate(), trip.getDepartureTime(),
                 trip.getArrivalTime(), null);
         checkBusConflict(trip.getAssignedLicensePlate(), trip.getDepartureDate(), trip.getDepartureTime(),
                 trip.getArrivalTime(), null);
@@ -203,11 +206,14 @@ public class TripService {
 
     @Transactional
     public Trip updateTrip(Long id, Trip updatedDetails) {
+        validateDriverPair(updatedDetails);
         Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với mã ID: " + id));
 
         // 🛡️ KIỂM TRA XUNG ĐỘT TRƯỚC KHI CẬP NHẬT (bỏ qua chính chuyến xe hiện tại)
         checkDriverConflict(updatedDetails.getAssignedDriverUsername(), updatedDetails.getDepartureDate(),
+                updatedDetails.getDepartureTime(), updatedDetails.getArrivalTime(), id);
+        checkDriverConflict(updatedDetails.getSecondaryDriverUsername(), updatedDetails.getDepartureDate(),
                 updatedDetails.getDepartureTime(), updatedDetails.getArrivalTime(), id);
         checkBusConflict(updatedDetails.getAssignedLicensePlate(), updatedDetails.getDepartureDate(),
                 updatedDetails.getDepartureTime(), updatedDetails.getArrivalTime(), id);
@@ -241,6 +247,8 @@ public class TripService {
         trip.setAssignedLicensePlate(updatedDetails.getAssignedLicensePlate());
         trip.setAssignedDriverUsername(updatedDetails.getAssignedDriverUsername());
         trip.setAssignedDriverFullName(updatedDetails.getAssignedDriverFullName());
+        trip.setSecondaryDriverUsername(updatedDetails.getSecondaryDriverUsername());
+        trip.setSecondaryDriverFullName(updatedDetails.getSecondaryDriverFullName());
         trip.setDeparturePoint(updatedDetails.getDeparturePoint());
         trip.setArrivalPoint(updatedDetails.getArrivalPoint());
         trip.setDepartureTime(updatedDetails.getDepartureTime());
@@ -343,5 +351,12 @@ public class TripService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với mã ID: " + id));
         trip.setIsVisible(trip.getIsVisible() == null ? false : !trip.getIsVisible());
         return tripRepository.save(trip);
+    }
+
+    private void validateDriverPair(Trip trip) {
+        if (trip.getAssignedDriverUsername() != null
+                && trip.getAssignedDriverUsername().equals(trip.getSecondaryDriverUsername())) {
+            throw new IllegalArgumentException("Tài xế chính và tài xế phụ phải là hai người khác nhau.");
+        }
     }
 }

@@ -45,6 +45,19 @@
                  <span class="material-symbols-outlined text-amber-500">badge</span>
                  Chọn Tài Xế
               </h4>
+              <div class="grid grid-cols-2 gap-2 mb-3 p-1 rounded-xl bg-slate-100">
+                <button type="button" @click="activeDriverRole = 'PRIMARY'" class="rounded-lg px-3 py-2 text-xs font-black transition-colors" :class="activeDriverRole === 'PRIMARY' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500'">
+                  Tài xế chính
+                  <span v-if="selectedDriver" class="block mt-0.5 truncate text-[10px] opacity-90">{{ selectedDriver.fullName }}</span>
+                </button>
+                <button type="button" @click="activeDriverRole = 'SECONDARY'" class="rounded-lg px-3 py-2 text-xs font-black transition-colors" :class="activeDriverRole === 'SECONDARY' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-500'">
+                  Tài xế phụ
+                  <span class="block mt-0.5 truncate text-[10px] opacity-90">{{ selectedSecondaryDriver?.fullName || 'Không bố trí' }}</span>
+                </button>
+              </div>
+              <button v-if="selectedSecondaryDriver" type="button" @click="selectedSecondaryDriver = null" class="mb-3 w-full rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-bold text-sky-700 hover:bg-sky-100">
+                Bỏ tài xế phụ khỏi chuyến
+              </button>
               <div class="relative shadow-sm">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
                 <input v-model="driverSearch" type="text" placeholder="Tìm tên tài xế..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
@@ -56,11 +69,11 @@
                
                <div 
                   v-for="driver in filteredDrivers" :key="driver.id"
-                  @click="!driver.conflict && (selectedDriver = driver)"
+                  @click="!driver.conflict && selectDriverForRole(driver)"
                   class="p-3 rounded-xl border transition-all flex items-center justify-between"
                   :class="[
                      driver.conflict ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed' : 'bg-white border-slate-200 cursor-pointer hover:border-primary/50',
-                     selectedDriver?.id === driver.id ? 'ring-2 ring-primary border-primary bg-primary/5' : ''
+                     activeSelectedDriver?.id === driver.id ? 'ring-2 ring-primary border-primary bg-primary/5' : ''
                   ]"
                >
                   <div class="flex items-center gap-3">
@@ -74,18 +87,23 @@
                      </div>
                   </div>
                   
-                  <div class="text-right">
+                  <div class="max-w-[48%] shrink-0 text-right">
                      <span v-if="driver.isCurrentAssignee" class="text-[10px] font-black px-2 py-0.5 rounded uppercase" :class="driver.leaveWarning ? 'text-rose-600 bg-rose-50' : 'text-blue-600 bg-blue-50'">
                         Đang gán {{ driver.leaveWarning ? `(${driver.leaveWarning})` : '' }}
                      </span>
                      <span v-else-if="driver.conflict" class="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase">
                         {{ driver.conflictReason }}
                      </span>
-                     <span v-else class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase inline-block max-w-[150px] truncate align-bottom" :title="driver.lastKnownLocation ? (driver.isLocationProjected ? 'Dự kiến tại ' : 'Đang ở ') + driver.lastKnownLocation : 'Rảnh'">
-                        Rảnh<span v-if="driver.lastKnownLocation" class="normal-case font-bold opacity-80"> ({{ driver.isLocationProjected ? 'dự kiến tại' : 'đang ở' }} {{ driver.lastKnownLocation }})</span>
-                     </span>
+                     <div v-else class="flex flex-col items-end gap-1">
+                       <span class="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-600">
+                         Rảnh
+                       </span>
+                       <span v-if="driver.lastKnownLocation" class="max-w-full text-wrap text-[10px] font-semibold leading-tight text-slate-500" :title="(driver.isLocationProjected ? 'Dự kiến tại ' : 'Đang ở ') + driver.lastKnownLocation">
+                         {{ driver.isLocationProjected ? 'Dự kiến tại' : 'Đang ở' }} {{ driver.lastKnownLocation }}
+                       </span>
+                     </div>
                      
-                     <div v-if="selectedDriver?.id === driver.id" class="mt-1 flex justify-end">
+                     <div v-if="activeSelectedDriver?.id === driver.id" class="mt-1 flex justify-end">
                         <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
                      </div>
                   </div>
@@ -252,6 +270,8 @@ const driverSearch = ref('');
 const busSearch = ref('');
 const inspectorSearch = ref('');
 const selectedDriver = ref(null);
+const selectedSecondaryDriver = ref(null);
+const activeDriverRole = ref('PRIMARY');
 const selectedBus = ref(null);
 const selectedInspector = ref(null);
 const submitting = ref(false);
@@ -263,6 +283,8 @@ watch(() => props.isOpen, (newVal) => {
     busSearch.value = '';
     inspectorSearch.value = '';
     selectedDriver.value = null;
+    selectedSecondaryDriver.value = null;
+    activeDriverRole.value = 'PRIMARY';
     selectedBus.value = null;
     selectedInspector.value = null;
     submitting.value = false;
@@ -270,6 +292,9 @@ watch(() => props.isOpen, (newVal) => {
     // Nếu trip đã có gán, pre-select
     if (props.trip?.assignedDriverUsername) {
       selectedDriver.value = props.allDrivers?.find(d => d.phone === props.trip.assignedDriverUsername) || null;
+    }
+    if (props.trip?.secondaryDriverUsername) {
+      selectedSecondaryDriver.value = props.allDrivers?.find(d => d.phone === props.trip.secondaryDriverUsername) || null;
     }
     if (props.trip?.assignedLicensePlate) {
       selectedBus.value = props.allBuses?.find(b => b.licensePlate === props.trip.assignedLicensePlate) || null;
@@ -288,9 +313,23 @@ const submit = () => {
   emit('submit', {
     driverUsername: selectedDriver.value.phone,
     driverFullName: selectedDriver.value.fullName,
+    secondaryDriverUsername: selectedSecondaryDriver.value?.phone || null,
+    secondaryDriverFullName: selectedSecondaryDriver.value?.fullName || null,
     licensePlate: selectedBus.value.licensePlate,
     inspector: selectedInspector.value ? { id: selectedInspector.value.id, phone: selectedInspector.value.phone, fullName: selectedInspector.value.fullName, employeeCode: selectedInspector.value.employeeCode } : null
   });
+};
+
+const activeSelectedDriver = computed(() => activeDriverRole.value === 'PRIMARY' ? selectedDriver.value : selectedSecondaryDriver.value);
+
+const selectDriverForRole = (driver) => {
+  if (activeDriverRole.value === 'PRIMARY') {
+    if (selectedSecondaryDriver.value?.id === driver.id) selectedSecondaryDriver.value = null;
+    selectedDriver.value = driver;
+  } else {
+    if (selectedDriver.value?.id === driver.id) return;
+    selectedSecondaryDriver.value = driver;
+  }
 };
 
 // Hàm kiểm tra nghỉ phép
@@ -423,7 +462,10 @@ const processedDrivers = computed(() => {
     if (leaveStatus === 'PENDING') leaveWarning = 'Xin nghỉ';
     else if (leaveStatus === 'APPROVED') leaveWarning = 'Nghỉ phép';
 
-    const driverTrips = (props.allTrips || []).filter(t => t.assignedDriverUsername === driver.phone && t.status !== 'CANCELLED');
+    const driverTrips = (props.allTrips || []).filter(t =>
+      (t.assignedDriverUsername === driver.phone || t.secondaryDriverUsername === driver.phone) &&
+      t.status !== 'CANCELLED'
+    );
     
     // Tìm vị trí cuối cùng (thành phố) trước chuyến hiện tại để gợi ý cho Admin
     let closestTripBefore = null;
@@ -447,7 +489,7 @@ const processedDrivers = computed(() => {
        isLocationProjected = closestTripBefore.status !== 'COMPLETED';
     }
 
-    if (props.trip.assignedDriverUsername === driver.phone) {
+    if (props.trip.assignedDriverUsername === driver.phone || props.trip.secondaryDriverUsername === driver.phone) {
         isCurrentAssignee = true;
     } else {
         if (leaveWarning) {
@@ -471,6 +513,11 @@ const filteredDrivers = computed(() => {
   if (driverSearch.value) {
     const q = driverSearch.value.toLowerCase();
     list = list.filter(d => d.fullName.toLowerCase().includes(q) || d.phone.includes(q));
+  }
+  if (activeDriverRole.value === 'SECONDARY' && selectedDriver.value) {
+    list = list.map(driver => driver.id === selectedDriver.value.id
+      ? { ...driver, conflict: true, conflictReason: 'Đã chọn làm tài xế chính' }
+      : driver);
   }
   // Sắp xếp: Rảnh lên trước, kẹt xuống dưới
   return list.sort((a, b) => (a.conflict === b.conflict ? 0 : a.conflict ? 1 : -1));

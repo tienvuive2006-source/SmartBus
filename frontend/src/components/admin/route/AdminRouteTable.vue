@@ -14,6 +14,7 @@
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50 border-b border-slate-100">
+            <th class="w-14 px-3 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">STT</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Tuyến đường</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Điểm khởi hành</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Điểm kết thúc</th>
@@ -25,6 +26,7 @@
         </thead>
         <tbody v-if="routes.length > 0">
           <tr v-for="(route, idx) in routes" :key="idx" class="group border-b border-slate-50 hover:bg-[#075955]/[0.02] transition-all duration-200">
+            <td class="w-14 px-3 py-5 text-center text-xs font-black text-slate-400">{{ idx + 1 }}</td>
             <td class="px-6 py-5">
               <div class="flex items-center gap-3">
                 <div v-if="route.imageUrl" class="w-16 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-200 shadow-sm">
@@ -54,6 +56,9 @@
             </td>
             <td class="px-6 py-5 text-center">
               <div class="flex items-center justify-center gap-2">
+                <button @click="$emit('manage-stops', idx)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm border border-slate-100" title="Quản lý điểm dừng">
+                  <span class="material-symbols-outlined text-lg">add_location_alt</span>
+                </button>
                 <button @click="$emit('edit-route', idx)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-blue-50 text-blue-500 hover:bg-blue-500 hover:text-white transition-all shadow-sm border border-slate-100" title="Chỉnh sửa">
                   <span class="material-symbols-outlined text-lg">edit</span>
                 </button>
@@ -66,7 +71,7 @@
         </tbody>
         <tbody v-else>
           <tr>
-            <td colspan="7" class="py-20 text-center">
+            <td colspan="8" class="py-20 text-center">
               <div class="flex flex-col items-center">
                 <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                   <span class="material-symbols-outlined text-4xl text-slate-300">map_off</span>
@@ -90,5 +95,5 @@ defineProps({
   }
 });
 
-defineEmits(['toggle-visibility', 'edit-route', 'delete-route']);
+defineEmits(['toggle-visibility', 'edit-route', 'delete-route', 'manage-stops']);
 </script>

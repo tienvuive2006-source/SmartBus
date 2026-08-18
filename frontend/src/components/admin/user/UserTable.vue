@@ -1,156 +1,80 @@
 <template>
-  <table class="w-full border-collapse text-left min-w-[800px]">
+  <table class="customer-table">
+    <colgroup>
+      <col class="id-width" /><col class="name-width" /><col class="contact-width" />
+      <col class="ticket-width" /><col class="role-width" /><col class="source-width" />
+      <col class="status-width" /><col class="wallet-width" /><col class="action-width" />
+    </colgroup>
     <thead>
-      <tr class="bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100">
-        <th class="px-3 py-4">ID</th>
-        <th class="px-3 py-4 whitespace-nowrap">Họ và Tên</th>
-        <th class="px-3 py-4">Liên hệ</th>
-        <th class="px-3 py-4 whitespace-nowrap">Số vé</th>
-        <th class="px-3 py-4 whitespace-nowrap">Quyền hạn</th>
-        <th class="px-3 py-4 text-center">Nguồn</th>
-        <th class="px-3 py-4 text-center">Trạng thái</th>
-        <th class="px-3 py-4 text-right">Số dư Ví SkyPay</th>
-        <th class="px-3 py-4 text-center">Thao tác</th>
+      <tr>
+        <th>ID</th>
+        <th>Họ và tên</th>
+        <th>Liên hệ</th>
+        <th class="center">Số vé</th>
+        <th>Quyền hạn</th>
+        <th>Nguồn</th>
+        <th>Trạng thái</th>
+        <th class="money">Số dư ví</th>
+        <th class="center">Thao tác</th>
       </tr>
     </thead>
-    <tbody class="divide-y divide-slate-50">
-      <tr 
-        v-for="user in users" 
+    <tbody>
+      <tr
+        v-for="user in users"
         :key="user.id"
-        class="hover:bg-slate-50/50 transition-colors duration-150"
+        :class="{ selected: selectedUserId === user.id }"
+        @click="$emit('select', user)"
       >
-        <!-- ID -->
-        <td class="px-3 py-4">
-          <span class="text-body-sm font-bold text-slate-400">#{{ user.id }}</span>
-        </td>
-
-        <!-- Avatar + Name -->
-        <td class="px-3 py-4">
-          <div class="flex items-center gap-2">
-            <img 
-              :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=f1f5f9&color=64748b&bold=true`" 
-              alt="Avatar" 
-              class="w-8 h-8 rounded-full shadow-sm"
+        <td><strong class="user-id">#{{ user.id }}</strong></td>
+        <td>
+          <div class="customer-cell">
+            <img
+              :src="user.avatarUrl || createAvatarFallback(user.fullName, '#64748b')"
+              :alt="`Ảnh đại diện ${user.fullName}`"
+              referrerpolicy="no-referrer"
+              @error="handleAvatarError($event, user.fullName, '#64748b')"
             />
-            <span class="text-body-md font-black text-slate-800">{{ user.fullName }}</span>
+            <strong :title="user.fullName">{{ user.fullName }}</strong>
           </div>
         </td>
-
-        <!-- Contact (Phone & Email) -->
-        <td class="px-3 py-4">
-          <div class="flex flex-col gap-1">
-            <div class="text-body-md font-bold text-slate-600 flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[16px] text-slate-400 shrink-0">call</span>
-              <span v-if="user.phone?.startsWith('GG_')" class="italic text-orange-500 font-mono text-xs">{{ user.phone }}</span>
-              <span v-else>{{ user.phone }}</span>
-            </div>
-            <div class="text-[12px] font-medium text-slate-500 flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[14px] text-slate-400 shrink-0">mail</span>
-              <span v-if="user.email" class="whitespace-nowrap">{{ user.email }}</span>
-              <span v-else class="italic text-slate-400 font-normal">Chưa có Email</span>
-            </div>
+        <td>
+          <div class="contact-cell">
+            <span><i class="material-symbols-outlined">call</i><b :class="{ 'google-identifier': isGoogleIdentifier(user.phone) }">{{ displayPhone(user.phone) }}</b></span>
+            <span><i class="material-symbols-outlined">mail</i><b :title="user.email">{{ user.email || 'Chưa có email' }}</b></span>
           </div>
         </td>
-        <!-- Tickets -->
-        <td class="px-3 py-4">
-          <span class="text-body-md font-bold text-slate-900 whitespace-nowrap">{{ user.ticketCount || 0 }} vé</span>
-        </td>
-
-        <!-- Role Badge -->
-        <td class="px-3 py-4">
-          <span 
-            :class="[
-              'px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-block border shadow-sm',
-              user.role === 'ADMIN' 
-                ? 'bg-red-50 text-red-700 border-red-100' 
-                : 'bg-blue-50 text-blue-700 border-blue-100'
-            ]"
-          >
-            {{ user.role }}
-          </span>
-        </td>
-
-        <!-- Auth Provider Badge -->
-        <td class="px-3 py-4">
-          <div class="flex justify-center">
-            <span v-if="user.authProvider === 'GOOGLE'" class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-red-50 text-red-600 border-red-100">
-              <svg class="w-3 h-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        <td class="center"><strong class="ticket-count">{{ user.ticketCount || 0 }}</strong></td>
+        <td><span class="role-badge">{{ roleLabel(user.role) }}</span></td>
+        <td>
+          <span class="source-badge" :class="user.authProvider === 'GOOGLE' ? 'google' : 'local'">
+              <svg v-if="user.authProvider === 'GOOGLE'" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.57c2.08-1.92 3.27-4.74 3.27-8.09Z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.29-2.66l-3.57-2.76c-.99.66-2.24 1.05-3.72 1.05-2.86 0-5.29-1.93-6.16-4.52H2.18v2.84A11 11 0 0 0 12 23Z"/>
+                <path fill="#FBBC05" d="M5.84 14.11A6.6 6.6 0 0 1 5.49 12c0-.73.13-1.45.35-2.11V7.05H2.18A11 11 0 0 0 1 12c0 1.78.43 3.45 1.18 4.95l3.66-2.84Z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.57 10.57 0 0 0 12 1 11 11 0 0 0 2.18 7.05l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z"/>
               </svg>
-              GG
-            </span>
-            <span v-else class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-slate-50 text-slate-600 border-slate-200">
-              <span class="material-symbols-outlined text-[12px]">password</span>
-              LOCAL
-            </span>
-          </div>
-        </td>
-
-        <!-- Status -->
-        <td class="px-3 py-4">
-          <div class="flex justify-center">
-            <span v-if="user.isLocked" class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-red-50 text-red-600 border-red-200">
-              <span class="material-symbols-outlined text-[12px]">lock</span>
-              KHÓA
-            </span>
-            <span v-else class="px-2 py-1 rounded-full text-[9px] font-black tracking-wider uppercase inline-flex items-center gap-1 border shadow-sm bg-emerald-50 text-emerald-600 border-emerald-200">
-              <span class="material-symbols-outlined text-[12px]">check_circle</span>
-              HĐ
-            </span>
-          </div>
-        </td>
-
-        <!-- Wallet -->
-        <td class="px-3 py-4 text-right">
-          <span class="text-body-md font-black text-emerald-600">
-            {{ user.walletBalance ? user.walletBalance.toLocaleString('vi-VN') : '0' }} đ
+              <i v-else class="material-symbols-outlined">password</i>
+              {{ user.authProvider === 'GOOGLE' ? 'Google' : 'Nội bộ' }}
           </span>
         </td>
-
-        <!-- Action Controls -->
-        <td class="px-3 py-4">
-          <div class="flex items-center justify-center gap-1">
-            <button 
-              @click="$emit('history', user)"
-              class="p-2 bg-indigo-50 hover:bg-indigo-500 hover:text-white text-indigo-600 rounded-xl transition-all active:scale-90 shadow-sm"
-              title="Xem lịch sử đặt vé"
-            >
-              <span class="material-symbols-outlined text-sm">receipt_long</span>
-            </button>
-            <button 
-              @click="$emit('edit', user)"
-              class="p-2 bg-slate-100 hover:bg-primary hover:text-white text-slate-600 rounded-xl transition-all active:scale-90 shadow-sm"
-              title="Sửa thông tin & Nạp tiền"
-            >
-              <span class="material-symbols-outlined text-sm">edit</span>
-            </button>
-            <button 
-              v-if="user.role !== 'ADMIN'"
-              @click="$emit('toggle-lock', user)"
-              :class="['p-2 rounded-xl transition-all active:scale-90 shadow-sm', user.isLocked ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-600']"
-              :title="user.isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'"
-            >
-              <span class="material-symbols-outlined text-sm">{{ user.isLocked ? 'lock' : 'lock_open' }}</span>
-            </button>
-            <button 
-              v-if="user.role !== 'ADMIN' && (!user.ticketCount || user.ticketCount === 0)"
-              @click="$emit('delete', user.id)"
-              class="p-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 rounded-xl transition-all active:scale-90 shadow-sm"
-              title="Xoá người dùng"
-            >
-              <span class="material-symbols-outlined text-sm">delete</span>
-            </button>
-            <button 
-              v-else
-              disabled
-              class="p-2 bg-slate-50 text-slate-300 rounded-xl cursor-not-allowed shadow-sm"
-              title="Không thể xoá tài khoản Admin hoặc khách đã mua vé"
-            >
-              <span class="material-symbols-outlined text-sm">delete</span>
-            </button>
+        <td>
+          <div class="status-cell">
+            <span class="status-badge" :class="user.isLocked ? 'locked' : 'active'"><i></i>{{ user.isLocked ? 'Đã khóa' : 'Hoạt động' }}</span>
+          </div>
+        </td>
+        <td class="money wallet">{{ formatMoney(user.walletBalance) }}</td>
+        <td class="center">
+          <div class="actions" @click.stop>
+            <button type="button" title="Xem lịch sử đặt vé" @click="$emit('history', user)"><span class="material-symbols-outlined">visibility</span></button>
+            <button type="button" title="Chỉnh sửa thông tin" @click="$emit('edit', user)"><span class="material-symbols-outlined">edit</span></button>
+            <details v-if="user.role !== 'ADMIN'" class="action-menu">
+              <summary title="Thao tác khác"><span class="material-symbols-outlined">more_vert</span></summary>
+              <div class="action-popover">
+                <button type="button" @click="$emit('toggle-lock', user)"><span class="material-symbols-outlined">{{ user.isLocked ? 'lock_open' : 'lock' }}</span>{{ user.isLocked ? 'Mở khóa' : 'Khóa tài khoản' }}</button>
+                <button v-if="!user.ticketCount" type="button" class="danger" @click="$emit('delete', user.id)"><span class="material-symbols-outlined">delete</span>Xóa tài khoản</button>
+              </div>
+            </details>
+            <span v-else class="action-placeholder" aria-hidden="true"></span>
           </div>
         </td>
       </tr>
@@ -159,12 +83,23 @@
 </template>
 
 <script setup>
-defineProps({
-  users: {
-    type: Array,
-    required: true
-  }
-});
+import { createAvatarFallback, handleAvatarError } from '@/utils/avatar'
 
-defineEmits(['history', 'edit', 'toggle-lock', 'delete']);
+defineProps({ users: { type: Array, required: true }, selectedUserId: { type: Number, default: null } })
+defineEmits(['select', 'history', 'edit', 'toggle-lock', 'delete'])
+
+const formatMoney = value => `${Number(value || 0).toLocaleString('vi-VN')}đ`
+const displayPhone = phone => phone || 'Chưa cập nhật'
+const isGoogleIdentifier = phone => phone?.startsWith('GG_')
+const roleLabel = role => ({ USER: 'USER', ADMIN: 'ADMIN', DRIVER: 'TÀI XẾ', INSPECTOR: 'LƠ XE' }[role] || role)
 </script>
+
+<style scoped>
+.customer-table{width:100%;table-layout:fixed;border-collapse:collapse;color:#24353f;text-align:left}.id-width{width:5%}.name-width{width:15%}.contact-width{width:20%}.ticket-width{width:7%}.role-width{width:10%}.source-width{width:10%}.status-width{width:11%}.wallet-width{width:11%}.action-width{width:11%}
+.customer-table th{height:3.15rem;padding:0 .5rem;border-bottom:1px solid #dfe7e9;color:#6f8089;background:#f7f9fa;font-size:.56rem;font-weight:900;letter-spacing:.045em;text-transform:uppercase;white-space:nowrap}.customer-table td{height:4.35rem;padding:.5rem;border-bottom:1px solid #e9eff0;font-size:.62rem;vertical-align:middle}.customer-table tbody tr{cursor:pointer;transition:background-color .18s ease,box-shadow .18s ease}.customer-table tbody tr:hover{background:#f8fbfa}.customer-table tbody tr.selected{background:#edf8f5;box-shadow:inset 3px 0 #087b6c}.center{text-align:center}.money{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.user-id{color:#51656e;font-size:.62rem;font-weight:900}
+.customer-cell{display:flex;min-width:0;align-items:center;gap:.45rem}.customer-cell img{width:2.1rem;height:2.1rem;flex:none;border:1px solid #dce6e7;border-radius:.68rem;object-fit:cover;background:#edf3f2}.customer-cell strong{overflow:hidden;color:#1f3039;font-size:.64rem;font-weight:900;text-overflow:ellipsis;white-space:nowrap}.contact-cell{display:grid;min-width:0;gap:.26rem;color:#687a84}.contact-cell span{display:flex;min-width:0;align-items:center;gap:.28rem}.contact-cell i{flex:none;color:#91a1a8;font-size:.72rem}.contact-cell b{overflow:hidden;font-weight:650;text-overflow:ellipsis;white-space:nowrap}.contact-cell .google-identifier{border:1px solid #c9dcf8;border-radius:.32rem;padding:.13rem .3rem;color:#2d63a9;background:#eef5ff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.52rem;font-weight:850;letter-spacing:.015em}.ticket-count{font-size:.68rem;font-weight:900}
+.role-badge,.source-badge,.status-badge{display:inline-flex;align-items:center;gap:.22rem;border:1px solid #dce5e7;border-radius:.38rem;padding:.2rem .34rem;font-size:.48rem;font-weight:850;white-space:nowrap}.role-badge{color:#3463b2;background:#eef4ff}.source-badge svg{width:.67rem;height:.67rem}.source-badge>i{font-size:.65rem}.source-badge.google{color:#42556a;background:#fff}.source-badge.local{color:#5c6b73;background:#f3f5f6}.status-cell{display:flex;align-items:center}.status-badge>i{width:.32rem;height:.32rem;border-radius:50%}.status-badge.active{border-color:#c8e9dc;color:#087b5e;background:#ebf8f3}.status-badge.active>i{background:#10a77d}.status-badge.locked{border-color:#efc8cf;color:#bc4053;background:#fff1f3}.status-badge.locked>i{background:#d84b61}.wallet{color:#108165;font-size:.65rem;font-weight:900}
+.actions{position:relative;display:flex;align-items:center;justify-content:center;gap:.28rem}.actions>button,.action-menu>summary,.action-placeholder{display:grid;width:1.7rem;height:1.7rem;flex:0 0 1.7rem;place-items:center;border:1px solid #dfe7e9;border-radius:.45rem;color:#657780;background:#fff;transition:.18s}.actions>button:hover,.action-menu>summary:hover{border-color:#9fc9c1;color:#075955;background:#f1f9f7;transform:translateY(-1px)}.actions span{font-size:.82rem}.action-menu{position:relative;flex:0 0 1.7rem}.action-menu>summary{cursor:pointer;list-style:none}.action-menu>summary::-webkit-details-marker{display:none}.action-menu[open]>summary{border-color:#9fc9c1;color:#075955;background:#f1f9f7}.action-popover{position:absolute;z-index:5;top:calc(100% + .3rem);right:0;display:grid;width:8.4rem;overflow:hidden;border:1px solid #dce6e7;border-radius:.55rem;background:#fff;box-shadow:0 .65rem 1.5rem rgb(19 66 61/.14)}.action-popover button{display:flex;align-items:center;gap:.4rem;padding:.55rem .65rem;color:#4b6068;background:#fff;font-size:.55rem;font-weight:800;text-align:left}.action-popover button:hover{color:#075955;background:#f2f8f6}.action-popover button.danger{color:#bf4054}.action-popover button.danger:hover{background:#fff2f4}.action-placeholder{visibility:hidden}
+.customer-table tbody tr:last-child .action-popover{top:auto;bottom:calc(100% + .3rem)}
+@media(max-width:1100px){.customer-table th,.customer-table td{padding-left:.35rem;padding-right:.35rem}.customer-cell img{width:1.85rem;height:1.85rem}.role-badge,.source-badge,.status-badge{padding-left:.25rem;padding-right:.25rem}}
+</style>

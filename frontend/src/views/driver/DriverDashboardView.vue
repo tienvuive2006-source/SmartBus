@@ -26,6 +26,34 @@
       </div>
     </div>
 
+    <!-- Phân nhóm lịch trình -->
+    <nav class="grid grid-cols-2 gap-3 rounded-2xl bg-slate-200/70 p-1.5" aria-label="Nhóm chuyến xe">
+      <button
+        type="button"
+        class="flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-all active:scale-[0.99]"
+        :class="activeTripTab === 'upcoming' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:bg-white/50'"
+        @click="activeTripTab = 'upcoming'"
+      >
+        <span class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">departure_board</span>
+          <span><strong class="block text-sm">Sắp chạy</strong><small class="text-[10px] font-semibold opacity-70">Gồm chuyến đang chạy</small></span>
+        </span>
+        <b class="flex h-7 min-w-7 items-center justify-center rounded-lg px-2 text-xs" :class="activeTripTab === 'upcoming' ? 'bg-amber-100' : 'bg-slate-100'">{{ upcomingTrips.length }}</b>
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-all active:scale-[0.99]"
+        :class="activeTripTab === 'completed' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:bg-white/50'"
+        @click="activeTripTab = 'completed'"
+      >
+        <span class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">task_alt</span>
+          <span><strong class="block text-sm">Đã hoàn thành</strong><small class="text-[10px] font-semibold opacity-70">Lịch sử chuyến xe</small></span>
+        </span>
+        <b class="flex h-7 min-w-7 items-center justify-center rounded-lg px-2 text-xs" :class="activeTripTab === 'completed' ? 'bg-emerald-100' : 'bg-slate-100'">{{ completedTrips.length }}</b>
+      </button>
+    </nav>
+
     <!-- Loading State -->
     <div v-if="loading" class="flex flex-col items-center justify-center py-12 text-slate-400 space-y-3">
       <span class="material-symbols-outlined text-4xl animate-spin">sync</span>
@@ -51,8 +79,8 @@
       <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
         <span class="material-symbols-outlined text-4xl text-slate-300">event_available</span>
       </div>
-      <h3 class="text-title-md font-bold text-slate-700">Chưa có lịch trình</h3>
-      <p class="text-body-sm text-slate-500 mt-2">Không có chuyến xe nào được phân công trong ngày này.</p>
+      <h3 class="text-title-md font-bold text-slate-700">{{ activeTripTab === 'upcoming' ? 'Không có chuyến sắp chạy' : 'Chưa có chuyến hoàn thành' }}</h3>
+      <p class="text-body-sm text-slate-500 mt-2">{{ activeTripTab === 'upcoming' ? 'Không có chuyến đang chờ hoặc đang chạy trong ngày này.' : 'Không có chuyến đã hoàn thành trong ngày này.' }}</p>
       <button v-if="filterDate" @click="filterDate = ''" class="mt-4 text-sm font-bold text-amber-600 bg-amber-50 px-4 py-2 rounded-xl active:scale-95 transition-transform">
         Xem tất cả ngày
       </button>
@@ -73,6 +101,8 @@
         <div class="p-5 pl-6">
           <div class="flex justify-between items-start mb-3">
             <div class="flex flex-col">
+              <span v-if="isSecondaryDriver(trip)" class="mb-2 w-fit rounded-lg bg-sky-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-sky-700">Tài xế phụ</span>
+              <span v-else-if="trip.assignedDriverUsername === authStore.currentUser?.phone" class="mb-2 w-fit rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700">Tài xế chính</span>
               <span class="text-label-sm font-bold tracking-wider uppercase mb-1" :class="getStatusTextColor(trip.status)">
                 {{ getStatusText(trip.status) }}
               </span>
@@ -130,7 +160,7 @@
           </div>
           
           <!-- Nút Xác Nhận / Từ Chối -->
-          <div v-if="!trip.driverAccepted && trip.status === 'SCHEDULED'" class="mt-4 pt-4 border-t border-slate-100 flex gap-3">
+          <div v-if="!isSecondaryDriver(trip) && !trip.driverAccepted && (trip.status === 'SCHEDULED' || trip.status === 'PENDING')" class="mt-4 pt-4 border-t border-slate-100 flex gap-3">
              <button @click.stop="acceptTrip(trip.id)" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest shadow-sm active:scale-95 transition-all">
                 Nhận chuyến
              </button>
@@ -140,14 +170,14 @@
           </div>
           
           <!-- Nút Bắt Đầu / Hoàn Thành -->
-          <div v-else-if="trip.driverAccepted && trip.status === 'SCHEDULED'" class="mt-4 pt-4 border-t border-slate-100">
+          <div v-else-if="!isSecondaryDriver(trip) && trip.driverAccepted && (trip.status === 'SCHEDULED' || trip.status === 'PENDING')" class="mt-4 pt-4 border-t border-slate-100">
              <button @click.stop="updateTripStatus(trip.id, 'IN_PROGRESS')" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined">play_circle</span>
                 Bắt Đầu Hành Trình
              </button>
           </div>
           
-          <div v-else-if="trip.status === 'IN_PROGRESS'" class="mt-4 pt-4 border-t border-slate-100">
+          <div v-else-if="!isSecondaryDriver(trip) && trip.status === 'IN_PROGRESS'" class="mt-4 pt-4 border-t border-slate-100">
              <button @click.stop="updateTripStatus(trip.id, 'COMPLETED')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined">task_alt</span>
                 Hoàn Thành Chuyến
@@ -245,15 +275,21 @@ const getTodayStr = () => {
 };
 
 const filterDate = ref(getTodayStr());
+const activeTripTab = ref('upcoming');
 
 const showLeaveModal = ref(false);
 const leaveForm = ref({ startDate: '', endDate: '', reason: '' });
 const myLeaveRequests = ref([]);
 
-const filteredTrips = computed(() => {
+const dateFilteredTrips = computed(() => {
   if (!filterDate.value) return trips.value;
   return trips.value.filter(t => t.departureDate === filterDate.value);
 });
+
+const upcomingTrips = computed(() => dateFilteredTrips.value.filter(trip => !['COMPLETED', 'CANCELLED'].includes(trip.status)));
+const completedTrips = computed(() => dateFilteredTrips.value.filter(trip => ['COMPLETED', 'CANCELLED'].includes(trip.status)));
+const filteredTrips = computed(() => activeTripTab.value === 'upcoming' ? upcomingTrips.value : completedTrips.value);
+const isSecondaryDriver = (trip) => trip?.secondaryDriverUsername === authStore.currentUser?.phone;
 
 const getStatusColor = (status) => {
   switch(status) {
@@ -337,7 +373,7 @@ const fetchTripsAndBuses = async () => {
 
     // Lọc các chuyến xe được gán thẳng cho Username của tài xế HOẶC SĐT của Lơ xe
     const myTrips = tripRes.data
-      .filter(t => t.assignedDriverUsername === userPhone || (t.inspector && (t.inspector.phone === userPhone || t.inspector.employeeCode === userPhone)))
+      .filter(t => t.assignedDriverUsername === userPhone || t.secondaryDriverUsername === userPhone || (t.inspector && (t.inspector.phone === userPhone || t.inspector.employeeCode === userPhone)))
       .map(t => {
         const busInfo = buses.value.find(b => b.licensePlate === t.assignedLicensePlate);
         return { ...t, busInfo };

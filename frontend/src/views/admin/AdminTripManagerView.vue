@@ -83,7 +83,12 @@
 
     <!-- 2. Main List -->
     <TripTable 
-      :trips="filteredTrips"
+      :trips="paginatedTrips"
+      :total-count="filteredTrips.length"
+      :page="currentPage"
+      :total-pages="totalPages"
+      :page-size="pageSize"
+      @update:page="currentPage = $event"
       @edit="openEditModal"
       @report="openReportModal"
       @delete="deleteTrip"
@@ -110,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
 import TripStats from '@/components/admin/trip/TripStats.vue';
 import TripTable from '@/components/admin/trip/TripTable.vue';
@@ -132,6 +137,8 @@ const filterBusType = ref('');
 const filterDate = ref('');
 const filterSearch = ref('');
 const filterStatus = ref('');
+const currentPage = ref(0);
+const pageSize = 10;
 
 const isTripPassed = (trip) => {
   if (!trip || !trip.departureDate || !trip.departureTime) return false;
@@ -150,12 +157,24 @@ const isTripPassed = (trip) => {
   }
 };
 
+const simplifyRouteLocation = (location) => {
+  if (!location) return '';
+  const parts = location.split(',').map(part => part.trim()).filter(Boolean);
+  if (parts.length > 1) return parts[parts.length - 1].replace(/^(Thành phố|TP\.?|Tỉnh)\s+/i, '').trim();
+
+  return location
+    .replace(/^Bến xe\s+/i, '')
+    .replace(/^(Trung tâm|Liên tỉnh|Phía Nam)\s+/i, '')
+    .replace(/^(Thành phố|TP\.?|Tỉnh)\s+/i, '')
+    .trim();
+};
+
 const uniqueRoutesForFilter = computed(() => {
   const routes = new Set();
   trips.value.forEach(t => {
     if (!t.departurePoint || !t.arrivalPoint) return;
-    const from = t.departurePoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
-    const to = t.arrivalPoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+    const from = simplifyRouteLocation(t.departurePoint);
+    const to = simplifyRouteLocation(t.arrivalPoint);
     routes.add(`${from} ➔ ${to}`);
   });
   return Array.from(routes).sort();
@@ -175,8 +194,8 @@ const filteredTrips = computed(() => {
       pass = false;
     }
     if (filterRoute.value) {
-      const from = t.departurePoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
-      const to = t.arrivalPoint.split(',').pop().trim().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+      const from = simplifyRouteLocation(t.departurePoint);
+      const to = simplifyRouteLocation(t.arrivalPoint);
       if (`${from} ➔ ${to}` !== filterRoute.value) {
         pass = false;
       }
@@ -197,6 +216,21 @@ const filteredTrips = computed(() => {
     }
     return pass;
   });
+});
+
+const totalPages = computed(() => Math.ceil(filteredTrips.value.length / pageSize));
+const paginatedTrips = computed(() => {
+  const start = currentPage.value * pageSize;
+  return filteredTrips.value.slice(start, start + pageSize);
+});
+
+watch([filterRoute, filterBusType, filterDate, filterSearch, filterStatus], () => {
+  currentPage.value = 0;
+});
+
+watch(totalPages, (pages) => {
+  if (pages === 0) currentPage.value = 0;
+  else if (currentPage.value >= pages) currentPage.value = pages - 1;
 });
 
 // --- Stats Logic ---

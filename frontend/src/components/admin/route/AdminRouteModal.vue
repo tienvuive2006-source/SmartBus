@@ -36,7 +36,8 @@
               <div class="relative flex items-center">
                 <input 
                   v-model="form.departurePoint" 
-                  @focus="onFromFocus" 
+                  @focus="openLocationDropdown('departure')"
+                  @blur="closeLocationDropdown('departure')"
                   @keyup.enter="autoGeocode(form.departurePoint, 'departure')"
                   required placeholder="Ví dụ: Bến xe Đà Nẵng" 
                   class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-3.5 text-sm font-bold outline-none transition-all" 
@@ -50,11 +51,20 @@
                 <input :value="form.departureLat && form.departureLng ? `${form.departureLat}, ${form.departureLng}` : ''" @input="e => parseCoordinates(e.target.value, 'departure')" type="text" placeholder="Dán tọa độ (VD: 13.092, 109.293)" class="w-full bg-slate-50 hover:bg-white border border-slate-200 text-[11px] font-mono p-2 rounded-lg focus:border-[#075955] outline-none transition-colors shadow-sm" />
               </div>
 
-              <ul v-if="showFromDropdown && fromSuggestions.length" class="absolute left-0 right-0 top-[100%] mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl z-[1000] overflow-hidden max-h-48 overflow-y-auto">
-                <li v-for="loc in fromSuggestions" :key="loc" @click="selectFromLocation(loc)" class="px-5 py-3 hover:bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 border-b border-slate-50 last:border-0">
-                  {{ loc }}
-                </li>
-              </ul>
+              <div v-if="showFromDropdown" class="absolute left-0 right-0 top-[100%] mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl z-[1000] overflow-hidden">
+                <div v-if="savedLocationsLoading" class="px-5 py-4 text-xs font-bold text-slate-400 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-base animate-spin">progress_activity</span> Đang tải vị trí đã lưu
+                </div>
+                <div v-else-if="savedLocationsError" class="px-5 py-4 text-xs font-bold text-rose-500">{{ savedLocationsError }}</div>
+                <ul v-else-if="fromSuggestions.length" class="max-h-56 overflow-y-auto">
+                  <li v-for="loc in fromSuggestions" :key="loc.id" @mousedown.prevent="selectSavedLocation(loc, 'departure')" class="px-5 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 last:border-0">
+                    <strong class="block text-xs text-slate-700">{{ loc.name }}</strong>
+                  </li>
+                </ul>
+                <div v-else class="px-5 py-4 text-xs text-slate-400">
+                  Không tìm thấy vị trí phù hợp trong danh mục.
+                </div>
+              </div>
             </div>
 
             <div class="flex justify-center -my-2 relative z-10">
@@ -76,7 +86,8 @@
               <div class="relative flex items-center">
                 <input 
                   v-model="form.arrivalPoint" 
-                  @focus="onToFocus" 
+                  @focus="openLocationDropdown('arrival')"
+                  @blur="closeLocationDropdown('arrival')"
                   @keyup.enter="autoGeocode(form.arrivalPoint, 'arrival')"
                   required placeholder="Ví dụ: Bến xe Miền Tây" 
                   class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-3.5 text-sm font-bold outline-none transition-all" 
@@ -90,11 +101,20 @@
                 <input :value="form.arrivalLat && form.arrivalLng ? `${form.arrivalLat}, ${form.arrivalLng}` : ''" @input="e => parseCoordinates(e.target.value, 'arrival')" type="text" placeholder="Dán tọa độ (VD: 13.092, 109.293)" class="w-full bg-slate-50 hover:bg-white border border-slate-200 text-[11px] font-mono p-2 rounded-lg focus:border-[#075955] outline-none transition-colors shadow-sm" />
               </div>
 
-              <ul v-if="showToDropdown && toSuggestions.length" class="absolute left-0 right-0 top-[100%] mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl z-[1000] overflow-hidden max-h-48 overflow-y-auto">
-                <li v-for="loc in toSuggestions" :key="loc" @click="selectToLocation(loc)" class="px-5 py-3 hover:bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 border-b border-slate-50 last:border-0">
-                  {{ loc }}
-                </li>
-              </ul>
+              <div v-if="showToDropdown" class="absolute left-0 right-0 top-[100%] mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl z-[1000] overflow-hidden">
+                <div v-if="savedLocationsLoading" class="px-5 py-4 text-xs font-bold text-slate-400 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-base animate-spin">progress_activity</span> Đang tải vị trí đã lưu
+                </div>
+                <div v-else-if="savedLocationsError" class="px-5 py-4 text-xs font-bold text-rose-500">{{ savedLocationsError }}</div>
+                <ul v-else-if="toSuggestions.length" class="max-h-56 overflow-y-auto">
+                  <li v-for="loc in toSuggestions" :key="loc.id" @mousedown.prevent="selectSavedLocation(loc, 'arrival')" class="px-5 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 last:border-0">
+                    <strong class="block text-xs text-slate-700">{{ loc.name }}</strong>
+                  </li>
+                </ul>
+                <div v-else class="px-5 py-4 text-xs text-slate-400">
+                  Không tìm thấy vị trí phù hợp trong danh mục.
+                </div>
+              </div>
             </div>
 
             <div class="space-y-1.5 relative">
@@ -190,9 +210,9 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import axios from 'axios';
-import { useLocationSearch } from '@/composables/useLocationSearch';
+import { useApi } from '@/composables/useApi';
 import { decodePolyline, uploadPolylineToCloudinary, fetchPolylineFromCloudinary } from '@/utils/polyline';
 
 const emit = defineEmits(['save']);
@@ -207,9 +227,23 @@ const mapLoading = ref(false);
 const leafletMap = ref(null);
 const fileInput = ref(null);
 const uploading = ref(false);
+const api = useApi();
+const savedLocations = ref([]);
+const savedLocationsLoading = ref(false);
+const savedLocationsError = ref('');
+const showFromDropdown = ref(false);
+const showToDropdown = ref(false);
 
-const { suggestions: fromSuggestions, showDropdown: showFromDropdown, handleFocus: onFromFocus, handleSelect: fromSelect, performSearch: searchFrom } = useLocationSearch();
-const { suggestions: toSuggestions, showDropdown: showToDropdown, handleFocus: onToFocus, handleSelect: toSelect, performSearch: searchTo } = useLocationSearch();
+const filterSavedLocations = query => {
+  const normalizedQuery = String(query || '').trim().toLocaleLowerCase('vi-VN');
+  if (!normalizedQuery) return savedLocations.value;
+  return savedLocations.value.filter(location => [location.name, location.address]
+    .filter(Boolean)
+    .some(value => String(value).toLocaleLowerCase('vi-VN').includes(normalizedQuery)));
+};
+
+const fromSuggestions = computed(() => filterSavedLocations(form.value.departurePoint));
+const toSuggestions = computed(() => filterSavedLocations(form.value.arrivalPoint));
 
 watch(() => form.value.imageUrl, async (newVal) => {
   if (newVal && newVal.startsWith('data:image')) {
@@ -230,17 +264,51 @@ watch(() => form.value.imageUrl, async (newVal) => {
   }
 });
 
-watch(() => form.value.departurePoint, (v) => { searchFrom(v); });
-watch(() => form.value.arrivalPoint, (v) => { searchTo(v); });
+const loadSavedLocations = async () => {
+  savedLocationsLoading.value = true;
+  savedLocationsError.value = '';
+  try {
+    const response = await api.get('/saved-locations');
+    savedLocations.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    savedLocationsError.value = error.response?.data?.message || 'Không tải được danh mục vị trí.';
+  } finally {
+    savedLocationsLoading.value = false;
+  }
+};
 
-const selectFromLocation = (loc) => fromSelect(loc, (val) => { 
-  form.value.departurePoint = val; 
-  autoGeocode(val, 'departure'); 
-});
-const selectToLocation = (loc) => toSelect(loc, (val) => { 
-  form.value.arrivalPoint = val; 
-  autoGeocode(val, 'arrival'); 
-});
+const openLocationDropdown = target => {
+  lastGeocodeTarget.value = target;
+  showFromDropdown.value = target === 'departure';
+  showToDropdown.value = target === 'arrival';
+  if (!savedLocations.value.length && !savedLocationsLoading.value) loadSavedLocations();
+};
+
+const closeLocationDropdown = target => {
+  window.setTimeout(() => {
+    if (target === 'departure') showFromDropdown.value = false;
+    else showToDropdown.value = false;
+  }, 120);
+};
+
+const selectSavedLocation = (location, target) => {
+  const latitude = Number(location.latitude);
+  const longitude = Number(location.longitude);
+  if (target === 'departure') {
+    form.value.departurePoint = location.name;
+    form.value.departureLat = latitude;
+    form.value.departureLng = longitude;
+    showFromDropdown.value = false;
+  } else {
+    form.value.arrivalPoint = location.name;
+    form.value.arrivalLat = latitude;
+    form.value.arrivalLng = longitude;
+    showToDropdown.value = false;
+  }
+  lastGeocodeTarget.value = target;
+  form.value.routeData = '';
+  updateMap();
+};
 
 const openModal = (route, idx = -1) => {
   editingIndex.value = idx;
@@ -251,6 +319,7 @@ const openModal = (route, idx = -1) => {
     form.value = { name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', basePrice: null, imageUrl: '', routeData: '', isVisible: true };
   }
   isOpen.value = true;
+  loadSavedLocations();
   initMap();
 };
 
@@ -338,32 +407,10 @@ const handleImageUpload = async (e) => {
   }
 };
 
-const stationCoordinates = {
-  "Bến xe Miền Đông, Hồ Chí Minh": [10.8164, 106.7118],
-  "Bến xe Miền Tây, Hồ Chí Minh": [10.7516, 106.6174],
-  "Bến xe An Sương, Hồ Chí Minh": [10.8492, 106.6231],
-  "Bến xe Trung tâm Đà Nẵng": [16.0678, 108.1884],
-  "Bến xe Phía Nam Nha Trang": [12.2472, 109.1678],
-  "Bến xe Quy Nhơn, Bình Định": [13.7592, 109.2131],
-  "Bến xe Vinh": [18.6667, 105.6667],
-  "Bến xe Mỹ Đình, Hà Nội": [21.0286, 105.7797],
-  "Bến xe Giáp Bát, Hà Nội": [20.9858, 105.8431],
-};
-
 const autoGeocode = async (address, target) => {
   if (!address || address.length < 3) return;
   geocoding.value[target] = true;
   lastGeocodeTarget.value = target;
-  
-  const normalizedAddress = address.trim();
-  if (stationCoordinates[normalizedAddress]) {
-    const [lat, lng] = stationCoordinates[normalizedAddress];
-    if (target === 'departure') { form.value.departureLat = lat; form.value.departureLng = lng; } 
-    else { form.value.arrivalLat = lat; form.value.arrivalLng = lng; }
-    geocoding.value[target] = false;
-    updateMap();
-    return;
-  }
   
   try {
     const viewbox = "102.1,8.5,109.5,23.4"; 

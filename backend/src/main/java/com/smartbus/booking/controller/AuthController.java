@@ -3,6 +3,9 @@ package com.smartbus.booking.controller;
 import com.smartbus.booking.config.JwtService;
 import com.smartbus.booking.entity.User;
 import com.smartbus.booking.repository.UserRepository;
+import com.smartbus.booking.service.LoyaltyPointPolicy;
+import com.smartbus.booking.dto.BookingCancellationRequest;
+import com.smartbus.booking.service.RefundRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,11 +17,14 @@ import java.util.Optional;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 @RestController
 @RequestMapping("/auth")
@@ -63,6 +69,7 @@ public class AuthController {
                 .fullName(userRequest.getFullName())
                 .email(userRequest.getEmail())
                 .role("USER")
+                .lastLoginAt(LocalDateTime.now())
                 .walletBalance(0.0) // Số dư mặc định
                 .build();
 
@@ -102,6 +109,9 @@ public class AuthController {
         }
 
         // Tạo JWT token
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
         String token = jwtService.generateToken(
                 user.getId(),
                 user.getPhone(),
@@ -132,6 +142,7 @@ public class AuthController {
                 GoogleIdToken.Payload googlePayload = idToken.getPayload();
                 String email = googlePayload.getEmail();
                 String name = (String) googlePayload.get("name");
+                String picture = (String) googlePayload.get("picture");
 
                 // Tìm user theo email
                 Optional<User> userOpt = userRepository.findByEmail(email);
@@ -143,11 +154,15 @@ public class AuthController {
                         return ResponseEntity.status(403).body("Tài khoản của bạn đã bị khóa! Vui lòng liên hệ tổng đài.");
                     }
                     
-                    // Nâng cấp: Tự động cập nhật Nguồn thành GOOGLE nếu người dùng đăng nhập bằng Google
+                    // Đồng bộ nguồn đăng nhập và ảnh đại diện mới nhất từ Google.
                     if (!"GOOGLE".equals(user.getAuthProvider())) {
                         user.setAuthProvider("GOOGLE");
-                        userRepository.save(user);
                     }
+                    if (picture != null && !picture.isBlank()) {
+                        user.setAvatarUrl(picture.trim());
+                    }
+                    user.setLastLoginAt(LocalDateTime.now());
+                    userRepository.save(user);
                 } else {
                     // Chưa có thì tạo mới, sinh sđt ngẫu nhiên (hoặc đánh dấu là GG)
                     user = User.builder()
@@ -157,6 +172,8 @@ public class AuthController {
                             .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                             .role("USER")
                             .authProvider("GOOGLE")
+                            .lastLoginAt(LocalDateTime.now())
+                            .avatarUrl(picture != null && !picture.isBlank() ? picture.trim() : null)
                             .walletBalance(0.0) // Số dư mặc định
                             .build();
                     user = userRepository.save(user);
@@ -175,6 +192,54 @@ public class AuthController {
             }
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Lỗi xác thực Google: " + e.getMessage());
+        }
+    }
+
+    // ============================================================
+    // API BỔ SUNG SỐ ĐIỆN THOẠI CHO TÀI KHOẢN GOOGLE
+    // ============================================================
+    @PutMapping("/me/phone")
+    @Transactional
+    public ResponseEntity<?> completeGooglePhone(
+            @RequestBody Map<String, String> payload,
+            @RequestHeader("Authorization") String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("message", "Phiên đăng nhập không hợp lệ."));
+        }
+
+        try {
+            String phone = Optional.ofNullable(payload.get("phone")).orElse("").trim();
+            if (!phone.matches("^0[35789][0-9]{8}$")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Số điện thoại phải gồm 10 chữ số và đúng định dạng số di động Việt Nam."));
+            }
+
+            Long userId = jwtService.extractUserId(authHeader.substring(7));
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản."));
+
+            if (!"GOOGLE".equalsIgnoreCase(user.getAuthProvider())) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Chức năng này chỉ dành cho tài khoản đăng nhập bằng Google."));
+            }
+            if (user.getPhone() != null && !user.getPhone().startsWith("GG_")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Tài khoản đã có số điện thoại hợp lệ."));
+            }
+            if (userRepository.findByPhone(phone).filter(found -> !found.getId().equals(userId)).isPresent()) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "message", "Số điện thoại này đã được sử dụng bởi tài khoản khác."));
+            }
+
+            user.setPhone(phone);
+            User savedUser = userRepository.save(user);
+            String refreshedToken = jwtService.generateToken(
+                    savedUser.getId(), savedUser.getPhone(), savedUser.getRole(), savedUser.getFullName());
+            return ResponseEntity.ok(buildAuthResponse(savedUser, refreshedToken));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("message", "Phiên đăng nhập đã hết hạn hoặc không hợp lệ."));
         }
     }
 
@@ -288,14 +353,21 @@ public class AuthController {
     @Autowired
     private com.smartbus.booking.repository.UserVoucherRepository userVoucherRepository;
 
+    @Autowired
+    private RefundRequestService refundRequestService;
+
     @com.smartbus.booking.annotation.AuditAction(action = "CANCEL_BOOKING", entityName = "Booking")
     @PostMapping("/me/bookings/{id}/cancel")
-    public ResponseEntity<?> cancelMyBooking(@PathVariable("id") String idStr, @RequestBody Map<String, String> payload, @RequestHeader("Authorization") String authHeader) {
+    @Transactional
+    public ResponseEntity<?> cancelMyBooking(@PathVariable("id") String idStr, @RequestBody BookingCancellationRequest payload, @RequestHeader("Authorization") String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(401).body("Token không hợp lệ!");
         }
 
         try {
+            if (payload == null || payload.getReason() == null || payload.getReason().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Vui lòng nhập lý do hủy vé.");
+            }
             String token = authHeader.substring(7);
             Long userId = jwtService.extractUserId(token);
             Optional<User> userOpt = userRepository.findById(userId);
@@ -322,21 +394,19 @@ public class AuthController {
                 return ResponseEntity.status(404).body("Không tìm thấy vé!");
             }
             
-            double totalRefundAmount = 0.0;
-
+            Map<Long, Double> refundByBooking = new java.util.HashMap<>();
             for (com.smartbus.booking.entity.Booking booking : bookingsToCancel) {
-                // Check ownership
                 if (booking.getUser() == null || !booking.getUser().getId().equals(user.getId())) {
                     return ResponseEntity.status(403).body("Bạn không có quyền hủy vé này!");
                 }
-
-                // Check status
                 if (!"PAID".equals(booking.getStatus()) && !"PENDING".equals(booking.getStatus())) {
                     return ResponseEntity.status(400).body("Vé " + booking.getId() + " không ở trạng thái cho phép hủy!");
                 }
+                if (refundRequestService.existsForBooking(booking.getId())) {
+                    return ResponseEntity.status(400).body("Vé " + booking.getId() + " đã có yêu cầu hoàn tiền!");
+                }
 
-                // Calculate hours to departure
-                long hoursToDeparture = 24; // Default safe value
+                long hoursToDeparture = 24;
                 try {
                     if (booking.getTrip().getDepartureDate() != null && booking.getTrip().getDepartureTime() != null) {
                         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -352,20 +422,22 @@ public class AuthController {
                     return ResponseEntity.status(400).body("Không thể hủy vé vì chuyến đi sắp khởi hành (dưới 12 tiếng)!");
                 }
 
-                // Calculate refund if paid and not cash
                 double refundAmount = 0.0;
                 if ("PAID".equals(booking.getStatus()) && !"CASH".equals(booking.getPaymentMethod())) {
-                    if (hoursToDeparture < 24) {
-                        refundAmount = booking.getTotalPrice() * 0.7; // 30% fee
-                    } else {
-                        refundAmount = booking.getTotalPrice() * 0.9; // 90% refund
-                    }
-                    totalRefundAmount += refundAmount;
+                    refundAmount = booking.getTotalPrice() * (hoursToDeparture < 24 ? 0.7 : 0.95);
                 }
+                refundByBooking.put(booking.getId(), refundAmount);
+            }
 
-                // Deduct loyalty points if previously paid
-                if ("PAID".equals(booking.getStatus()) || "CHECKED_IN".equals(booking.getStatus())) {
-                    int earnedPoints = (int) (booking.getTotalPrice() / 1000);
+            boolean hasRefund = refundByBooking.values().stream().anyMatch(amount -> amount > 0);
+            String refundMethod = refundRequestService.validateMethod(payload, hasRefund);
+            double totalRefundAmount = refundByBooking.values().stream().mapToDouble(Double::doubleValue).sum();
+
+            for (com.smartbus.booking.entity.Booking booking : bookingsToCancel) {
+                double refundAmount = refundByBooking.getOrDefault(booking.getId(), 0.0);
+
+                if ("PAID".equals(booking.getStatus())) {
+                    int earnedPoints = LoyaltyPointPolicy.pointsFor(booking.getTotalPrice());
                     user.setLoyaltyPoints(Math.max(0, (user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) - earnedPoints));
                 }
 
@@ -383,19 +455,17 @@ public class AuthController {
                 // Update booking status
                 booking.setStatus("CANCELLED");
                 booking.setRefundAmount(refundAmount);
-                booking.setCancellationReason(payload.get("reason"));
+                booking.setCancellationReason(payload.getReason());
                 bookingRepository.save(booking);
 
-                // Ghi nhận chi hoàn tiền (nếu có refundAmount > 0)
                 if (refundAmount > 0) {
-                    fundService.recordTransaction(
-                        booking.getPaymentMethod(), 
-                        "EXPENSE", 
-                        refundAmount, 
-                        "Hoàn tiền hủy vé #" + booking.getId(), 
-                        String.valueOf(booking.getId()), 
-                        user.getFullName()
-                    );
+                    refundRequestService.create(booking, user, refundAmount, refundMethod, payload);
+                    if ("WALLET".equals(refundMethod)) {
+                        fundService.recordTransaction(
+                                booking.getPaymentMethod(), "EXPENSE", refundAmount,
+                                "Hoàn tiền hủy vé #" + booking.getId() + " vào ví",
+                                "REFUND-BOOKING-" + booking.getId(), "SYSTEM");
+                    }
                 }
 
                 // Xóa đánh giá (nếu có) do chuyến đi bị hủy
@@ -404,18 +474,26 @@ public class AuthController {
                 });
             }
 
-            // Update user wallet once
-            if (totalRefundAmount > 0) {
-                user.setWalletBalance(user.getWalletBalance() + totalRefundAmount);
-                userRepository.save(user);
+            if (totalRefundAmount > 0 && "WALLET".equals(refundMethod)) {
+                double currentBalance = user.getWalletBalance() == null ? 0.0 : user.getWalletBalance();
+                user.setWalletBalance(currentBalance + totalRefundAmount);
             }
+            userRepository.save(user);
 
             return ResponseEntity.ok(Map.of(
-                    "message", "Hủy vé thành công!",
+                    "message", "BANK_TRANSFER".equals(refundMethod)
+                            ? "Đã hủy vé và gửi yêu cầu hoàn tiền qua ngân hàng."
+                            : "Hủy vé thành công!",
                     "refundAmount", totalRefundAmount,
-                    "walletBalance", user.getWalletBalance()
+                    "refundMethod", refundMethod,
+                    "refundStatus", "BANK_TRANSFER".equals(refundMethod) ? "PENDING" : "COMPLETED",
+                    "walletBalance", user.getWalletBalance() == null ? 0.0 : user.getWalletBalance()
             ));
+        } catch (IllegalArgumentException e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             return ResponseEntity.status(500).body("Lỗi hệ thống: " + e.getMessage());
         }
     }

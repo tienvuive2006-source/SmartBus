@@ -151,10 +151,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useApi } from '@/composables/useApi';
+import { useHomeSummary } from '@/composables/useHomeSummary';
 import { removeAccents } from '@/composables/useLocationSearch';
 
 const router = useRouter();
 const api = useApi();
+const { getHomeSummary } = useHomeSummary();
 
 // --- BANNERS LOGIC ---
 const cachedBanner = localStorage.getItem('cached_landing_banner');
@@ -259,10 +261,10 @@ const extractCityName = (fullName) => {
 
 const fetchActivePoints = async () => {
   try {
-    const res = await api.get('/trips/home-summary');
-    if (res.data) {
-      const rawFrom = res.data.allDeparturePoints || [];
-      const rawTo = res.data.allArrivalPoints || [];
+    const summary = await getHomeSummary();
+    if (summary) {
+      const rawFrom = summary.allDeparturePoints || [];
+      const rawTo = summary.allArrivalPoints || [];
       
       allDeparturePoints.value = Array.from(new Set(rawFrom.map(extractCityName)));
       allArrivalPoints.value = Array.from(new Set(rawTo.map(extractCityName)));

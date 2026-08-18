@@ -8,7 +8,7 @@
       </h3>
       <div class="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-[10px] font-bold text-emerald-700 uppercase">{{ trips.length }} chuyến</span>
+        <span class="text-[10px] font-bold text-emerald-700 uppercase">{{ totalCount }} chuyến</span>
       </div>
     </div>
 
@@ -137,7 +137,7 @@
         </tbody>
         <tbody v-else>
           <tr>
-            <td colspan="7" class="py-20 text-center">
+            <td colspan="8" class="py-20 text-center">
               <div class="flex flex-col items-center">
                 <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                   <span class="material-symbols-outlined text-4xl text-slate-300">search_off</span>
@@ -150,19 +150,32 @@
         </tbody>
       </table>
     </div>
+    <AdminPagination
+      :page="page"
+      :total-pages="totalPages"
+      :total-elements="totalCount"
+      :page-size="pageSize"
+      :current-count="trips.length"
+      @update:page="$emit('update:page', $event)"
+    />
   </div>
 </template>
 
 <script setup>
 import { useApi } from '@/composables/useApi';
+import AdminPagination from '@/components/admin/common/AdminPagination.vue';
 
 const api = useApi();
 
 defineProps({
-  trips: Array
+  trips: { type: Array, default: () => [] },
+  totalCount: { type: Number, default: 0 },
+  page: { type: Number, default: 0 },
+  totalPages: { type: Number, default: 0 },
+  pageSize: { type: Number, default: 10 }
 });
 
-const emit = defineEmits(['edit', 'delete', 'report']);
+const emit = defineEmits(['edit', 'delete', 'report', 'update:page']);
 
 const toggleVisibility = async (trip) => {
   try {
@@ -210,4 +223,3 @@ const isTripPassed = (trip) => {
   }
 };
 </script>
-

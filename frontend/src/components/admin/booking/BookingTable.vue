@@ -34,7 +34,15 @@
 
     <!-- Table -->
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
+      <table class="w-full min-w-[1080px] table-fixed text-left border-collapse">
+        <colgroup>
+          <col class="w-[13%]" />
+          <col class="w-[17%]" />
+          <col class="w-[34%]" />
+          <col class="w-[14%]" />
+          <col class="w-[13%]" />
+          <col class="w-[9%]" />
+        </colgroup>
         <thead>
           <tr class="bg-slate-50/50 border-b border-slate-100">
             <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mã Vé & Ngày đặt</th>
@@ -47,11 +55,15 @@
         </thead>
         <tbody class="divide-y divide-slate-50">
           <tr v-for="booking in paginatedBookings" :key="booking.id" class="group hover:bg-[#075955]/[0.02] transition-all duration-200">
-            <td class="px-6 py-5 border-b border-slate-50">
+            <td class="px-5 py-5 border-b border-slate-50 align-top">
               <div class="font-bold text-slate-800 text-sm group-hover:text-[#075955] transition-colors">#{{ booking.id }}</div>
               <div class="text-[10px] font-semibold text-slate-400 uppercase mt-0.5 tracking-tighter">{{ formatDate(booking.createdAt) }}</div>
+              <span v-if="booking.exchange" class="mt-2 inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-violet-100 bg-violet-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-violet-600" :title="booking.exchange.exchangeType === 'SEAT' ? 'Vé đã đổi ghế' : 'Vé đã đổi chuyến hoặc ngày đi'">
+                <span class="material-symbols-outlined text-[11px]">swap_horiz</span>
+                Đã đổi vé
+              </span>
             </td>
-            <td class="px-6 py-5 border-b border-slate-50">
+            <td class="px-5 py-5 border-b border-slate-50 align-top">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-[#075955]/10 rounded-xl flex items-center justify-center text-[#075955] font-bold text-sm border border-[#075955]/5">
                   {{ booking.customerName.charAt(0) }}
@@ -62,21 +74,26 @@
                 </div>
               </div>
             </td>
-            <td class="px-6 py-5 border-b border-slate-50">
-              <div class="flex flex-col gap-1">
-                <div class="font-bold text-slate-700 text-xs flex items-center gap-1">
-                   <span class="material-symbols-outlined text-[14px] text-[#075955]">near_me</span>
-                   {{ simplifyLocation(booking.route.split(' ➔ ')[0]) }} ➔ {{ simplifyLocation(booking.route.split(' ➔ ')[1]) }}
+            <td class="px-5 py-5 border-b border-slate-50 align-top">
+              <div class="min-w-0">
+                <div class="flex items-start gap-2 text-xs font-extrabold leading-5 text-slate-800">
+                  <span class="material-symbols-outlined mt-0.5 shrink-0 text-[15px] text-[#075955]">near_me</span>
+                  <span>{{ simplifyLocation(booking.route.split(' ➔ ')[0]) }} <span class="mx-1 text-slate-300">→</span> {{ simplifyLocation(booking.route.split(' ➔ ')[1]) }}</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold uppercase border border-slate-200/50 tracking-tighter">
-                    Số ghế: {{ booking.seats.join(', ') }}
-                  </span>
-                  <span class="text-[10px] font-semibold text-slate-400 tracking-tighter">{{ booking.departureTime }}</span>
+
+                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-semibold text-slate-500">
+                  <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-slate-400">schedule</span>{{ booking.departureTime }}</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-[#075955]"><span class="material-symbols-outlined text-[13px]">airline_seat_recline_normal</span>Ghế {{ booking.seats.join(', ') }}</span>
+                  <span v-if="booking.trip?.busType" class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-violet-500">directions_bus</span>{{ booking.trip.busType }}</span>
+                </div>
+
+                <div v-if="booking.stopSelection" class="mt-2.5 grid gap-1 rounded-lg bg-slate-50 px-2.5 py-2 text-[9px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-100">
+                  <p class="flex min-w-0 items-center gap-1.5"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"></span><b class="text-emerald-700">Đón</b><span class="truncate">{{ booking.stopSelection.pickupName }}</span></p>
+                  <p class="flex min-w-0 items-center gap-1.5"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"></span><b class="text-blue-700">Trả</b><span class="truncate">{{ booking.stopSelection.dropoffName }}</span></p>
                 </div>
               </div>
             </td>
-            <td class="px-6 py-5 border-b border-slate-50">
+            <td class="px-5 py-5 border-b border-slate-50 align-top">
               <div class="font-bold text-[#075955] text-base tabular-nums">{{ booking.totalPrice.toLocaleString('vi-VN') }}<span class="text-[10px] ml-0.5">đ</span></div>
               <div class="flex items-center gap-1.5 mt-0.5">
                 <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">{{ booking.paymentMethod }}</span>
@@ -86,7 +103,7 @@
                 </span>
               </div>
             </td>
-            <td class="px-6 py-5 text-center">
+            <td class="px-5 py-5 text-center align-top">
               <span :class="[
                 'px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm inline-block min-w-[120px]',
                 statusStyles[booking.status]
@@ -94,7 +111,7 @@
                 {{ statusLabels[booking.status] }}
               </span>
             </td>
-            <td class="px-6 py-5">
+            <td class="px-4 py-5 align-top">
               <div class="flex items-center justify-center gap-2">
                 <button 
                   @click="$emit('view', booking)" 

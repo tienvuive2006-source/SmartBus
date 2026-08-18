@@ -1,3 +1,5 @@
+package com.smartbus.booking;
+
 import java.sql.*;
 
 public class CheckDB {

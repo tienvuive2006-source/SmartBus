@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   const newBookingsCount = ref(0)
   const newExpensesCount = ref(0)
   const newReviewsCount = ref(0)
+  const newRefundsCount = ref(0)
 
   // ✅ Nạp thông báo riêng của User hiện tại
   const loadNotifications = () => {
@@ -33,6 +34,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isInspector = computed(() => user.value?.role === 'INSPECTOR')
   const isDriver = computed(() => user.value?.role === 'DRIVER')
   const currentUser = computed(() => user.value)
+  const needsPhoneCompletion = computed(() =>
+    user.value?.authProvider === 'GOOGLE' && user.value?.phone?.startsWith('GG_')
+  )
 
   // ─── HELPERS ──────────────────────────────────────────────────────
   // Header Authorization chuẩn Bearer
@@ -160,6 +164,33 @@ export const useAuthStore = defineStore('auth', () => {
     newReviewsCount.value = 0
   }
 
+  const completeGooglePhone = async (phone) => {
+    const response = await axios.put(`${API_BASE}/auth/me/phone`, { phone }, authHeader.value)
+    disconnectWebSocket()
+    _saveSession(response.data)
+    return response.data
+  }
+
+  const setNewRefundsCount = (count) => {
+    newRefundsCount.value = Math.max(0, Number(count) || 0)
+  }
+
+  const fetchNewRefundsCount = async () => {
+    if (!token.value || user.value?.role !== 'ADMIN') return 0
+    try {
+      const response = await axios.get(`${API_BASE}/refund-requests/admin`, authHeader.value)
+      const refunds = Array.isArray(response.data) ? response.data : []
+      const count = refunds.filter(item =>
+        item.refundMethod === 'BANK_TRANSFER' && ['PENDING', 'APPROVED'].includes(item.status)
+      ).length
+      setNewRefundsCount(count)
+      return count
+    } catch (error) {
+      console.error('Không tải được số yêu cầu hoàn tiền:', error)
+      return newRefundsCount.value
+    }
+  }
+
   // ─── PRIVATE ──────────────────────────────────────────────────────
   const _saveSession = (data) => {
     token.value = data.token
@@ -195,6 +226,31 @@ export const useAuthStore = defineStore('auth', () => {
             fetchMe() // Nhận tín hiệu từ Admin -> cập nhật số dư ngay lập tức
           }
         })
+
+        stompClient.subscribe(`/topic/refunds/${user.value.id}`, (message) => {
+          try {
+            const data = JSON.parse(message.body)
+            const titles = {
+              REFUND_APPROVED: 'Yêu cầu hoàn tiền đã được duyệt',
+              REFUND_COMPLETED: 'Hoàn tiền thành công',
+              REFUND_NEEDS_INFO: 'Cần bổ sung thông tin hoàn tiền',
+              REFUND_REJECTED: 'Yêu cầu hoàn tiền bị từ chối'
+            }
+            addNotification({
+              type: data.type || 'REFUND',
+              title: titles[data.type] || 'Cập nhật hoàn tiền',
+              message: data.message,
+              amount: Number(data.amount || 0),
+              status: data.status,
+              refundId: data.refundId,
+              bookingId: data.bookingId,
+              date: new Date().toISOString()
+            })
+            window.dispatchEvent(new CustomEvent('refund-status-updated', { detail: data }))
+          } catch (error) {
+            console.error('Không đọc được thông báo hoàn tiền:', error)
+          }
+        })
         
         // Nhận tín hiệu khi có vé mới (Chỉ dành cho Admin)
         if (user.value.role === 'ADMIN') {
@@ -213,6 +269,12 @@ export const useAuthStore = defineStore('auth', () => {
           stompClient.subscribe(`/topic/admin/reviews/new`, (message) => {
             if (message.body === 'NEW_REVIEW') {
               newReviewsCount.value++
+            }
+          })
+
+          stompClient.subscribe(`/topic/admin/refunds/new`, (message) => {
+            if (message.body === 'NEW_REFUND_REQUEST') {
+              newRefundsCount.value++
             }
           })
         }
@@ -245,14 +307,17 @@ export const useAuthStore = defineStore('auth', () => {
     isInspector,
     isDriver,
     currentUser,
+    needsPhoneCompletion,
     authHeader,
     unreadNotificationsCount,
     newBookingsCount,
     newExpensesCount,
     newReviewsCount,
+    newRefundsCount,
     // actions
     login,
     googleLogin,
+    completeGooglePhone,
     register,
     logout,
     fetchMe,
@@ -263,6 +328,8 @@ export const useAuthStore = defineStore('auth', () => {
     clearNotifications,
     clearNewBookingsCount,
     clearNewExpensesCount,
-    clearNewReviewsCount
+    clearNewReviewsCount,
+    setNewRefundsCount,
+    fetchNewRefundsCount
   }
 })

@@ -27,6 +27,10 @@
         <span class="material-symbols-outlined text-[12px] opacity-80">badge</span>
         <span class="truncate">{{ trip.assignedDriverFullName || 'Chưa gán tài xế' }}</span>
       </div>
+      <div v-if="trip.secondaryDriverFullName" class="flex items-center gap-1.5 text-[10px] font-semibold">
+        <span class="material-symbols-outlined text-[12px] opacity-80">group</span>
+        <span class="truncate">Phụ: {{ trip.secondaryDriverFullName }}</span>
+      </div>
       <div class="flex items-center gap-1.5 text-[10px] font-semibold">
         <span class="material-symbols-outlined text-[12px] opacity-80">directions_bus</span>
         <span class="truncate">{{ trip.assignedLicensePlate ? 'Biển số: ' + trip.assignedLicensePlate : trip.busType }}</span>

@@ -15,6 +15,7 @@ public class FundService {
 
     private final FundTransactionRepository fundTransactionRepository;
     private final com.smartbus.booking.repository.BookingRepository bookingRepository;
+    private final com.smartbus.booking.repository.RefundRequestRepository refundRequestRepository;
 
     /**
      * Ghi nhận giao dịch vào sổ cái
@@ -136,17 +137,18 @@ public class FundService {
                     b.getCustomerName() != null ? b.getCustomerName() : "Khách hàng",
                     b.getCreatedAt()
                 );
-                // Chi hoàn tiền
-                recordTransaction(
-                    b.getPaymentMethod(), 
-                    "EXPENSE", 
-                    b.getRefundAmount(), 
-                    "Hoàn tiền hủy vé #" + b.getId(), 
-                    String.valueOf(b.getId()), 
-                    b.getCustomerName() != null ? b.getCustomerName() : "Khách hàng",
-                    b.getCreatedAt()
-                );
-                count += 2;
+                boolean refundCompleted = refundRequestRepository.findByBookingId(b.getId())
+                    .map(refund -> "COMPLETED".equals(refund.getStatus()))
+                    .orElse(true);
+                if (refundCompleted) {
+                    recordTransaction(
+                        b.getPaymentMethod(), "EXPENSE", b.getRefundAmount(),
+                        "Hoàn tiền hủy vé #" + b.getId(), String.valueOf(b.getId()),
+                        b.getCustomerName() != null ? b.getCustomerName() : "Khách hàng", b.getCreatedAt()
+                    );
+                    count++;
+                }
+                count++;
             }
         }
         return count;

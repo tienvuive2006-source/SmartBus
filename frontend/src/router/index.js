@@ -8,6 +8,7 @@ const SearchResultsView = () => import('../views/booking/SearchResultsView.vue')
 const SeatSelectionView = () => import('../views/booking/SeatSelectionView.vue')
 const PaymentView = () => import('../views/booking/PaymentView.vue')
 const PaymentSuccessView = () => import('../views/booking/PaymentSuccessView.vue')
+const TicketExchangeView = () => import('../views/booking/TicketExchangeView.vue')
 const ProfileView = () => import('../views/user/ProfileView.vue')
 const HistoryView = () => import('../views/user/HistoryView.vue')
 const AiAssistantView = () => import('../views/user/AiAssistantView.vue')
@@ -19,6 +20,7 @@ const AdminFleetStatusView = () => import('../views/admin/AdminFleetStatusView.v
 
 const LoginView = () => import('../views/auth/LoginView.vue')
 const RegisterView = () => import('../views/auth/RegisterView.vue')
+const CompletePhoneView = () => import('../views/auth/CompletePhoneView.vue')
 const AdminUserManagerView = () => import('../views/admin/AdminUserManagerView.vue')
 const AdminBookingManagerView = () => import('../views/admin/AdminBookingManagerView.vue')
 const AdminReviewManagerView = () => import('../views/admin/AdminReviewManagerView.vue')
@@ -38,6 +40,7 @@ const AdminLeaveManagerView = () => import('../views/admin/AdminLeaveManagerView
 const AdminDriverWrapperView = () => import('../views/admin/AdminDriverWrapperView.vue')
 const AdminDriverLocationsView = () => import('../views/admin/AdminDriverLocationsView.vue')
 const AdminArticleManagerView = () => import('../views/admin/AdminArticleManagerView.vue')
+const AdminSavedLocationView = () => import('../views/admin/AdminSavedLocationView.vue')
 
 const ArticleListView = () => import('../views/user/ArticleListView.vue')
 const ArticleDetailView = () => import('../views/user/ArticleDetailView.vue')
@@ -70,19 +73,25 @@ const router = createRouter({
           path: 'booking/seat',
           name: 'seat',
           component: SeatSelectionView,
-          meta: { hideFooter: true }
+          meta: { hideFooter: true, requiresCompletePhone: true }
         },
         {
           path: 'booking/payment',
           name: 'payment',
           component: PaymentView,
-          meta: { hideFooter: true }
+          meta: { hideFooter: true, requiresCompletePhone: true }
         },
         {
           path: 'booking/payment-success',
           name: 'payment-success',
           component: PaymentSuccessView,
           meta: { hideFooter: true }
+        },
+        {
+          path: 'booking/exchange/:bookingId',
+          name: 'ticket-exchange',
+          component: TicketExchangeView,
+          meta: { title: 'Đổi vé', hideFooter: true, requiresCompletePhone: true }
         },
         {
           path: 'profile',
@@ -133,12 +142,24 @@ const router = createRouter({
           meta: { hideHeader: true, hideFooter: true }
         },
         {
+          path: 'auth/complete-phone',
+          name: 'complete-phone',
+          component: CompletePhoneView,
+          meta: { hideHeader: true, hideFooter: true }
+        },
+        {
           path: 'landing-demo',
           name: 'landing-demo',
           component: () => import('../views/LandingPageView.vue'),
           meta: { title: 'Landing Page Demo', hideHeader: true, hideFooter: true, showBack: false }
         }
       ]
+    },
+    {
+      path: '/admin/route',
+      name: 'admin-route-locations',
+      component: AdminSavedLocationView,
+      meta: { title: 'Danh mục vị trí' }
     },
     {
       path: '/admin',
@@ -153,6 +174,12 @@ const router = createRouter({
           path: 'funds',
           name: 'admin-funds',
           component: AdminFundManagerView
+        },
+          {
+            path: 'refunds',
+            name: 'admin-refunds',
+            redirect: { path: '/admin/funds', query: { tab: 'refunds' } },
+            meta: { title: 'Quản lý hoàn tiền' }
         },
         {
           path: 'trip-manager',
@@ -169,7 +196,6 @@ const router = createRouter({
           name: 'admin-route-manager',
           component: AdminRouteManagerView
         },
-
         {
           path: 'fleet-status',
           name: 'admin-fleet-status',
@@ -214,7 +240,8 @@ const router = createRouter({
         {
           path: 'users',
           name: 'admin-user-manager',
-          component: AdminUserManagerView
+          component: AdminUserManagerView,
+          meta: { compactContent: true }
         },
 
         {
@@ -282,9 +309,16 @@ router.beforeEach((to, from) => {
   const token = localStorage.getItem('jwt_token')
   const userStr = localStorage.getItem('jwt_user')
   let userRole = null
+  let storedUser = null
 
   if (userStr) {
-    try { userRole = JSON.parse(userStr)?.role } catch { /* bỏ qua */ }
+    try { storedUser = JSON.parse(userStr); userRole = storedUser?.role } catch { /* bỏ qua */ }
+  }
+
+  const needsPhoneCompletion = storedUser?.authProvider === 'GOOGLE'
+    && storedUser?.phone?.startsWith('GG_')
+  if (to.meta.requiresCompletePhone && token && needsPhoneCompletion) {
+    return { path: '/auth/complete-phone', query: { redirect: to.fullPath } }
   }
 
   // 🔒 Bảo vệ route ADMIN

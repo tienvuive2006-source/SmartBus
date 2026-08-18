@@ -7,7 +7,9 @@
           <img 
             alt="Profile Avatar" 
             class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md bg-white" 
-            :src="`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=075955&color=ffffff&bold=true&size=128`"
+            :src="user.avatarUrl || createAvatarFallback(user.fullName)"
+            referrerpolicy="no-referrer"
+            @error="handleAvatarError($event, user.fullName)"
           />
           <div class="absolute bottom-0 right-0 bg-emerald-500 border-2 border-white w-7 h-7 rounded-full flex items-center justify-center shadow-sm">
             <span class="material-symbols-outlined text-[14px] text-white font-black">verified</span>
@@ -63,6 +65,8 @@
 </template>
 
 <script setup>
+import { createAvatarFallback, handleAvatarError } from '@/utils/avatar'
+
 defineProps({
   user: {
     type: Object,

@@ -37,6 +37,16 @@
              <span>Họ & Tên:</span>
              <span class="font-bold text-slate-800">{{ trip.inspector ? trip.inspector.fullName : 'Chưa phân công' }}</span>
           </div>
+          <div class="mt-2 grid grid-cols-2 gap-2 border-t border-slate-200 pt-2 text-[11px]">
+            <div class="rounded-lg bg-amber-50 px-2 py-1.5 text-amber-800">
+              <span class="block text-[9px] font-black uppercase">Tài xế chính</span>
+              <strong class="block truncate">{{ trip.assignedDriverFullName || 'Chưa phân công' }}</strong>
+            </div>
+            <div class="rounded-lg bg-sky-50 px-2 py-1.5 text-sky-800">
+              <span class="block text-[9px] font-black uppercase">Tài xế phụ</span>
+              <strong class="block truncate">{{ trip.secondaryDriverFullName || 'Không bố trí' }}</strong>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -50,7 +60,10 @@
           </span>
         </div>
         
-        <div class="grid grid-cols-2 gap-3">
+        <div v-if="isSecondaryDriver" class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
+          Bạn được phân công làm tài xế phụ. Tài xế chính chịu trách nhiệm cập nhật trạng thái chuyến.
+        </div>
+        <div v-else class="grid grid-cols-2 gap-3">
           <button 
             @click="updateStatus('IN_PROGRESS')" 
             :disabled="trip.status !== 'ASSIGNED' || !isTimeValidToDepart"
@@ -77,7 +90,17 @@
             <span class="material-symbols-outlined text-amber-500 text-[18px]">map</span>
             Bản đồ lộ trình
           </h3>
-          <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-widest">GPS Live</span>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <button type="button" class="flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-700 transition hover:bg-amber-100 active:scale-95" @click="showStopsModal = true">
+              <span class="material-symbols-outlined text-[14px]">conversion_path</span>
+              Xem điểm dừng
+            </button>
+            <button type="button" class="flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-700 transition hover:bg-blue-100 active:scale-95" @click="showStopPassengersModal = true">
+              <span class="material-symbols-outlined text-[14px]">groups</span>
+              Khách đón/trả
+            </button>
+            <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-widest">GPS Live</span>
+          </div>
         </div>
         <div id="driver-route-map" class="w-full h-[400px] md:h-[500px] rounded-2xl border-2 border-slate-100 overflow-hidden z-0"></div>
       </div>
@@ -103,6 +126,7 @@
         <InspectorExpensesList 
           :expenses="expenses" 
           :loading="expensesLoading"
+          collapsible
           @open-expense-modal="showExpenseModal = true"
         />
       </div>
@@ -348,6 +372,17 @@
         @close="showExpenseModal = false"
         @refresh="fetchExpenses"
       />
+
+      <BookingStopPreviewModal
+        v-if="showStopsModal"
+        :trip="trip"
+        @close="showStopsModal = false"
+      />
+      <DriverStopPassengersModal
+        v-if="showStopPassengersModal"
+        :trip="trip"
+        @close="showStopPassengersModal = false"
+      />
     </template>
   </div>
 </template>
@@ -360,6 +395,8 @@ import { useAuthStore } from '@/stores/auth';
 import { decodePolyline, fetchPolylineFromCloudinary } from '@/utils/polyline';
 import InspectorExpensesList from '@/components/inspector/InspectorExpensesList.vue';
 import InspectorExpenseModal from '@/components/inspector/InspectorExpenseModal.vue';
+import BookingStopPreviewModal from '@/components/booking/BookingStopPreviewModal.vue';
+import DriverStopPassengersModal from '@/components/driver/DriverStopPassengersModal.vue';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -367,6 +404,7 @@ const tripId = route.params.id;
 
 const loading = ref(true);
 const trip = ref(null);
+const isSecondaryDriver = computed(() => trip.value?.secondaryDriverUsername === authStore.currentUser?.phone);
 const buses = ref([]);
 const bookings = ref([]);
 const seats = ref([]);
@@ -378,6 +416,8 @@ const incidentForm = ref({ severity: '', description: '' });
 const incidents = ref([]);
 
 const showExpenseModal = ref(false);
+const showStopsModal = ref(false);
+const showStopPassengersModal = ref(false);
 const expenses = ref([]);
 const expensesLoading = ref(false);
 

@@ -9,6 +9,7 @@
             <span v-else>Lịch Trình Tổng Hợp</span>
           </h2>
           <div class="flex items-center gap-2 mt-0.5" v-if="!loadingSchedule">
+            <span class="text-[9px] font-black uppercase tracking-wider text-slate-400">Toàn bộ</span>
             <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shadow-sm">Tổng: {{ tripStats.total }}</span>
             <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 shadow-sm">Chưa phân công: {{ tripStats.unassigned }}</span>
             <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 shadow-sm">Đã gán tài xế: {{ tripStats.assigned }}</span>
@@ -85,6 +86,7 @@ const props = defineProps({
   weekDays: { type: Array, required: true },
   weekLabel: { type: String, required: true },
   loadingSchedule: { type: Boolean, default: false },
+  statsTrips: { type: Array, default: () => [] },
   getTripsForDay: { type: Function, required: true },
   getLeavesForDay: { type: Function, required: true }
 });
@@ -97,24 +99,20 @@ const tripStats = computed(() => {
   let unassigned = 0;
   let inProgress = 0;
   let completed = 0;
-  
-  if (props.weekDays && props.getTripsForDay) {
-    props.weekDays.forEach(day => {
-      const trips = props.getTripsForDay(day.date) || [];
-      total += trips.length;
-      trips.forEach(t => {
-        if (t.status === 'IN_PROGRESS') {
-           inProgress++;
-        } else if (t.status === 'COMPLETED') {
-           completed++;
-        } else if (t.assignedDriverUsername) {
-           assigned++;
-        } else {
-           unassigned++;
-        }
-      });
-    });
-  }
+
+  const trips = props.statsTrips || [];
+  total = trips.length;
+  trips.forEach(t => {
+    if (t.status === 'IN_PROGRESS') {
+      inProgress++;
+    } else if (t.status === 'COMPLETED') {
+      completed++;
+    } else if (t.assignedDriverUsername) {
+      assigned++;
+    } else {
+      unassigned++;
+    }
+  });
   
   return { total, assigned, unassigned, inProgress, completed };
 });

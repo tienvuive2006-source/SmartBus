@@ -1,259 +1,254 @@
 <template>
-  <article class="bg-white rounded-[2rem] border border-zinc-100 hover:border-emerald-100 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_-15px_rgba(5,150,105,0.15)] overflow-hidden flex flex-col group/card relative">
-    
-    <div class="flex flex-col md:flex-row">
-      <!-- Cột Hình Ảnh (Trái) -->
-      <div class="md:w-64 lg:w-80 xl:w-96 bg-zinc-900 relative overflow-hidden shrink-0 min-h-[200px] md:min-h-full">
-         <img 
-           :src="computedImageUrl" 
-           class="absolute inset-0 w-full h-full object-cover group-hover/card:scale-105 group-hover/card:rotate-1 transition-all duration-700 opacity-90 group-hover/card:opacity-100" 
-           @error="(e) => e.target.src = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=600'"
-         />
-         <!-- Gradient lót dưới text cho dễ đọc -->
-         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-         
-         <!-- Badges Góc Trên -->
-         <div class="absolute top-4 left-4 flex flex-col gap-2 z-10 items-start">
-            <div class="bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-lg border border-white/20 uppercase tracking-wider">
-               <span class="material-symbols-outlined text-[12px]">verified</span> Xác nhận tức thì
-            </div>
-            <div v-if="companyStats[trip.companyName + '|' + trip.busType]?.averageRating" class="bg-amber-400/95 backdrop-blur-md text-zinc-900 text-[11px] font-black px-2.5 py-1 rounded-lg shadow-lg border border-white/20 flex items-center gap-1">
-               <span class="material-symbols-outlined text-[12px]">star</span> {{ companyStats[trip.companyName + '|' + trip.busType].averageRating.toFixed(1) }}
-               <span class="text-[9px] font-bold ml-0.5 opacity-70">({{ companyStats[trip.companyName + '|' + trip.busType].totalReviews }})</span>
-            </div>
-            <div v-else class="bg-amber-400/95 backdrop-blur-md text-zinc-900 text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg border border-white/20 flex items-center gap-1 uppercase tracking-wider">
-               <span class="material-symbols-outlined text-[12px]">star</span> Mới
-            </div>
-         </div>
-      </div>
+  <article class="trip-card group relative overflow-hidden rounded-xl border border-slate-200 bg-white" :class="{ 'is-compared': isCompared }">
+    <div v-if="isFeatured" class="featured-ribbon">Nổi bật</div>
 
-      <!-- Cột Thông Tin Giữa -->
-      <div class="flex-1 min-w-0 p-5 md:p-6 flex flex-col justify-between border-r border-zinc-100 bg-white">
-         <div>
-            <div class="flex justify-between items-start mb-5">
-               <div>
-                   <h3 class="text-lg md:text-xl font-black text-zinc-900 tracking-tight leading-none">{{ trip.companyName }}</h3>
-                   <p class="text-[11px] font-bold text-zinc-400 mt-1 uppercase tracking-widest">{{ trip.busType.replace(/Luxyry/g, 'Luxury') }}</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-2 md:gap-4 mb-5">
-               <div class="flex flex-col items-start shrink-0">
-                  <span class="text-2xl font-black text-zinc-900 tracking-tighter">{{ trip.departureTime }}</span>
-                   <span class="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md mt-1 uppercase tracking-widest border border-emerald-100">{{ formatDate(trip.departureDate) }}</span>
-               </div>
+    <div class="trip-layout grid min-h-[330px] grid-cols-1">
+      <section class="relative min-h-[240px] overflow-hidden bg-slate-900 md:min-h-full">
+        <img
+          :src="computedImageUrl"
+          :alt="`Xe ${trip.companyName} ${trip.busType}`"
+          class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.035]"
+          @error="handleImageError"
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-black/5"></div>
 
-               <div class="flex-1 flex flex-col items-center group relative pt-2 min-w-[60px]">
-                  <span class="text-[8.5px] lg:text-[10px] font-bold text-zinc-400 mb-2 uppercase tracking-widest bg-white px-1 sm:px-2 relative z-10 whitespace-nowrap">{{ trip.duration }}</span>
-                  <div class="w-full h-0.5 bg-zinc-100 rounded-full relative">
-                     <!-- Điểm nối animation -->
-                     <div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 border-[#075955] bg-white"></div>
-                     <div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-zinc-300"></div>
-                     <!-- Thanh chạy -->
-                     <div class="absolute left-0 top-0 h-full bg-gradient-to-r from-[#075955] to-emerald-400 w-0 group-hover/card:w-full transition-all duration-1000 ease-out rounded-full opacity-30"></div>
-                     
-                     <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 z-10 text-zinc-300 group-hover/card:text-emerald-500 transition-colors duration-500">
-                       <span class="material-symbols-outlined text-[16px]">directions_bus</span>
-                     </div>
-                  </div>
-               </div>
+        <span class="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-md bg-black/35 px-2.5 py-2 text-[11px] font-semibold text-white backdrop-blur-md">
+          <span class="material-symbols-outlined text-[16px]">meeting_room</span>{{ seatLabel }}
+        </span>
+      </section>
 
-               <div class="flex flex-col items-end shrink-0">
-                  <span class="text-2xl font-black text-zinc-900 tracking-tighter">{{ trip.arrivalTime }}</span>
-                  <span class="text-[10px] font-black text-zinc-400 mt-1 uppercase tracking-widest opacity-0 group-hover/card:opacity-100 transition-opacity">Đến nơi</span>
-               </div>
-            </div>
+      <section class="flex min-w-0 flex-col px-5 pb-0 pt-4 sm:px-6">
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <span class="status-badge status-confirmed">Xác nhận tức thì</span>
+          <span class="status-badge status-sale">Ưu đãi -10%</span>
+        </div>
 
-             <div class="flex items-center justify-between text-xs font-semibold text-zinc-600 bg-zinc-50 p-2.5 rounded-xl border border-zinc-100 gap-2">
-                <span class="flex items-center gap-1.5 min-w-0 flex-1"><span class="material-symbols-outlined text-[14px] text-[#075955] shrink-0">trip_origin</span> <span class="truncate">{{ trip.departurePoint }}</span></span>
-                <span class="text-zinc-300 material-symbols-outlined text-sm shrink-0">arrow_forward</span>
-                <span class="flex items-center gap-1.5 justify-end min-w-0 flex-1"><span class="truncate text-right">{{ trip.arrivalPoint }}</span> <span class="material-symbols-outlined text-[14px] text-red-500 shrink-0">location_on</span></span>
-             </div>
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <h3 class="flex items-center gap-1.5 text-[19px] font-extrabold tracking-tight text-[#073e3b]">
+              {{ trip.companyName }}
+              <span class="material-symbols-outlined filled text-[17px] text-[#075955]" title="Nhà xe đã xác minh">verified</span>
+            </h3>
+            <p class="mt-0.5 truncate text-xs font-medium text-slate-500">{{ cleanBusType }}</p>
           </div>
-          
-          <div class="mt-4 pt-4 border-t border-zinc-100 flex flex-col gap-3">
-             <div class="flex items-center justify-between">
-                <div class="flex gap-4">
-                   <button 
-                     @click="trip.showInfo = !trip.showInfo"
-                     class="flex items-center gap-1 text-[10px] font-bold text-zinc-500 hover:text-[#075955] transition-colors uppercase tracking-wider"
-                   >
-                     <span class="material-symbols-outlined text-[12px]">info</span> {{ trip.showInfo ? 'Đóng' : 'Thông tin' }}
-                   </button>
-                   <button 
-                     @click="$emit('open-map', trip)"
-                     class="flex items-center gap-1 text-[10px] font-bold text-zinc-500 hover:text-blue-600 transition-colors uppercase tracking-wider"
-                   >
-                     <span class="material-symbols-outlined text-[12px]">map</span> Lộ trình
-                   </button>
-                    <button 
-                      @click="$emit('open-reviews', trip)"
-                      class="flex items-center gap-1 text-[10px] font-bold text-zinc-500 hover:text-amber-500 transition-colors uppercase tracking-wider"
-                    >
-                      <span class="material-symbols-outlined text-[12px]">star</span> Đánh giá
-                    </button>
-                </div>
-             </div>
-          </div>
-       </div>
+        </div>
 
-      <!-- Cột Giá (Phải) -->
-      <div class="md:w-48 lg:w-56 shrink-0 p-5 md:p-6 bg-zinc-50/50 flex flex-col justify-center items-center md:items-end relative overflow-hidden">
-         <!-- Decal mờ trang trí -->
-         <span class="material-symbols-outlined absolute -bottom-10 -right-10 text-[120px] text-zinc-100 -rotate-12 pointer-events-none select-none">confirmation_number</span>
-         
-         <div class="text-center md:text-right mb-5 relative z-10">
-            <span class="hidden sm:inline-flex items-center gap-1 text-[9px] font-black text-white bg-red-500 px-2 py-0.5 rounded-md mb-2 uppercase tracking-widest shadow-sm">
-               <span class="material-symbols-outlined text-[10px]">sell</span> Giảm 10%
-            </span>
-            <p class="text-2xl font-black text-[#075955] tracking-tight">{{ trip.price.toLocaleString() }}<span class="text-base ml-0.5 underline decoration-2 underline-offset-2">đ</span></p>
-            <p class="text-[10px] font-black text-emerald-500 mt-1 uppercase tracking-widest flex items-center justify-center md:justify-end gap-1">
-              <span class="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span> Còn {{ trip.availableSeats }} chỗ
-            </p>
-         </div>
-         
-         <button 
-           @click="!isTripPassed(trip) && $emit('select-trip', trip)"
-           :class="[
-             'w-full py-3 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all duration-300 relative z-10 overflow-hidden group/btn shadow-md', 
-             isTripPassed(trip) 
-               ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed shadow-none' 
-               : 'bg-[#f03a17] hover:bg-[#d63314] text-white hover:shadow-[0_10px_20px_-10px_rgba(240,58,23,0.6)] active:scale-[0.98]'
-           ]"
-           :disabled="isTripPassed(trip)"
-         >
-           <span class="relative z-10 flex items-center justify-center gap-1.5">
-             {{ isTripPassed(trip) ? 'Đã khởi hành' : 'Chọn chỗ ngay' }}
-             <span v-if="!isTripPassed(trip)" class="material-symbols-outlined text-[14px] group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
-           </span>
-         </button>
-         <p class="text-[8px] font-bold text-zinc-400 mt-3 uppercase tracking-widest text-center w-full relative z-10">Không cần thanh toán trước</p>
-      </div>
+        <div class="mt-4 grid grid-cols-[auto_minmax(110px,1fr)_auto] items-start gap-3">
+          <div>
+            <strong class="time-value">{{ trip.departureTime }}</strong>
+            <span class="date-value">{{ formatDate(trip.departureDate) }}</span>
+            <span class="weekday-value">{{ formatWeekday(trip.departureDate) }}</span>
+          </div>
+
+          <div class="pt-1 text-center">
+            <p class="text-[11px] font-bold text-slate-600">{{ trip.duration || 'Đang cập nhật' }}</p>
+            <p class="text-[10px] text-slate-400">{{ trip.distance ? `(${trip.distance})` : '' }}</p>
+            <div class="relative mt-3 h-px border-t border-dashed border-slate-300">
+              <span class="material-symbols-outlined absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-[18px] text-[#075955]">directions_bus</span>
+            </div>
+          </div>
+
+          <div class="text-right">
+            <strong class="time-value">{{ trip.arrivalTime }}</strong>
+            <span class="date-value">{{ formatDate(arrivalDate) }}</span>
+            <span class="weekday-value">{{ formatWeekday(arrivalDate) }}</span>
+          </div>
+        </div>
+
+        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="location-block">
+            <span class="material-symbols-outlined">location_on</span>
+            <div class="min-w-0">
+              <b>{{ trip.departurePoint }}</b>
+              <p>{{ trip.departureAddress || 'Điểm đón theo lịch trình của nhà xe' }}</p>
+            </div>
+          </div>
+          <div class="location-block">
+            <span class="material-symbols-outlined">location_on</span>
+            <div class="min-w-0">
+              <b>{{ trip.arrivalPoint }}</b>
+              <p>{{ trip.arrivalAddress || 'Điểm trả theo lịch trình của nhà xe' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-100 bg-[#f7faf9] px-3 py-2 text-[11px] font-medium text-slate-600">
+          <span v-for="utility in visibleUtilities" :key="utility.name" class="flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-[#075955]">{{ utility.icon }}</span>{{ utility.name }}
+          </span>
+          <button v-if="utilityItems.length > 5" type="button" class="ml-auto font-bold text-[#075955]">Xem thêm ({{ utilityItems.length - 5 }})</button>
+        </div>
+
+        <nav class="mt-auto flex min-w-0 items-center gap-6 overflow-x-auto border-t border-slate-100 pt-3 text-[11px] font-semibold text-slate-500 scrollbar-hide" aria-label="Chi tiết chuyến">
+          <button type="button" :class="{ active: activeTab === 'info' }" @click="toggleInfo">Thông tin</button>
+          <button type="button" @click="$emit('open-map', trip)">Lộ trình</button>
+          <button type="button" @click="$emit('open-stops', trip)">Điểm dừng</button>
+          <button type="button" :class="{ active: activeTab === 'policy' }" @click="activeTab = activeTab === 'policy' ? '' : 'policy'">Chính sách</button>
+          <button type="button" @click="$emit('open-reviews', trip)">Đánh giá ({{ reviewCount }})</button>
+        </nav>
+      </section>
+
+      <aside class="flex flex-col border-t border-slate-100 bg-[#fbfcfc] p-5 md:col-start-2 xl:col-start-auto xl:border-l xl:border-t-0">
+        <div class="flex items-center gap-2 text-sm">
+          <span
+            class="material-symbols-outlined text-[19px]"
+            :class="hasReviews ? 'filled text-[#e0a91f]' : 'text-slate-300'"
+          >star</span>
+          <template v-if="hasReviews">
+            <b class="text-[#bd8610]">{{ rating }}</b>
+            <span class="text-[11px] text-slate-500">{{ reviewCount }} đánh giá</span>
+          </template>
+          <span v-else class="text-[11px] font-semibold text-slate-500">Chưa có đánh giá</span>
+        </div>
+
+        <div class="mt-7 xl:text-right">
+          <p class="text-[26px] font-extrabold tracking-tight text-[#075955]">{{ formatCurrency(trip.price) }}</p>
+          <div class="mt-1 flex items-center gap-2 xl:justify-end">
+            <span class="text-sm text-slate-400 line-through">{{ formatCurrency(Math.round(trip.price * 1.1 / 1000) * 1000) }}</span>
+            <span class="rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-500">-10%</span>
+          </div>
+        </div>
+
+        <p class="mt-5 flex items-center gap-2 text-[13px] font-semibold text-emerald-600 xl:justify-end">
+          <span class="material-symbols-outlined text-[19px]">airline_seat_recline_extra</span>Còn {{ trip.availableSeats }} chỗ trống
+        </p>
+
+        <button
+          type="button"
+          class="mt-5 w-full rounded-lg bg-[#006057] px-4 py-3 text-sm font-bold text-white shadow-[0_6px_14px_rgba(0,96,87,0.18)] transition hover:-translate-y-0.5 hover:bg-[#004d47] active:translate-y-px disabled:cursor-not-allowed disabled:bg-slate-300"
+          :disabled="isTripPassed(trip)"
+          @click="!isTripPassed(trip) && $emit('select-trip', trip)"
+        >{{ isTripPassed(trip) ? 'Đã khởi hành' : 'Chọn chỗ' }}</button>
+
+        <label class="mt-4 flex cursor-pointer items-center gap-2 border-t border-slate-100 pt-4 text-[11px] font-semibold text-slate-500">
+          <input :checked="isCompared" type="checkbox" class="h-4 w-4 rounded accent-[#075955]" @change="$emit('toggle-compare', trip)" />So sánh
+        </label>
+      </aside>
     </div>
-    
-    <!-- Expandable Info (Giữ nguyên cấu trúc nhưng tinh chỉnh UI) -->
-    <div v-if="trip.showInfo" class="p-5 md:p-6 bg-zinc-50 border-t border-zinc-100 animate-fade-in text-sm relative">
-       <!-- Nút đóng -->
-       <button @click="trip.showInfo = false" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-200/50 hover:bg-zinc-200 text-zinc-600 flex items-center justify-center transition-all">
-          <span class="material-symbols-outlined text-[18px]">close</span>
-       </button>
-       
-       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <div>
-             <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-               <span class="material-symbols-outlined text-[16px] text-emerald-500">directions_bus</span> Phương tiện
-             </p>
-             <p class="text-xl font-black text-zinc-900 tracking-tight mb-4">{{ trip.busType.replace(/Luxyry/g, 'Luxury') }}</p>
-             <div class="space-y-3">
-                <div class="flex items-center justify-between bg-white px-4 py-2.5 rounded-lg border border-zinc-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                   <span class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Biển số</span>
-                   <span class="text-sm font-black text-zinc-800">{{ trip.assignedLicensePlate || 'Chưa cập nhật' }}</span>
-                </div>
-                <div class="flex items-center justify-between bg-white px-4 py-2.5 rounded-lg border border-zinc-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                   <span class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Tài xế</span>
-                   <span class="text-sm font-black text-zinc-800">{{ trip.assignedDriverFullName || 'Chưa phân công' }}</span>
-                </div>
-             </div>
-          </div>
-          <div>
-             <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-               <span class="material-symbols-outlined text-[16px] text-amber-500">stars</span> Tiện ích trên xe
-             </p>
-              <div class="grid grid-cols-2 gap-3 mt-4">
-               <template v-if="getBusUtilities(trip.busType)">
-                 <div v-for="(util, index) in getBusUtilities(trip.busType).split(',')" :key="index" class="text-[13px] font-bold text-zinc-700 flex items-center gap-2">
-                   <div class="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                     <span class="material-symbols-outlined text-[14px] text-emerald-600">{{ getUtilityIcon(util.trim()) }}</span>
-                   </div>
-                   {{ util.trim() }}
-                 </div>
-               </template>
-               <div v-else class="text-[13px] font-bold text-zinc-700 flex items-center gap-2">
-                 <div class="w-6 h-6 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                   <span class="material-symbols-outlined text-[14px] text-emerald-600">check_circle</span>
-                 </div>
-                 Xe tiêu chuẩn
-               </div>
-             </div>
-           </div>
-       </div>
+
+    <div v-if="activeTab" class="border-t border-slate-100 bg-[#f8faf9] px-6 py-5 text-sm text-slate-600">
+      <div v-if="activeTab === 'info'" class="grid gap-4 md:grid-cols-2">
+        <p><b class="text-slate-800">Phương tiện:</b> {{ cleanBusType }}</p>
+        <p><b class="text-slate-800">Biển số:</b> {{ trip.assignedLicensePlate || 'Cập nhật trước giờ khởi hành' }}</p>
+        <p><b class="text-slate-800">Tài xế:</b> {{ trip.assignedDriverFullName || 'Nhà xe đang phân công' }}</p>
+        <p><b class="text-slate-800">Thanh toán:</b> Có thể thanh toán trực tuyến hoặc tại quầy</p>
+      </div>
+      <div v-else>
+        <b class="text-slate-800">Chính sách đổi, hủy vé:</b>
+        <span class="ml-1">Vui lòng liên hệ nhà xe trước giờ khởi hành. Mức hoàn tiền phụ thuộc thời điểm yêu cầu và chính sách của chuyến.</span>
+      </div>
     </div>
   </article>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
   trip: { type: Object, required: true },
   companyStats: { type: Object, required: true },
   allBuses: { type: Array, required: true },
-  allBusTypes: { type: Array, required: true }
+  allBusTypes: { type: Array, required: true },
+  isCompared: { type: Boolean, default: false }
 });
 
-defineEmits(['open-map', 'open-reviews', 'select-trip']);
+defineEmits(['open-map', 'open-stops', 'open-reviews', 'select-trip', 'toggle-compare']);
 
-const router = useRouter();
+const activeTab = ref('');
 
-const formatDate = (d) => {
-  if (!d) return '';
-  const datePart = d.split('T')[0];
-  const [year, month, day] = datePart.split('-');
-  return `${day}/${month}/${year}`;
-};
+const cleanBusType = computed(() => props.trip.busType?.replace(/Luxyry/g, 'Luxury') || 'Xe tiêu chuẩn');
+const stats = computed(() => props.companyStats[`${props.trip.companyName}|${props.trip.busType}`] || {});
+const reviewCount = computed(() => Number(stats.value.totalReviews || 0));
+const hasReviews = computed(() => reviewCount.value > 0 && Number.isFinite(Number(stats.value.averageRating)));
+const rating = computed(() => hasReviews.value ? Number(stats.value.averageRating).toFixed(1) : null);
+const isFeatured = computed(() => hasReviews.value && Number(rating.value) >= 4.5);
+const seatLabel = computed(() => {
+  const match = cleanBusType.value.match(/\d+\s*(phòng|chỗ|ghế|giường)?/i);
+  return match ? match[0] : `${props.trip.availableSeats || 0} chỗ`;
+});
 
 const computedImageUrl = computed(() => {
-  // First check if trip has a specific image (but maybe they updated the bus type)
-  // Let's actually prioritize Bus or BusType images if they exist, or just use trip.imageUrl
-  // If the user changed the BusType image, they want it to reflect. 
-  const bus = props.allBuses.find(b => b.licensePlate === props.trip.assignedLicensePlate);
-  const busImageUrl = bus?.imageUrl;
-  
-  const btName = props.trip.busType?.replace(/Luxyry/g, 'Luxury');
-  const busType = props.allBusTypes.find(bt => bt.name === btName || bt.name.replace(/Luxyry/g, 'Luxury') === btName);
-  const busTypeImageUrl = busType?.imageUrl;
-  
-  // Prioritize busType image or bus image over trip image because admin usually edits bus types
-  return busTypeImageUrl || busImageUrl || props.trip.imageUrl || 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=600';
+  const bus = props.allBuses.find((item) => item.licensePlate === props.trip.assignedLicensePlate);
+  const typeName = cleanBusType.value.toLowerCase().trim();
+  const busType = props.allBusTypes.find((item) => item.name?.replace(/Luxyry/g, 'Luxury').toLowerCase().trim() === typeName);
+  return busType?.imageUrl || bus?.imageUrl || props.trip.imageUrl || fallbackImage;
 });
 
+const fallbackImage = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=85&w=900';
+const handleImageError = (event) => { event.target.src = fallbackImage; };
+
+const utilityIcon = (name) => {
+  const value = name.toLowerCase();
+  if (value.includes('wifi') || value.includes('wi-fi')) return 'wifi';
+  if (value.includes('usb') || value.includes('sạc')) return 'usb';
+  if (value.includes('nước')) return 'water_bottle';
+  if (value.includes('toilet') || value.includes('vệ sinh')) return 'wc';
+  if (value.includes('chăn') || value.includes('giường')) return 'bed';
+  if (value.includes('tivi') || value.includes('màn hình')) return 'tv';
+  return 'check_circle';
+};
+
+const utilityItems = computed(() => {
+  const busType = props.allBusTypes.find((item) => item.name?.replace(/Luxyry/g, 'Luxury').toLowerCase().trim() === cleanBusType.value.toLowerCase().trim());
+  const values = busType?.description?.split(',').map((item) => item.trim()).filter(Boolean) || ['Wi-Fi', 'USB', 'Nước uống', 'Chăn đắp', 'Toilet'];
+  return values.map((name) => ({ name, icon: utilityIcon(name) }));
+});
+const visibleUtilities = computed(() => utilityItems.value.slice(0, 5));
+
+const formatDate = (value) => {
+  if (!value) return '';
+  const [year, month, day] = value.split('T')[0].split('-');
+  return `${day}/${month}/${year}`;
+};
+const formatWeekday = (value) => {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('vi-VN', { weekday: 'long' }).format(new Date(`${value.split('T')[0]}T00:00:00`));
+};
+const arrivalDate = computed(() => props.trip.arrivalDate || props.trip.departureDate);
+const formatCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
+
 const isTripPassed = (trip) => {
-  if (!trip || !trip.departureDate || !trip.departureTime) return false;
-  try {
-    const [year, month, day] = trip.departureDate.split('T')[0].split('-');
-    const [hour, minute] = trip.departureTime.split(':');
-    const depTime = new Date(year, month - 1, day, hour, minute);
-    return new Date() > depTime;
-  } catch (e) {
-    return false;
-  }
+  if (!trip?.departureDate || !trip?.departureTime) return false;
+  const date = trip.departureDate.split('T')[0];
+  return new Date(`${date}T${trip.departureTime}:00`) < new Date();
 };
 
-
-const getBusUtilities = (busTypeName) => {
-  if (!busTypeName) return '';
-  const btName = busTypeName.toLowerCase().trim().replace(/luxyry/g, 'luxury');
-  
-  const busType = props.allBusTypes.find(bt => {
-    const dbName = bt.name.toLowerCase().trim().replace(/luxyry/g, 'luxury');
-    return dbName === btName;
-  });
-  
-  return busType ? busType.description : '';
-};
-
-const getUtilityIcon = (name) => {
-  const map = {
-    'Wifi tốc độ cao': 'wifi',
-    'Cổng sạc USB': 'usb',
-    'Tủ lạnh mini': 'kitchen',
-    'Nhà vệ sinh': 'wc',
-    'Ghế massage': 'airline_seat_recline_extra',
-    'Màn hình Tivi': 'tv',
-    'Tai nghe Bluetooth': 'headphones',
-    'Nước uống & Khăn': 'local_drink'
-  };
-  return map[name] || 'check_circle';
-};
+const toggleInfo = () => { activeTab.value = activeTab.value === 'info' ? '' : 'info'; };
 </script>
+
+<style scoped>
+.trip-card { box-shadow: 0 8px 24px rgba(17, 68, 63, .055); transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.trip-card:hover { border-color: rgba(213, 165, 39, .7); box-shadow: 0 16px 38px rgba(17, 68, 63, .1); transform: translateY(-1px); }
+.trip-card.is-compared { border-color: #087269; box-shadow: 0 0 0 2px rgba(8,114,105,.11), 0 16px 38px rgba(17,68,63,.1); }
+.featured-ribbon { position: absolute; left: 0; top: 0; z-index: 20; min-width: 95px; padding: .65rem 1rem; border-radius: 0 0 14px 0; color: #765000; background: #edc75b; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-align: center; text-transform: uppercase; }
+.filled { font-variation-settings: 'FILL' 1; }
+.status-badge { border-radius: 5px; padding: .25rem .55rem; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.status-confirmed { border: 1px solid #9dd8ba; color: #0b8b50; background: #effbf4; }
+.status-sale { border: 1px solid #efd18a; color: #b07700; background: #fff9e9; }
+.time-value { display: block; color: #142422; font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.04em; line-height: 1; }
+.date-value { display: block; margin-top: .4rem; color: #52605e; font-size: 11px; font-weight: 600; }
+.weekday-value { display: block; color: #899390; font-size: 10px; text-transform: capitalize; }
+.location-block { display: flex; min-width: 0; gap: .5rem; }
+.location-block > span { color: #075955; font-size: 17px; flex: 0 0 auto; }
+.location-block b { display: block; overflow: hidden; color: #33413f; font-size: 11px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.location-block p { display: -webkit-box; overflow: hidden; margin-top: .2rem; color: #8b9492; font-size: 9.5px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+nav button { flex: 0 0 auto; border-bottom: 2px solid transparent; padding-bottom: .65rem; transition: color .2s ease, border-color .2s ease; }
+nav button:hover, nav button.active { border-color: #075955; color: #075955; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; }
+@media (min-width: 768px) {
+  .trip-layout { grid-template-columns: 300px minmax(0, 1fr); }
+  .trip-layout > section:first-child { min-height: 100%; }
+  .trip-layout > aside { grid-column: 2; }
+}
+@media (min-width: 1280px) {
+  .trip-layout { grid-template-columns: 330px minmax(0, 1fr) 230px; }
+  .trip-layout > aside { grid-column: auto; }
+}
+@media (min-width: 768px) and (max-width: 1279px) {
+  .trip-card aside { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; }
+  .trip-card aside > div, .trip-card aside > p { margin-top: 0; }
+  .trip-card aside > button { width: auto; margin-top: 0; }
+  .trip-card aside > label { margin-left: auto; padding-top: 0; }
+}
+</style>
