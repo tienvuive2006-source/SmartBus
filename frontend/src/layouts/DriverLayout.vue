@@ -52,7 +52,6 @@ import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
 const router = useRouter()
-
 const handleLogout = () => {
   authStore.logout()
   window.location.href = '/auth/login'

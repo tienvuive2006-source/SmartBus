@@ -22,8 +22,18 @@
       :statsTrips="statsTrips"
       :getTripsForDay="getTripsForDay"
       :getLeavesForDay="getLeavesForDay"
+      v-model:filterSearch="tripFilterSearch"
+      v-model:filterTripStatus="tripFilterStatus"
+      v-model:filterRoute="tripFilterRoute"
+      v-model:filterVehicle="tripFilterVehicle"
+      v-model:filterTimePeriod="tripFilterTimePeriod"
+      :routeOptions="tripRouteOptions"
+      :vehicleOptions="tripVehicleOptions"
+      :resultCount="visibleTrips.length"
+      :hasActiveFilters="hasActiveTripFilters"
       @change-week="changeWeek"
       @reset-week="resetToCurrentWeek"
+      @reset-filters="resetTripFilters"
       @open-trip="openTripDetail"
       @open-leave="openLeaveDetail"
     />
@@ -38,8 +48,10 @@
       :allTrips="trips"
       :allLeaves="leaves"
       :allInspectors="inspectors"
+      :readOnly="['IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(selectedAssignTrip?.status)"
       @close="isAssignModalOpen = false"
       @submit="handleAssignSubmit"
+      @unassign="handleUnassign"
     />
 
     <CreateDriverModal 
@@ -72,6 +84,11 @@ const loadingSchedule = ref(true);
 const searchQuery = ref('');
 const filterStatus = ref('');
 const selectedDriver = ref(null);
+const tripFilterSearch = ref('');
+const tripFilterStatus = ref('');
+const tripFilterRoute = ref('');
+const tripFilterVehicle = ref('');
+const tripFilterTimePeriod = ref('');
 
 // Modal state
 const isAssignModalOpen = ref(false);
@@ -219,6 +236,53 @@ const selectDriver = (driver) => {
   selectedDriver.value = driver;
 };
 
+const normalizeSearch = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const shortPoint = value => String(value || '').split(',')[0].trim();
+const routeKeyOf = trip => String(trip.route?.id ?? trip.routeId ?? `${trip.departurePoint || ''}|${trip.arrivalPoint || ''}`);
+const routeLabelOf = trip => trip.route?.name || trip.routeName || `${shortPoint(trip.departurePoint)} → ${shortPoint(trip.arrivalPoint)}`;
+
+const tripRouteOptions = computed(() => {
+  const options = new Map();
+  trips.value.forEach(trip => options.set(routeKeyOf(trip), routeLabelOf(trip)));
+  return [...options.entries()]
+    .filter(([value, label]) => value && label && label !== ' → ')
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+});
+
+const tripVehicleOptions = computed(() => [...new Set(
+  trips.value.map(trip => trip.assignedLicensePlate).filter(Boolean)
+)].sort((a, b) => String(a).localeCompare(String(b), 'vi')));
+
+const hasActiveTripFilters = computed(() => Boolean(
+  tripFilterSearch.value || tripFilterStatus.value || tripFilterRoute.value || tripFilterVehicle.value || tripFilterTimePeriod.value
+));
+
+const resetTripFilters = () => {
+  tripFilterSearch.value = '';
+  tripFilterStatus.value = '';
+  tripFilterRoute.value = '';
+  tripFilterVehicle.value = '';
+  tripFilterTimePeriod.value = '';
+};
+
+const matchesTripStatus = trip => {
+  if (!tripFilterStatus.value) return true;
+  if (tripFilterStatus.value === 'UNASSIGNED') return !trip.assignedDriverUsername;
+  if (tripFilterStatus.value === 'ASSIGNED') {
+    return Boolean(trip.assignedDriverUsername) && !['IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(trip.status);
+  }
+  return trip.status === tripFilterStatus.value;
+};
+
+const matchesTimePeriod = trip => {
+  if (!tripFilterTimePeriod.value) return true;
+  const hour = Number(String(trip.departureTime || '00:00').split(':')[0]);
+  if (tripFilterTimePeriod.value === 'MORNING') return hour < 12;
+  if (tripFilterTimePeriod.value === 'AFTERNOON') return hour >= 12 && hour < 18;
+  return hour >= 18;
+};
+
 const visibleTrips = computed(() => {
   return trips.value.filter(trip => {
     // 1. Lọc theo ngày trong tuần hiện tại
@@ -230,6 +294,24 @@ const visibleTrips = computed(() => {
     if (selectedDriver.value) {
       if (trip.assignedDriverUsername !== selectedDriver.value.phone
           && trip.secondaryDriverUsername !== selectedDriver.value.phone) return false;
+    }
+    if (!matchesTripStatus(trip)) return false;
+    if (tripFilterRoute.value && routeKeyOf(trip) !== tripFilterRoute.value) return false;
+    if (tripFilterVehicle.value === 'UNASSIGNED' && trip.assignedLicensePlate) return false;
+    if (tripFilterVehicle.value && tripFilterVehicle.value !== 'UNASSIGNED' && trip.assignedLicensePlate !== tripFilterVehicle.value) return false;
+    if (!matchesTimePeriod(trip)) return false;
+    if (tripFilterSearch.value) {
+      const haystack = normalizeSearch([
+        trip.route?.name,
+        trip.routeName,
+        trip.departurePoint,
+        trip.arrivalPoint,
+        trip.assignedLicensePlate,
+        trip.assignedDriverFullName,
+        trip.secondaryDriverFullName,
+        trip.inspector?.fullName
+      ].filter(Boolean).join(' '));
+      if (!haystack.includes(normalizeSearch(tripFilterSearch.value))) return false;
     }
     return true;
   });
@@ -272,12 +354,8 @@ const getLeavesForDay = (dateStr) => {
 
 // === ACTION LOGIC ===
 const openTripDetail = (trip) => {
-  if (trip.status === 'PENDING' || trip.status === 'ASSIGNED') {
-    selectedAssignTrip.value = trip;
-    isAssignModalOpen.value = true;
-  } else {
-    console.log("Trip is in progress or completed");
-  }
+  selectedAssignTrip.value = trip;
+  isAssignModalOpen.value = true;
 };
 
 const handleAssignSubmit = async (assignment) => {
@@ -294,8 +372,28 @@ const handleAssignSubmit = async (assignment) => {
       inspector: assignment.inspector || null,
       status: 'ASSIGNED'
     };
-    
-    await api.put(`/trips/${updatedTrip.id}`, updatedTrip);
+
+    if (assignment.returnTripId) {
+      const returnTrip = trips.value.find(trip => Number(trip.id) === Number(assignment.returnTripId));
+      if (!returnTrip) throw new Error('Không tìm thấy chuyến về được gợi ý.');
+      const updatedReturnTrip = {
+        ...returnTrip,
+        assignedDriverUsername: assignment.driverUsername,
+        assignedDriverFullName: assignment.driverFullName,
+        secondaryDriverUsername: assignment.secondaryDriverUsername,
+        secondaryDriverFullName: assignment.secondaryDriverFullName,
+        assignedLicensePlate: assignment.licensePlate,
+        inspector: assignment.inspector || null,
+        status: 'ASSIGNED'
+      };
+      await api.put(`/trips/${updatedTrip.id}/assign-pair`, {
+        returnTripId: returnTrip.id,
+        outboundTrip: updatedTrip,
+        returnTrip: updatedReturnTrip
+      });
+    } else {
+      await api.put(`/trips/${updatedTrip.id}`, updatedTrip);
+    }
     alert('Phân công chuyến xe thành công!');
     isAssignModalOpen.value = false;
     fetchData();
@@ -303,6 +401,33 @@ const handleAssignSubmit = async (assignment) => {
     console.error("Lỗi phân công:", error);
     assignModalRef.value?.resetSubmitting();
     alert(error.response?.data?.message || 'Có lỗi xảy ra khi lưu phân công.');
+  }
+};
+
+const handleUnassign = async () => {
+  if (!selectedAssignTrip.value) return;
+
+  try {
+    const updatedTrip = {
+      ...selectedAssignTrip.value,
+      assignedDriverUsername: null,
+      assignedDriverFullName: null,
+      secondaryDriverUsername: null,
+      secondaryDriverFullName: null,
+      assignedLicensePlate: null,
+      inspector: null,
+      driverAccepted: false,
+      status: 'PENDING'
+    };
+
+    await api.put(`/trips/${updatedTrip.id}`, updatedTrip);
+    isAssignModalOpen.value = false;
+    selectedAssignTrip.value = null;
+    await fetchData();
+  } catch (error) {
+    console.error('Lỗi hủy phân công:', error);
+    assignModalRef.value?.resetSubmitting();
+    alert(error.response?.data?.message || 'Không thể hủy phân công chuyến xe.');
   }
 };
 

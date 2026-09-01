@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.smartbus.booking.entity.Trip;
+import com.smartbus.booking.dto.TripPairAssignmentRequest;
 import com.smartbus.booking.service.TripService;
 
 import lombok.RequiredArgsConstructor;
@@ -135,6 +136,14 @@ public class TripController {
     @PutMapping("/{id}")
     public ResponseEntity<Trip> updateTrip(@PathVariable("id") Long id, @RequestBody Trip trip) {
         return ResponseEntity.ok(tripService.updateTrip(id, trip));
+    }
+
+    @com.smartbus.booking.annotation.AuditAction(action = "ASSIGN_TRIP_PAIR", entityName = "Trip")
+    @PutMapping("/{id}/assign-pair")
+    public ResponseEntity<List<Trip>> assignTripPair(
+            @PathVariable("id") Long id,
+            @RequestBody TripPairAssignmentRequest request) {
+        return ResponseEntity.ok(tripService.assignTripPair(id, request));
     }
 
     // 6. XÓA CHUYẾN XE (DELETE)

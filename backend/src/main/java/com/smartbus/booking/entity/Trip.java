@@ -18,6 +18,9 @@ public class Trip {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "route_id")
+    private Long routeId;
+
     @Column(nullable = false)
     private String companyName;
 
@@ -117,4 +120,11 @@ public class Trip {
     @Column(nullable = true)
     @Builder.Default
     private String status = "PENDING"; // PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
+
+    @Column(name = "distance_km")
+    private Double distanceKm;
+
+    @Builder.Default
+    @Column(name = "mileage_recorded", nullable = false, columnDefinition = "boolean default false")
+    private Boolean mileageRecorded = false;
 }

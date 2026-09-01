@@ -303,8 +303,13 @@ const openReportModal = (trip) => {
 
 const deleteTrip = async (id) => {
   if (confirm('Xóa chuyến xe này?')) {
-    try { await api.delete(`/trips/${id}`); fetchTrips(); }
-    catch (err) { alert('Lỗi xóa!'); }
+    try {
+      await api.delete(`/trips/${id}`)
+      await fetchTrips()
+    } catch (err) {
+      const message = err.response?.data?.error || err.response?.data?.message || 'Không thể xóa chuyến xe.'
+      alert(message)
+    }
   }
 };
 

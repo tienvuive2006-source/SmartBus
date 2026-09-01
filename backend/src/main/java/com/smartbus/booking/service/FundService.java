@@ -24,6 +24,19 @@ public class FundService {
         return recordTransaction(rawFundType, transactionType, amount, description, referenceId, performedBy, java.time.LocalDateTime.now());
     }
 
+    /** Ghi giao dịch một lần theo mã tham chiếu, dùng cho thao tác có thể bị gửi lại. */
+    public FundTransaction recordTransactionIfAbsent(String rawFundType, String transactionType, Double amount,
+            String description, String referenceId, String performedBy) {
+        return recordTransactionIfAbsent(rawFundType, transactionType, amount, description, referenceId, performedBy,
+                java.time.LocalDateTime.now());
+    }
+
+    public FundTransaction recordTransactionIfAbsent(String rawFundType, String transactionType, Double amount,
+            String description, String referenceId, String performedBy, java.time.LocalDateTime date) {
+        if (referenceId != null && fundTransactionRepository.existsByReferenceIdAndTransactionType(referenceId, transactionType)) return null;
+        return recordTransaction(rawFundType, transactionType, amount, description, referenceId, performedBy, date);
+    }
+
     public FundTransaction recordTransaction(String rawFundType, String transactionType, Double amount, String description, String referenceId, String performedBy, java.time.LocalDateTime date) {
         if (amount == null || amount <= 0) return null; // Không ghi nhận giao dịch 0đ
         
@@ -107,14 +120,13 @@ public class FundService {
      * Đồng bộ lịch sử bán vé cũ vào Sổ cái
      */
     public int syncHistoricalBookings() {
-        fundTransactionRepository.deleteAll(); // Xóa sạch dữ liệu sổ cái cũ
         List<com.smartbus.booking.entity.Booking> allBookings = bookingRepository.findAll();
         int count = 0;
         
         for (com.smartbus.booking.entity.Booking b : allBookings) {
             // Nếu đã thanh toán hoặc đã lên xe
             if ("PAID".equals(b.getStatus()) || "CHECKED_IN".equals(b.getStatus()) || "COMPLETED".equals(b.getStatus())) {
-                recordTransaction(
+                recordTransactionIfAbsent(
                     b.getPaymentMethod(), 
                     "INCOME", 
                     b.getTotalPrice(), 
@@ -128,7 +140,7 @@ public class FundService {
             // Nếu bị hủy và có hoàn tiền
             if ("CANCELLED".equals(b.getStatus()) && b.getRefundAmount() != null && b.getRefundAmount() > 0) {
                 // Thu ban đầu
-                recordTransaction(
+                recordTransactionIfAbsent(
                     b.getPaymentMethod(), 
                     "INCOME", 
                     b.getTotalPrice(), 
@@ -141,7 +153,7 @@ public class FundService {
                     .map(refund -> "COMPLETED".equals(refund.getStatus()))
                     .orElse(true);
                 if (refundCompleted) {
-                    recordTransaction(
+                    recordTransactionIfAbsent(
                         b.getPaymentMethod(), "EXPENSE", b.getRefundAmount(),
                         "Hoàn tiền hủy vé #" + b.getId(), String.valueOf(b.getId()),
                         b.getCustomerName() != null ? b.getCustomerName() : "Khách hàng", b.getCreatedAt()

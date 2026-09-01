@@ -95,12 +95,14 @@
         <div v-if="loading" class="flex justify-center py-32"><div class="w-12 h-12 border-4 border-zinc-200 border-t-[#075955] rounded-full animate-spin"></div></div>
 
         <div v-else class="space-y-6">
-          <div v-if="awaitingReturnDate" class="flex flex-col items-center rounded-2xl border border-emerald-100 bg-white px-8 py-14 text-center shadow-sm">
-            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#075955]">
-              <span class="material-symbols-outlined text-3xl">event</span>
+          <div v-if="awaitingReturnDate && filteredTrips.length === 0" class="flex items-center gap-4 rounded-xl border border-emerald-100 bg-white px-5 py-4 shadow-sm">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-[#075955]">
+              <span class="material-symbols-outlined text-2xl">event</span>
             </div>
-            <h3 class="text-xl font-extrabold text-slate-900">Đã chọn chuyến đi</h3>
-            <p class="mt-2 max-w-md text-sm text-slate-500">Chọn ngày về trong thanh tìm kiếm hoặc bấm ngày được gợi ý để xem các chuyến chiều về.</p>
+            <div class="min-w-0 text-left">
+              <h3 class="text-sm font-extrabold text-slate-900">Đã chọn chuyến đi</h3>
+              <p class="mt-1 text-xs text-slate-500">Chọn ngày về trong thanh tìm kiếm hoặc dùng ngày được gợi ý để xem chuyến chiều về.</p>
+            </div>
           </div>
 
           <BookingTripCard
@@ -331,7 +333,7 @@ const handleSelectTrip = async (trip) => {
         await updateQuery({
           date: selectedDepartureDate,
           tripType: 'round-trip',
-          returnDate: currentReturnDate && currentReturnDate > selectedDepartureDate
+          returnDate: currentReturnDate && currentReturnDate >= selectedDepartureDate
             ? currentReturnDate
             : undefined
         });
@@ -343,17 +345,10 @@ const handleSelectTrip = async (trip) => {
         await fetchReturnDateSuggestions();
       }
 
-      const suggestedReturnDate = route.query.returnDate || returnDateSuggestions.value[0];
-      if (suggestedReturnDate) {
-        if (!route.query.returnDate) {
-          await updateQuery({ returnDate: suggestedReturnDate, tripType: 'round-trip' });
-        }
-        await refreshReturnTripData();
-        await fetchTrips();
-      } else {
-        allTrips.value = [];
-        loading.value = false;
-      }
+      // Không tự điền ngày về. Khi ô ngày về để trống, fetchTrips tải tất cả
+      // chuyến ngược chiều hợp lệ để khách tự chọn; ngày chỉ là bộ lọc tùy chọn.
+      await refreshReturnTripData();
+      await fetchTrips();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else { // RETURN
       if (!outboundTrip.value) {
@@ -483,7 +478,7 @@ const fetchReturnDateSuggestions = async () => {
     returnDateSuggestions.value = [...new Set((Array.isArray(response.data) ? response.data : [])
       .filter((trip) => trip.isVisible !== false && Number(trip.availableSeats || 0) > 0)
       .map((trip) => trip.departureDate?.split('T')[0])
-      .filter((date) => date && date > departureDate))]
+      .filter((date) => date && date >= departureDate))]
       .sort()
       .slice(0, 4);
   } catch (error) {
@@ -499,8 +494,7 @@ const refreshReturnTripData = async () => {
 const handleReturnDateChange = async (event) => {
   await updateQuery({ returnDate: event.target.value, tripType: 'round-trip' });
   if (outboundTrip.value && bookingStep.value === 'RETURN') {
-    if (event.target.value) await fetchTrips();
-    else allTrips.value = [];
+    await fetchTrips();
   } else {
     resetWizard();
   }
@@ -566,8 +560,8 @@ const sortOptions = [
   { id: 'default', name: 'Mặc định' },
   { id: 'price_asc', name: 'Giá thấp nhất' },
   { id: 'price_desc', name: 'Giá cao nhất' },
-  { id: 'time_asc', name: 'Giờ đi sớm nhất' },
-  { id: 'time_desc', name: 'Giờ đi muộn nhất' },
+  { id: 'time_asc', name: 'Ngày đi sớm nhất' },
+  { id: 'time_desc', name: 'Ngày đi muộn nhất' },
   { id: 'rating_desc', name: 'Đánh giá cao nhất' }
 ];
 
@@ -580,6 +574,29 @@ const normalize = (s) => {
     .replace(/\b(ben xe|thanh pho|tp|tinh|huyen|xa|quan|phuong)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+const departureSortValue = (trip) => {
+  const date = String(trip?.departureDate || '').split('T')[0];
+  const time = String(trip?.departureTime || '00:00').padStart(5, '0');
+  return `${date}T${time}`;
+};
+
+const tripDepartureTimestamp = (trip) => {
+  const date = String(trip?.departureDate || '').split('T')[0];
+  const time = String(trip?.departureTime || '00:00').slice(0, 5);
+  if (!date) return Number.NaN;
+  return new Date(`${date}T${time}:00`).getTime();
+};
+
+const tripArrivalTimestamp = (trip) => {
+  const departure = tripDepartureTimestamp(trip);
+  if (!Number.isFinite(departure)) return Number.NaN;
+  const date = String(trip?.departureDate || '').split('T')[0];
+  const time = String(trip?.arrivalTime || trip?.departureTime || '00:00').slice(0, 5);
+  let arrival = new Date(`${date}T${time}:00`).getTime();
+  if (arrival <= departure) arrival += 24 * 60 * 60 * 1000;
+  return arrival;
 };
 
 const filteredTrips = computed(() => {
@@ -663,8 +680,8 @@ const filteredTrips = computed(() => {
 
   if (currentSort.value === 'price_asc') results.sort((a, b) => a.price - b.price);
   else if (currentSort.value === 'price_desc') results.sort((a, b) => b.price - a.price);
-  else if (currentSort.value === 'time_asc') results.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
-  else if (currentSort.value === 'time_desc') results.sort((a, b) => b.departureTime.localeCompare(a.departureTime));
+  else if (currentSort.value === 'time_asc') results.sort((a, b) => departureSortValue(a).localeCompare(departureSortValue(b)));
+  else if (currentSort.value === 'time_desc') results.sort((a, b) => departureSortValue(b).localeCompare(departureSortValue(a)));
   else if (currentSort.value === 'rating_desc') results.sort((a, b) => (companyStats.value[b.companyName + '|' + b.busType]?.averageRating || 0) - (companyStats.value[a.companyName + '|' + a.busType]?.averageRating || 0));
 
   return results;
@@ -682,18 +699,15 @@ const fetchTrips = async () => {
       params: { from, to, date }
     });
     
-    // Nếu là chuyến về, lọc thêm điều kiện: giờ khởi hành chuyến về phải SAU chuyến đi (nếu cùng ngày)
+    // Ngày về là tùy chọn. Nếu để trống, vẫn chỉ lấy các chuyến ngược chiều
+    // khởi hành sau lúc chuyến đi đến tối thiểu 1 giờ.
     let fetchedTrips = res.data.map(t => ({ ...t, showInfo: false }));
-    
-    if (isReturn && outboundTrip.value && date === route.query.date) {
-      const outTimeParts = outboundTrip.value.arrivalTime ? outboundTrip.value.arrivalTime.split(':') : [0,0];
-      const outMinutes = parseInt(outTimeParts[0]) * 60 + parseInt(outTimeParts[1]);
-      
+
+    if (isReturn && outboundTrip.value) {
+      const earliestReturn = tripArrivalTimestamp(outboundTrip.value) + 60 * 60 * 1000;
       fetchedTrips = fetchedTrips.filter(t => {
-         if (!t.departureTime) return false;
-         const retTimeParts = t.departureTime.split(':');
-         const retMinutes = parseInt(retTimeParts[0]) * 60 + parseInt(retTimeParts[1]);
-         return retMinutes > outMinutes + 120; // Phải sau 2 tiếng
+        const departure = tripDepartureTimestamp(t);
+        return Number.isFinite(departure) && departure >= earliestReturn;
       });
     }
 

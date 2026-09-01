@@ -73,7 +73,7 @@
               </span>
             </td>
             <td class="px-6 py-4">
-              <div class="text-sm font-bold text-gray-900">{{ tx.description }}</div>
+              <div class="text-sm font-bold text-gray-900">{{ displayDescription(tx.description) }}</div>
               <div v-if="tx.referenceId" class="text-xs text-gray-500 mt-0.5 font-medium">Ref: {{ tx.referenceId }}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-600">
@@ -194,6 +194,9 @@ const formatDateTime = (dateString) => {
     day: '2-digit', month: '2-digit', year: 'numeric'
   }).format(date)
 }
+
+const displayDescription = description => String(description || '')
+  .replace(/\s*\(SePay Polling\)/gi, '')
 
 const getFilterLabel = (type) => {
   const map = {

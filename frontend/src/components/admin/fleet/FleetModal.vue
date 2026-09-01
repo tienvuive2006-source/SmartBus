@@ -63,6 +63,15 @@
             </select>
           </div>
 
+          <div class="space-y-1.5">
+            <label class="text-label-md font-black text-on-surface-variant uppercase">Hạn đăng kiểm</label>
+            <input
+              v-model="form.inspectionExpiryDate"
+              type="date"
+              class="w-full border-2 border-outline-variant/50 focus:border-primary rounded-xl px-4 py-2.5 focus:outline-none font-bold transition-colors"
+            />
+          </div>
+
 
 
 

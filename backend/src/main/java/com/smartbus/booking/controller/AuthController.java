@@ -5,6 +5,8 @@ import com.smartbus.booking.entity.User;
 import com.smartbus.booking.repository.UserRepository;
 import com.smartbus.booking.service.LoyaltyPointPolicy;
 import com.smartbus.booking.dto.BookingCancellationRequest;
+import com.smartbus.booking.dto.RegistrationRequest;
+import com.smartbus.booking.service.RegistrationVerificationService;
 import com.smartbus.booking.service.RefundRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -34,46 +36,105 @@ public class AuthController {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final RegistrationVerificationService registrationVerificationService;
 
     @Value("${google.client.id}")
     private String googleClientId;
 
-    public AuthController(UserRepository userRepository, JwtService jwtService, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository userRepository, JwtService jwtService, PasswordEncoder passwordEncoder,
+                          RegistrationVerificationService registrationVerificationService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
+        this.registrationVerificationService = registrationVerificationService;
     }
 
     // ============================================================
     // API ĐĂNG KÝ
     // ============================================================
+    @PostMapping("/register/send-code")
+    public ResponseEntity<?> sendRegistrationCode(@RequestBody Map<String, String> request) {
+        String phone = normalizePhone(request.get("phone"));
+        String email = normalizeEmail(request.get("email"));
+        String validationError = validatePublicRegistrationContact(phone, email);
+        if (validationError != null) {
+            return ResponseEntity.badRequest().body(validationError);
+        }
+        try {
+            registrationVerificationService.sendCode(email, phone);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Mã xác nhận đã được gửi đến email của bạn.",
+                    "expiresInSeconds", 600,
+                    "resendAfterSeconds", 60
+            ));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(exception.getMessage());
+        }
+    }
+
     @com.smartbus.booking.annotation.AuditAction(action = "REGISTER_USER", entityName = "User")
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User userRequest) {
+    public ResponseEntity<?> register(@RequestBody RegistrationRequest userRequest) {
+        String username = normalizeUsername(userRequest.username());
+        if (username != null && !username.matches("[a-z][a-z0-9._-]{3,29}")) {
+            return ResponseEntity.badRequest().body("Tên đăng nhập phải bắt đầu bằng chữ và có 4-30 ký tự không dấu.");
+        }
+        if (username != null && userRepository.findByUsernameIgnoreCase(username).isPresent()) {
+            return ResponseEntity.badRequest().body("Tên đăng nhập này đã được sử dụng.");
+        }
+
+        String phone = normalizePhone(userRequest.phone());
+        if (!phone.matches("(?:\\+84|0)\\d{9}")) {
+            return ResponseEntity.badRequest().body("Số điện thoại phải gồm 10 chữ số hoặc bắt đầu bằng +84.");
+        }
         // Kiểm tra số điện thoại đã tồn tại chưa
-        if (userRepository.findByPhone(userRequest.getPhone()).isPresent()) {
+        if (userRepository.findByPhone(phone).isPresent()) {
             return ResponseEntity.badRequest().body("Số điện thoại này đã được đăng ký tài khoản khác!");
         }
         
         // Kiểm tra email đã tồn tại chưa (nếu có nhập)
-        if (userRequest.getEmail() != null && !userRequest.getEmail().trim().isEmpty()) {
-            if (userRepository.findByEmail(userRequest.getEmail()).isPresent()) {
+        String email = normalizeEmail(userRequest.email());
+        if (!email.isEmpty()) {
+            if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
                 return ResponseEntity.badRequest().body("Email này đã được sử dụng bởi tài khoản khác!");
             }
         }
 
+        boolean adminRegistration = isAdminRequest();
+        if (!adminRegistration) {
+            if (email.isEmpty()) {
+                return ResponseEntity.badRequest().body("Email là bắt buộc để nhận mã xác nhận.");
+            }
+            try {
+                registrationVerificationService.verify(email, phone, userRequest.verificationCode());
+            } catch (IllegalArgumentException exception) {
+                return ResponseEntity.badRequest().body(exception.getMessage());
+            }
+        }
+
+        if (userRequest.fullName() == null || userRequest.fullName().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Vui lòng nhập họ và tên.");
+        }
+        if (userRequest.password() == null || userRequest.password().length() < 6) {
+            return ResponseEntity.badRequest().body("Mật khẩu phải có ít nhất 6 ký tự.");
+        }
+
         // Tạo user mới với mật khẩu đã được BCrypt hash
         User newUser = User.builder()
-                .phone(userRequest.getPhone())
-                .password(passwordEncoder.encode(userRequest.getPassword()))
-                .fullName(userRequest.getFullName())
-                .email(userRequest.getEmail())
+                .phone(phone)
+                .username(username)
+                .password(passwordEncoder.encode(userRequest.password()))
+                .fullName(userRequest.fullName().trim())
+                .email(email.isEmpty() ? null : email)
                 .role("USER")
                 .lastLoginAt(LocalDateTime.now())
                 .walletBalance(0.0) // Số dư mặc định
                 .build();
 
         userRepository.save(newUser);
+        if (!adminRegistration) {
+            registrationVerificationService.consume(email);
+        }
 
         // Tạo JWT token ngay sau khi đăng ký thành công
         String token = jwtService.generateToken(
@@ -86,15 +147,50 @@ public class AuthController {
         return ResponseEntity.ok(buildAuthResponse(newUser, token));
     }
 
+    private String validatePublicRegistrationContact(String phone, String email) {
+        if (!phone.matches("(?:\\+84|0)\\d{9}")) {
+            return "Số điện thoại phải gồm 10 chữ số hoặc bắt đầu bằng +84.";
+        }
+        if (userRepository.findByPhone(phone).isPresent()) {
+            return "Số điện thoại này đã được đăng ký tài khoản khác!";
+        }
+        if (!email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            return "Vui lòng nhập địa chỉ email hợp lệ.";
+        }
+        if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
+            return "Email này đã được sử dụng bởi tài khoản khác!";
+        }
+        return null;
+    }
+
+    private String normalizePhone(String phone) {
+        return phone == null ? "" : phone.replaceAll("[\\s.-]", "");
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private boolean isAdminRequest() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
     // ============================================================
     // API ĐĂNG NHẬP
     // ============================================================
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User loginRequest) {
-        Optional<User> userOpt = userRepository.findByPhone(loginRequest.getPhone());
+        String identifier = loginRequest.getUsername() != null && !loginRequest.getUsername().isBlank()
+                ? loginRequest.getUsername().trim()
+                : String.valueOf(loginRequest.getPhone()).trim();
+        Optional<User> userOpt = userRepository.findByUsernameIgnoreCase(identifier)
+                .or(() -> userRepository.findByPhone(identifier));
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity.status(404).body("Không tìm thấy số điện thoại này trên hệ thống!");
+            return ResponseEntity.status(404).body("Không tìm thấy tên đăng nhập hoặc số điện thoại này trên hệ thống.");
         }
 
         User user = userOpt.get();
@@ -502,17 +598,23 @@ public class AuthController {
     // Helper: Build response JSON
     // ============================================================
     private Map<String, Object> buildAuthResponse(User user, String token) {
-        return Map.of(
-                "token", token,
-                "id", user.getId(),
-                "phone", user.getPhone(),
-                "fullName", user.getFullName(),
-                "role", user.getRole(),
-                "email", user.getEmail() != null ? user.getEmail() : "",
-                "walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0,
-                "loyaltyPoints", user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0,
-                "authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL",
-                "avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : ""
-        );
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("token", token);
+        response.put("id", user.getId());
+        response.put("username", user.getUsername() != null ? user.getUsername() : "");
+        response.put("phone", user.getPhone());
+        response.put("fullName", user.getFullName());
+        response.put("role", user.getRole());
+        response.put("email", user.getEmail() != null ? user.getEmail() : "");
+        response.put("walletBalance", user.getWalletBalance() != null ? user.getWalletBalance() : 0.0);
+        response.put("loyaltyPoints", user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0);
+        response.put("authProvider", user.getAuthProvider() != null ? user.getAuthProvider() : "LOCAL");
+        response.put("avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "");
+        return response;
+    }
+
+    private String normalizeUsername(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.trim().toLowerCase(java.util.Locale.ROOT);
     }
 }

@@ -194,7 +194,7 @@ public class WalletService {
                                 userRepository.save(user);
 
                                 // Record transaction
-                                String description = "Nạp tiền Ví điện tử (SePay Polling) - Ref: " + txnCode;
+                                String description = "Nạp tiền Ví điện tử - Ref: " + txnCode;
                                 fundService.recordTransaction("BANK_TRANSFER", "INCOME", expectedAmount, description, refId, user.getFullName());
                                 
                                 if (bonus > 0) {

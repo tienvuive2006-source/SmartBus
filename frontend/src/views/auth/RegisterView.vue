@@ -62,12 +62,13 @@
                   autocomplete="tel"
                   placeholder="Nhập số điện thoại"
                   required
+                  :disabled="codeSent"
                 />
               </div>
             </div>
 
             <div class="field-group">
-              <label for="register-email">Email (Tùy chọn)</label>
+              <label for="register-email">Email</label>
               <div class="field-control">
                 <span class="material-symbols-outlined" aria-hidden="true">mail</span>
                 <input
@@ -76,7 +77,33 @@
                   type="email"
                   autocomplete="email"
                   placeholder="Ví dụ: example@gmail.com"
+                  required
+                  :disabled="codeSent"
                 />
+              </div>
+            </div>
+
+            <div v-if="codeSent" class="field-group">
+              <label for="register-verification-code">Mã xác nhận email</label>
+              <div class="field-control">
+                <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
+                <input
+                  id="register-verification-code"
+                  v-model.trim="verificationCode"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  placeholder="Nhập mã 6 số"
+                  maxlength="6"
+                  pattern="[0-9]{6}"
+                  required
+                />
+              </div>
+              <div class="verification-actions">
+                <span>Mã có hiệu lực trong 10 phút.</span>
+                <button type="button" :disabled="loading || resendSeconds > 0" @click="resendCode">
+                  {{ resendSeconds > 0 ? `Gửi lại sau ${resendSeconds}s` : 'Gửi lại mã' }}
+                </button>
               </div>
             </div>
 
@@ -130,9 +157,14 @@
               <span>{{ errorMsg }}</span>
             </div>
 
+            <div v-if="successMsg" class="success-message" role="status">
+              <span class="material-symbols-outlined" aria-hidden="true">mark_email_read</span>
+              <span>{{ successMsg }}</span>
+            </div>
+
             <button class="submit-button" type="submit" :disabled="loading">
               <span v-if="loading" class="loading-ring" aria-hidden="true"></span>
-              <span>{{ loading ? 'Đang khởi tạo...' : 'Tạo tài khoản' }}</span>
+              <span>{{ submitButtonLabel }}</span>
               <span v-if="!loading" class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
             </button>
           </form>
@@ -153,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import registerCoachImage from '@/assets/login-coach-night.png';
@@ -166,13 +198,63 @@ const phone = ref('');
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
+const verificationCode = ref('');
+const codeSent = ref(false);
+const resendSeconds = ref(0);
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const loading = ref(false);
 const errorMsg = ref('');
+const successMsg = ref('');
+let resendTimer = null;
+
+const submitButtonLabel = computed(() => {
+  if (loading.value) return codeSent.value ? 'Đang xác nhận...' : 'Đang gửi mã...';
+  return codeSent.value ? 'Xác nhận & tạo tài khoản' : 'Gửi mã xác nhận';
+});
+
+const startResendCountdown = () => {
+  resendSeconds.value = 60;
+  if (resendTimer) clearInterval(resendTimer);
+  resendTimer = setInterval(() => {
+    resendSeconds.value -= 1;
+    if (resendSeconds.value <= 0) {
+      clearInterval(resendTimer);
+      resendTimer = null;
+    }
+  }, 1000);
+};
+
+const errorMessageOf = error => {
+  if (typeof error.response?.data === 'string') return error.response.data;
+  return error.response?.data?.message || 'Máy chủ đang bận! Vui lòng thử lại sau.';
+};
+
+const sendCode = async () => {
+  await authStore.sendRegistrationCode(email.value, phone.value);
+  codeSent.value = true;
+  verificationCode.value = '';
+  successMsg.value = `Mã xác nhận đã được gửi đến ${email.value}.`;
+  startResendCountdown();
+};
+
+const resendCode = async () => {
+  if (resendSeconds.value > 0) return;
+  errorMsg.value = '';
+  successMsg.value = '';
+  loading.value = true;
+  try {
+    await sendCode();
+  } catch (error) {
+    errorMsg.value = errorMessageOf(error);
+  } finally {
+    loading.value = false;
+  }
+};
 
 const handleRegister = async () => {
   errorMsg.value = '';
+  successMsg.value = '';
 
   if (password.value !== confirmPassword.value) {
     errorMsg.value = 'Mật khẩu nhập lại không khớp!';
@@ -182,23 +264,31 @@ const handleRegister = async () => {
   loading.value = true;
   
   try {
-    await authStore.register(fullName.value, phone.value, password.value, email.value);
+    if (!codeSent.value) {
+      await sendCode();
+      return;
+    }
+    await authStore.register(fullName.value, phone.value, password.value, email.value, verificationCode.value);
     router.push('/');
   } catch (error) {
     console.error("Đăng ký thất bại:", error);
-    if (error.response?.data) {
-      errorMsg.value = typeof error.response.data === 'string'
-        ? error.response.data
-        : "Số điện thoại đã tồn tại!";
-    } else {
-      errorMsg.value = "Máy chủ đang bận! Vui lòng thử lại sau.";
-    }
+    errorMsg.value = errorMessageOf(error);
   } finally {
     loading.value = false;
   }
 };
+
+onBeforeUnmount(() => {
+  if (resendTimer) clearInterval(resendTimer);
+});
 </script>
 
 <style scoped>
 @import '@/assets/auth.css';
+.success-message { display:flex; align-items:flex-start; gap:9px; padding:12px 14px; border:1px solid #a7f3d0; border-radius:13px; color:#087467; background:#f0fdf8; font-size:13px; font-weight:650; line-height:1.45; }
+.success-message .material-symbols-outlined { margin-top:1px; font-size:18px; }
+.verification-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:7px; color:#718096; font-size:11px; font-weight:600; }
+.verification-actions button { border:0; padding:0; color:#075fcc; background:transparent; font-size:11px; font-weight:800; cursor:pointer; }
+.verification-actions button:disabled { color:#94a3b8; cursor:not-allowed; }
+.field-control input:disabled { cursor:not-allowed; color:#64748b; background:#f1f5f9; }
 </style>

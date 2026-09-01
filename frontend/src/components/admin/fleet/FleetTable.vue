@@ -79,6 +79,18 @@
                   <span class="material-symbols-outlined text-sm text-primary">airport_shuttle</span>
                   Dòng: <span class="text-primary">{{ bus.busType }}</span>
                 </p>
+                <div class="mt-3 max-w-sm">
+                  <div class="flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
+                    <span>{{ formatMileage(bus.currentMileage) }} km tổng</span>
+                    <span :class="maintenanceTone(bus)">{{ maintenanceMileage(bus) }} / {{ formatMileage(bus.maintenanceIntervalKm || 10000) }} km</span>
+                  </div>
+                  <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div class="h-full rounded-full transition-all" :class="maintenanceBar(bus)" :style="{ width: `${maintenanceProgress(bus)}%` }"></div>
+                  </div>
+                  <p v-if="Number(bus.maintenanceAlertLevel || 0) >= 80" class="mt-1 text-[10px] font-black" :class="maintenanceTone(bus)">
+                    {{ Number(bus.maintenanceAlertLevel) >= 100 ? 'Đã đến hạn bảo trì' : 'Sắp đến hạn bảo trì' }}
+                  </p>
+                </div>
               </div>
 
               <!-- Status badge is moved to image overlay -->
@@ -134,4 +146,11 @@ const filteredBuses = computed(() => {
   if (!selectedBusType.value) return props.buses;
   return props.buses.filter(b => b.busType === selectedBusType.value);
 });
+
+const formatMileage = value => Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 1 });
+const mileageSinceMaintenance = bus => Math.max(0, Number(bus.currentMileage || 0) - Number(bus.lastMaintenanceMileage || 0));
+const maintenanceMileage = bus => formatMileage(mileageSinceMaintenance(bus));
+const maintenanceProgress = bus => Math.min(100, Math.round(mileageSinceMaintenance(bus) / Math.max(1, Number(bus.maintenanceIntervalKm || 10000)) * 100));
+const maintenanceTone = bus => Number(bus.maintenanceAlertLevel || 0) >= 100 ? 'text-rose-600' : Number(bus.maintenanceAlertLevel || 0) >= 80 ? 'text-amber-600' : 'text-emerald-700';
+const maintenanceBar = bus => Number(bus.maintenanceAlertLevel || 0) >= 100 ? 'bg-rose-500' : Number(bus.maintenanceAlertLevel || 0) >= 80 ? 'bg-amber-500' : 'bg-emerald-500';
 </script>

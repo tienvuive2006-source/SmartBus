@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "bookings")
@@ -81,4 +82,8 @@ public class Booking {
 
     @Transient
     private Review userReview;
+
+    /** Loại của từng ghế để hiển thị; chỉ dựng khi trả API, không lưu trùng vào bookings. */
+    @Transient
+    private Map<String, SeatType> seatTypes;
 }

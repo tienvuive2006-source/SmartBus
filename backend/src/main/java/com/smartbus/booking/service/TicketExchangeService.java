@@ -42,6 +42,7 @@ public class TicketExchangeService {
     private final FundService fundService;
     private final TicketExchangeEmailService ticketExchangeEmailService;
     private final TicketExchangePaymentVerifier paymentVerifier;
+    private final SeatRealtimePublisher seatRealtimePublisher;
 
     @Transactional(readOnly = true)
     public Map<String, Object> getOptions(Long bookingId, Long userId) {
@@ -95,11 +96,12 @@ public class TicketExchangeService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getAdminExchangeHistory() {
+        Map<Long, Map<String, com.smartbus.booking.entity.SeatType>> seatTypeCache = new HashMap<>();
         return bookingExchangeRepository.findAll().stream()
                 .filter(exchange -> !"EXPIRED".equals(exchange.getStatus()))
                 .sorted(Comparator.comparing(BookingExchange::getExchangedAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(this::toAdminExchangeItem)
+                .map(exchange -> toAdminExchangeItem(exchange, seatTypeCache))
                 .toList();
     }
 
@@ -232,6 +234,7 @@ public class TicketExchangeService {
                     .expiredAt(expiresAt)
                     .build());
             reservationIds.add(reservation.getId());
+            seatRealtimePublisher.publish(newTrip.getId(), seatNumber, "HELD", expiresAt);
         }
         pending.setReservationIds(reservationIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
         bookingExchangeRepository.save(pending);
@@ -285,7 +288,7 @@ public class TicketExchangeService {
         history.setStatus("COMPLETED");
         history.setPaymentMethod(paymentMethod);
         history.setExchangedAt(LocalDateTime.now(BUSINESS_ZONE));
-        releaseReservations(history);
+        releaseReservations(history, false);
         bookingExchangeRepository.save(history);
 
         ticketExchangeEmailService.sendExchangeConfirmation(
@@ -423,12 +426,12 @@ public class TicketExchangeService {
     }
 
     private void expirePendingExchange(BookingExchange pending) {
-        releaseReservations(pending);
+        releaseReservations(pending, true);
         pending.setStatus("EXPIRED");
         bookingExchangeRepository.save(pending);
     }
 
-    private void releaseReservations(BookingExchange exchange) {
+    private void releaseReservations(BookingExchange exchange, boolean publishAvailable) {
         if (exchange.getReservationIds() == null || exchange.getReservationIds().isBlank()) return;
         List<Long> ids = Arrays.stream(exchange.getReservationIds().split(","))
                 .map(String::trim)
@@ -436,6 +439,10 @@ public class TicketExchangeService {
                 .map(Long::valueOf)
                 .toList();
         reservationRepository.deleteAllById(ids);
+        if (publishAvailable) {
+            splitSeatNumbers(exchange.getNewSeatNumbers()).forEach(seatNumber ->
+                    seatRealtimePublisher.publish(exchange.getNewTripId(), seatNumber, "AVAILABLE", null));
+        }
         exchange.setReservationIds(null);
     }
 
@@ -501,6 +508,10 @@ public class TicketExchangeService {
             }
             seatRepository.saveAll(newTripSeats);
             syncAvailableSeats(newTrip);
+            newSeatSet.forEach(seatNumber ->
+                    seatRealtimePublisher.publish(newTrip.getId(), seatNumber, "BOOKED", null));
+            oldSeatSet.stream().filter(seatNumber -> !newSeatSet.contains(seatNumber)).forEach(seatNumber ->
+                    seatRealtimePublisher.publish(oldTrip.getId(), seatNumber, "AVAILABLE", null));
             return;
         }
 
@@ -514,6 +525,10 @@ public class TicketExchangeService {
         seatRepository.saveAll(oldTripSeats);
         syncAvailableSeats(oldTrip);
         syncAvailableSeats(newTrip);
+        newSeatSet.forEach(seatNumber ->
+                seatRealtimePublisher.publish(newTrip.getId(), seatNumber, "BOOKED", null));
+        oldSeatSet.forEach(seatNumber ->
+                seatRealtimePublisher.publish(oldTrip.getId(), seatNumber, "AVAILABLE", null));
     }
 
     private void syncAvailableSeats(Trip trip) {
@@ -546,6 +561,7 @@ public class TicketExchangeService {
         item.put("id", seat.getId());
         item.put("seatNumber", seat.getSeatNumber());
         item.put("seatFloor", seat.getSeatFloor());
+        item.put("seatType", seat.getSeatType());
         item.put("isCurrent", isCurrent);
         item.put("isAvailable", isCurrent || (!Boolean.TRUE.equals(seat.getIsBooked()) && !isHeld));
         return item;
@@ -579,7 +595,9 @@ public class TicketExchangeService {
         return item;
     }
 
-    private Map<String, Object> toAdminExchangeItem(BookingExchange exchange) {
+    private Map<String, Object> toAdminExchangeItem(
+            BookingExchange exchange,
+            Map<Long, Map<String, com.smartbus.booking.entity.SeatType>> seatTypeCache) {
         Booking booking = exchange.getBooking();
         User user = booking == null ? null : booking.getUser();
         Map<String, Object> item = new LinkedHashMap<>();
@@ -593,6 +611,10 @@ public class TicketExchangeService {
         item.put("newTripId", exchange.getNewTripId());
         item.put("oldSeatNumbers", exchange.getOldSeatNumbers());
         item.put("newSeatNumbers", exchange.getNewSeatNumbers());
+        item.put("oldSeatTypes", seatTypesForTrip(
+                exchange.getOldTripId(), splitSeatNumbers(exchange.getOldSeatNumbers()), seatTypeCache));
+        item.put("newSeatTypes", seatTypesForTrip(
+                exchange.getNewTripId(), splitSeatNumbers(exchange.getNewSeatNumbers()), seatTypeCache));
         item.put("oldPrice", safeAmount(exchange.getOldPrice()));
         item.put("newPrice", safeAmount(exchange.getNewPrice()));
         item.put("priceDifference", safeAmount(exchange.getPriceDifference()));
@@ -603,6 +625,27 @@ public class TicketExchangeService {
         item.put("exchangedAt", exchange.getExchangedAt());
         item.put("expiresAt", exchange.getExpiresAt());
         return item;
+    }
+
+    private Map<String, com.smartbus.booking.entity.SeatType> seatTypesForTrip(
+            Long tripId,
+            List<String> seatNumbers,
+            Map<Long, Map<String, com.smartbus.booking.entity.SeatType>> cache) {
+        if (tripId == null) return Collections.emptyMap();
+        Map<String, com.smartbus.booking.entity.SeatType> tripTypes = cache.computeIfAbsent(
+                tripId,
+                id -> seatRepository.findByTripIdOrderBySeatNumberAsc(id).stream()
+                        .collect(Collectors.toMap(
+                                Seat::getSeatNumber,
+                                Seat::getSeatType,
+                                (first, ignored) -> first,
+                                LinkedHashMap::new)));
+        Map<String, com.smartbus.booking.entity.SeatType> result = new LinkedHashMap<>();
+        for (String seatNumber : seatNumbers) {
+            result.put(seatNumber, tripTypes.getOrDefault(
+                    seatNumber, com.smartbus.booking.entity.SeatType.STANDARD));
+        }
+        return result;
     }
 
     private Map<String, Object> toCustomerExchangeItem(BookingExchange exchange) {
@@ -629,6 +672,9 @@ public class TicketExchangeService {
         item.put("arrivalPoint", trip == null ? "" : trip.getArrivalPoint());
         item.put("departureDate", trip == null ? "" : trip.getDepartureDate());
         item.put("departureTime", trip == null ? "" : trip.getDepartureTime());
+        item.put("companyName", trip == null ? "" : trip.getCompanyName());
+        item.put("busType", trip == null ? "" : trip.getBusType());
+        item.put("licensePlate", trip == null ? "" : trip.getAssignedLicensePlate());
         item.put("seatNumbers", splitSeatNumbers(seats));
         item.put("price", safeAmount(price));
         return item;

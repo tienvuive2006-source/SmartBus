@@ -4,7 +4,7 @@
       <tr class="bg-indigo-50/50 text-[11px] font-black uppercase tracking-wider text-indigo-800 border-b border-indigo-100">
         <th class="px-4 py-4">Mã NV</th>
         <th class="px-4 py-4 whitespace-nowrap">Họ và Tên (Tài xế / Nhân viên)</th>
-        <th class="px-4 py-4">Liên hệ</th>
+        <th class="px-4 py-4">Tài khoản / SĐT</th>
         <th class="px-4 py-4 text-center">Trạng thái làm việc</th>
         <th class="px-4 py-4 text-center">Chuyến đang chạy</th>
         <th class="px-4 py-4 text-center">Thao tác</th>
@@ -49,13 +49,14 @@
         <td class="px-4 py-4">
           <div class="flex flex-col gap-1">
             <div class="text-body-md font-bold text-indigo-900 flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[16px] text-indigo-400 shrink-0">call</span>
-              <span>{{ user.phone }}</span>
+              <span class="material-symbols-outlined text-[16px] text-indigo-400 shrink-0">account_circle</span>
+              <span v-if="user.username" class="whitespace-nowrap">{{ user.username }}</span>
+              <span v-else class="italic text-slate-400 font-normal">Chưa có username</span>
             </div>
             <div class="text-[12px] font-medium text-slate-500 flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-[14px] text-slate-400 shrink-0">mail</span>
-              <span v-if="user.email" class="whitespace-nowrap">{{ user.email }}</span>
-              <span v-else class="italic text-slate-400 font-normal">Chưa có Email</span>
+              <span class="material-symbols-outlined text-[14px] text-slate-400 shrink-0">call</span>
+              <span v-if="user.phone" class="whitespace-nowrap">{{ user.phone }}</span>
+              <span v-else class="italic text-slate-400 font-normal">Chưa có SĐT</span>
             </div>
           </div>
         </td>

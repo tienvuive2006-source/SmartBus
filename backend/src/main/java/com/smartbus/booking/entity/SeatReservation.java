@@ -8,7 +8,13 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "seat_reservations")
+@Table(
+        name = "seat_reservations",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_seat_reservations_trip_seat",
+                columnNames = {"trip_id", "seat_number"}
+        )
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,6 +30,9 @@ public class SeatReservation {
 
     @Column(nullable = false)
     private String seatNumber;
+
+    @Column(length = 64)
+    private String holdToken;
 
     @Column(nullable = false)
     private LocalDateTime expiredAt;

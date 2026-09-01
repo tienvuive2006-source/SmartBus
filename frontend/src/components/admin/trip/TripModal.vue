@@ -25,25 +25,29 @@
                  <span v-if="!savedRoutes || savedRoutes.length === 0" class="text-rose-400 text-[9px] italic">Chưa có tuyến mẫu nào</span>
               </label>
               <select 
-                :value="form.departurePoint && form.arrivalPoint ? `${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}` : ''"
-                @change="(e) => {
-                  const selectedRoute = savedRoutes.find(r => r.name === e.target.value);
-                  if(selectedRoute) applyRouteTemplate(selectedRoute);
-                }"
+                :value="selectedRouteOptionValue"
+                @change="handleRouteOptionChange"
                 required
                 :disabled="isEditMode && form.originalAvailableSeats < form.originalTotalSeats"
                 class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3.5 text-sm font-bold outline-none transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="" disabled>-- Vui lòng chọn một tuyến đường --</option>
-                <option v-for="route in savedRoutes" :key="route.name" :value="route.name">
-                  {{ route.name }}
-                </option>
+                <optgroup label="Tuyến chiều đi">
+                  <option v-for="route in savedRoutes" :key="`forward-${route.id}`" :value="`${route.id}:FORWARD`">
+                    {{ route.name }}
+                  </option>
+                </optgroup>
+                <optgroup v-if="roundTripRoutes.length" label="Tuyến chiều ngược (khứ hồi)">
+                  <option v-for="route in roundTripRoutes" :key="`reverse-${route.id}`" :value="`${route.id}:REVERSE`">
+                    {{ reverseRouteName(route) }}
+                  </option>
+                </optgroup>
                 <!-- Fallback option for return trips or unsaved routes -->
                 <option 
-                  v-if="form.departurePoint && form.arrivalPoint && !savedRoutes.find(r => r.name === `${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}`)" 
-                  :value="`${form.departurePoint.split(',')[0]} ➔ ${form.arrivalPoint.split(',')[0]}`"
+                  v-if="selectedRouteOptionValue === 'CURRENT'"
+                  value="CURRENT"
                 >
-                  {{ form.departurePoint.split(',')[0] }} ➔ {{ form.arrivalPoint.split(',')[0] }} (Tuyến chưa lưu mẫu)
+                  {{ form.departurePoint.split(',')[0] }} → {{ form.arrivalPoint.split(',')[0] }} (Tuyến hiện tại)
                 </option>
               </select>
             </div>
@@ -61,18 +65,11 @@
                 <select 
                   v-model="form.busType" 
                   required 
-                  @change="(e) => {
-                    if (form.assignedLicensePlate) {
-                      const assignedBus = buses?.find(b => b.licensePlate === form.assignedLicensePlate);
-                      if (assignedBus && assignedBus.busType !== e.target.value) {
-                        form.assignedLicensePlate = '';
-                      }
-                    }
-                  }"
+                  @change="handleBusTypeChange"
                   :disabled="isEditMode && form.originalAvailableSeats < form.originalTotalSeats"
                   class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <option v-for="t in busTypes" :key="t.id" :value="t.name">{{ t.name }} ({{ t.seatCount }} Ghế)</option>
+                  <option v-for="t in availableBusTypes" :key="t.id" :value="t.name">{{ t.name }} ({{ t.seatCount }} Ghế)</option>
                 </select>
               </div>
             </div>
@@ -206,7 +203,7 @@
                       class="w-full border-2 border-slate-200 focus:border-[#075955] bg-white rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all shadow-sm text-center"
                     >
                       <option value="">-- Giống chuyến đi --</option>
-                      <option v-for="t in busTypes" :key="t.id" :value="t.name">{{ t.name }}</option>
+                      <option v-for="t in availableBusTypes" :key="t.id" :value="t.name">{{ t.name }}</option>
                     </select>
                   </div>
                 </div>
@@ -214,8 +211,17 @@
             </div>
 
             <div class="pt-8 flex justify-end gap-3 shrink-0">
-              <button type="button" @click="closeModal" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">Hủy bỏ</button>
-              <button type="submit" class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all">Lưu & Đăng tải</button>
+              <button type="button" @click="closeModal" :disabled="isSubmitting" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Hủy bỏ</button>
+              <button
+                type="submit"
+                :disabled="isSubmitting"
+                class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-wait disabled:active:scale-100"
+              >
+                <span class="inline-flex items-center gap-2">
+                  <span v-if="isSubmitting" class="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
+                  {{ isSubmitting ? 'Đang lưu...' : 'Lưu & Đăng tải' }}
+                </span>
+              </button>
             </div>
           </form>
 
@@ -261,9 +267,10 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useApi } from '@/composables/useApi';
 import { decodePolyline, fetchPolylineFromCloudinary } from '@/utils/polyline';
+import { useRouteBusTypeApi } from '@/services/routeBusTypeApi';
 
 const props = defineProps({
   busTypes: Array,
@@ -274,19 +281,22 @@ const props = defineProps({
 
 const emit = defineEmits(['saved']);
 const api = useApi();
+const routeBusTypeApi = useRouteBusTypeApi();
 
 const isOpen = ref(false);
 const isEditMode = ref(false);
+const isSubmitting = ref(false);
 const mapLoading = ref(false);
 const leafletMap = ref(null);
 const savedRoutes = ref([]);
+const routeBusTypeConfig = ref({ unrestricted: true, busTypes: [], defaultBusTypeId: null });
 
 const tomorrow = new Date();
 tomorrow.setDate(tomorrow.getDate() + 1);
 const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
 const defaultForm = {
-  id: null, companyName: 'Trung - Nam', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
+  id: null, routeId: null, companyName: 'Trung - Nam', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
   assignedLicensePlate: '',
   departureDate: tomorrowStr, departureTime: '08:00', arrivalTime: '12:00',
   duration: '4h', price: null, rating: 4.8, availableSeats: 36, imageUrl: '', instantConfirmation: true,
@@ -295,6 +305,61 @@ const defaultForm = {
 };
 
 const form = ref({ ...defaultForm });
+
+const availableBusTypes = computed(() => {
+  const configuredTypes = routeBusTypeConfig.value.unrestricted
+    ? (props.busTypes || [])
+    : (routeBusTypeConfig.value.busTypes || []);
+  const currentType = (props.busTypes || []).find(type => type.name === form.value.busType);
+  if (isEditMode.value && currentType && !configuredTypes.some(type => type.id === currentType.id)) {
+    return [...configuredTypes, currentType];
+  }
+  return configuredTypes;
+});
+
+const roundTripRoutes = computed(() => savedRoutes.value.filter(route => route.roundTripEnabled === true));
+
+const reverseRouteName = route => {
+  const parts = String(route?.name || '').split(/\s+-\s+/).filter(Boolean);
+  if (parts.length >= 2) return [...parts].reverse().join(' - ');
+  const departure = String(route?.departurePoint || '').split(',')[0];
+  const arrival = String(route?.arrivalPoint || '').split(',')[0];
+  return `${arrival} - ${departure}`;
+};
+
+const reverseRouteTemplate = route => ({
+  ...route,
+  name: reverseRouteName(route),
+  departurePoint: route.arrivalPoint,
+  arrivalPoint: route.departurePoint,
+  departureLat: route.arrivalLat,
+  departureLng: route.arrivalLng,
+  arrivalLat: route.departureLat,
+  arrivalLng: route.departureLng,
+  isReverseOption: true
+});
+
+const selectedRouteOptionValue = computed(() => {
+  if (!form.value.departurePoint || !form.value.arrivalPoint) return '';
+  const route = savedRoutes.value.find(item =>
+    Number(item.id) === Number(form.value.routeId)
+    || (item.departurePoint === form.value.departurePoint && item.arrivalPoint === form.value.arrivalPoint)
+    || (item.departurePoint === form.value.arrivalPoint && item.arrivalPoint === form.value.departurePoint)
+  );
+  if (!route) return 'CURRENT';
+  const reversed = route.departurePoint === form.value.arrivalPoint
+    && route.arrivalPoint === form.value.departurePoint;
+  return `${route.id}:${reversed ? 'REVERSE' : 'FORWARD'}`;
+});
+
+const handleRouteOptionChange = event => {
+  const value = String(event.target.value || '');
+  if (!value || value === 'CURRENT') return;
+  const [routeId, direction] = value.split(':');
+  const route = savedRoutes.value.find(item => Number(item.id) === Number(routeId));
+  if (!route) return;
+  applyRouteTemplate(direction === 'REVERSE' ? reverseRouteTemplate(route) : route);
+};
 
 const fetchSavedRoutes = async () => {
   try {
@@ -305,7 +370,23 @@ const fetchSavedRoutes = async () => {
   }
 };
 
-const applyRouteTemplate = (route) => {
+const loadAllowedBusTypes = async route => {
+  if (!route?.id) {
+    routeBusTypeConfig.value = { unrestricted: true, busTypes: [], defaultBusTypeId: null };
+    return;
+  }
+
+  try {
+    const response = await routeBusTypeApi.getConfig(route.id);
+    routeBusTypeConfig.value = response.data;
+  } catch (error) {
+    console.error('Không tải được dòng xe được phép của tuyến:', error);
+    routeBusTypeConfig.value = { unrestricted: true, busTypes: [], defaultBusTypeId: null };
+  }
+};
+
+const applyRouteTemplate = async (route) => {
+  form.value.routeId = route.id || null;
   form.value.departurePoint = route.departurePoint;
   form.value.arrivalPoint = route.arrivalPoint;
   form.value.departureLat = route.departureLat;
@@ -314,6 +395,17 @@ const applyRouteTemplate = (route) => {
   form.value.arrivalLng = route.arrivalLng;
   form.value.routeData = route.routeData;
   form.value.duration = route.duration || '4h';
+  await loadAllowedBusTypes(route);
+
+  if (!availableBusTypes.value.some(type => type.name === form.value.busType)) {
+    const defaultType = availableBusTypes.value.find(
+      type => type.id === routeBusTypeConfig.value.defaultBusTypeId
+    ) || availableBusTypes.value[0];
+    if (defaultType) {
+      form.value.busType = defaultType.name;
+      handleBusTypeChange({ target: { value: defaultType.name } });
+    }
+  }
   
   if (route.basePrice) {
      const matchedBus = props.busTypes.find(b => b.name === form.value.busType);
@@ -324,8 +416,38 @@ const applyRouteTemplate = (route) => {
   updateMap();
 };
 
+watch(() => form.value.createReturnTrip, enabled => {
+  if (enabled || !selectedRouteOptionValue.value.endsWith(':REVERSE')) return;
+  const routeId = selectedRouteOptionValue.value.split(':')[0];
+  const route = savedRoutes.value.find(item => Number(item.id) === Number(routeId));
+  if (route) applyRouteTemplate(route);
+});
+
+const handleBusTypeChange = (event) => {
+  const selectedTypeName = event.target.value;
+  const selectedType = props.busTypes?.find((type) => type.name === selectedTypeName);
+
+  if (selectedType?.seatCount) {
+    form.value.availableSeats = Number(selectedType.seatCount);
+    form.value.totalSeats = Number(selectedType.seatCount);
+  }
+
+  if (selectedType?.imageUrl) {
+    form.value.imageUrl = selectedType.imageUrl;
+  }
+
+  if (form.value.assignedLicensePlate) {
+    const assignedBus = props.buses?.find((bus) => bus.licensePlate === form.value.assignedLicensePlate);
+    if (assignedBus && assignedBus.busType !== selectedTypeName) {
+      form.value.assignedLicensePlate = '';
+    }
+  }
+};
+
 const openModal = async (trip = null) => {
+  isSubmitting.value = false;
   await fetchSavedRoutes();
+  routeBusTypeConfig.value = { unrestricted: true, busTypes: [], defaultBusTypeId: null };
   if (trip) {
     isEditMode.value = true;
     form.value = { 
@@ -337,6 +459,14 @@ const openModal = async (trip = null) => {
   } else {
     isEditMode.value = false;
     form.value = { ...defaultForm };
+  }
+  const matchingRoute = savedRoutes.value.find(route =>
+    route.departurePoint === form.value.departurePoint &&
+    route.arrivalPoint === form.value.arrivalPoint
+  );
+  if (matchingRoute) {
+    if (!form.value.routeId) form.value.routeId = matchingRoute.id;
+    await loadAllowedBusTypes(matchingRoute);
   }
   isOpen.value = true;
   initAdminMap();
@@ -438,6 +568,9 @@ const updateMap = async () => {
 };
 
 const handleFormSubmit = async () => {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+
   try {
     const { createReturnTrip, returnDate, returnTime, returnBusType, originalAvailableSeats, originalTotalSeats, ...payload } = form.value;
 
@@ -503,6 +636,8 @@ const handleFormSubmit = async () => {
   } catch (err) { 
     console.error("Lỗi:", err);
     alert(err.response?.data?.message || 'Lỗi lưu dữ liệu! Vui lòng kiểm tra lại.'); 
+  } finally {
+    isSubmitting.value = false;
   }
 };
 

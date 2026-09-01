@@ -1,9 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Keep Vite's disposable dependency cache outside node_modules on Windows.
+  // Editors and antivirus tools can briefly lock generated files there and
+  // otherwise make a later dev-server start fail with EPERM while unlinking.
+  cacheDir: join(tmpdir(), 'smart-bus-booking-vite-cache'),
   plugins: [vue()],
   resolve: {
     alias: {

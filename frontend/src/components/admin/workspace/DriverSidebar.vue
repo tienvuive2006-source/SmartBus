@@ -83,8 +83,9 @@
           v-for="inspector in processedInspectors" :key="'insp-' + inspector.id"
           class="p-3 rounded-xl cursor-default flex items-center gap-3 border bg-white border-slate-100 mb-1"
         >
-          <div class="w-10 h-10 rounded-full bg-violet-800 text-white flex items-center justify-center font-bold shrink-0 uppercase shadow-sm border border-violet-700">
-            {{ inspector.fullName.charAt(0) }}
+          <div class="relative w-10 h-10 rounded-full bg-violet-800 text-white flex items-center justify-center font-bold shrink-0 uppercase shadow-sm border border-violet-700 overflow-hidden">
+            <span>{{ inspector.fullName.charAt(0) }}</span>
+            <img v-if="inspector.avatarUrl" :src="inspector.avatarUrl" :alt="`Ảnh ${inspector.fullName}`" class="absolute inset-0 w-full h-full object-cover" @error="$event.target.remove()" />
           </div>
           <div class="flex-1 min-w-0">
             <p class="font-bold text-sm text-slate-800 truncate">{{ inspector.fullName }}</p>

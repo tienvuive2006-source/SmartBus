@@ -36,16 +36,15 @@
 
           <form class="login-form" @submit.prevent="handleLogin">
             <div class="field-group">
-              <label for="login-phone">Số điện thoại</label>
+              <label for="login-identifier">Tên đăng nhập hoặc số điện thoại</label>
               <div class="field-control">
-                <span class="material-symbols-outlined" aria-hidden="true">call</span>
+                <span class="material-symbols-outlined" aria-hidden="true">person</span>
                 <input
-                  id="login-phone"
-                  v-model.trim="phone"
-                  type="tel"
-                  inputmode="tel"
-                  autocomplete="tel"
-                  placeholder="Nhập số điện thoại"
+                  id="login-identifier"
+                  v-model.trim="identifier"
+                  type="text"
+                  placeholder="Nhập SĐT"
+                  autocomplete="username"
                   required
                 />
               </div>
@@ -59,8 +58,8 @@
                   id="login-password"
                   v-model="password"
                   :type="showPassword ? 'text' : 'password'"
+                  placeholder="Mật khẩu"
                   autocomplete="current-password"
-                  placeholder="Nhập mật khẩu"
                   required
                 />
                 <button
@@ -123,7 +122,7 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 
-const phone = ref('');
+const identifier = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const loading = ref(false);
@@ -175,14 +174,14 @@ const handleLogin = async () => {
   loading.value = true;
 
   try {
-    await authStore.login(phone.value, password.value);
+    await authStore.login(identifier.value, password.value);
     router.push(getRedirectPath());
   } catch (error) {
     console.error('Đăng nhập thất bại:', error);
     if (error.response?.data) {
       errorMsg.value = typeof error.response.data === 'string'
         ? error.response.data
-        : 'Số điện thoại hoặc mật khẩu không chính xác.';
+        : 'Tên đăng nhập, số điện thoại hoặc mật khẩu không chính xác.';
     } else {
       errorMsg.value = 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.';
     }

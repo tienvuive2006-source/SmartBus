@@ -26,6 +26,10 @@ public class BusService {
         } else {
             bus.setStatus("ĐANG NGHỈ");
         }
+        if (bus.getCurrentMileage() == null) bus.setCurrentMileage(0.0);
+        if (bus.getLastMaintenanceMileage() == null) bus.setLastMaintenanceMileage(bus.getCurrentMileage());
+        if (bus.getMaintenanceIntervalKm() == null || bus.getMaintenanceIntervalKm() <= 0) bus.setMaintenanceIntervalKm(10000);
+        if (bus.getMaintenanceAlertLevel() == null) bus.setMaintenanceAlertLevel(0);
         return busRepository.save(bus);
     }
 
@@ -36,7 +40,11 @@ public class BusService {
             bus.setBusType(updatedBus.getBusType());
             bus.setStatus(updatedBus.getStatus() != null ? updatedBus.getStatus().toUpperCase() : "ĐANG NGHỈ");
             bus.setCurrentStation(updatedBus.getCurrentStation());
+            bus.setInspectionExpiryDate(updatedBus.getInspectionExpiryDate());
             bus.setImageUrl(updatedBus.getImageUrl()); // Lưu link ảnh xe thật
+            if (updatedBus.getMaintenanceIntervalKm() != null && updatedBus.getMaintenanceIntervalKm() > 0) {
+                bus.setMaintenanceIntervalKm(updatedBus.getMaintenanceIntervalKm());
+            }
             return busRepository.save(bus);
         }).orElseThrow(() -> new RuntimeException("Không tìm thấy xe với mã ID: " + id));
     }

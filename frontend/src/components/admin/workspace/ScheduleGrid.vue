@@ -33,6 +33,24 @@
       </div>
     </div>
 
+    <ScheduleFilters
+      :search="filterSearch"
+      :status="filterTripStatus"
+      :route="filterRoute"
+      :vehicle="filterVehicle"
+      :time-period="filterTimePeriod"
+      :route-options="routeOptions"
+      :vehicle-options="vehicleOptions"
+      :result-count="resultCount"
+      :has-active-filters="hasActiveFilters"
+      @update:search="$emit('update:filterSearch', $event)"
+      @update:status="$emit('update:filterTripStatus', $event)"
+      @update:route="$emit('update:filterRoute', $event)"
+      @update:vehicle="$emit('update:filterVehicle', $event)"
+      @update:time-period="$emit('update:filterTimePeriod', $event)"
+      @reset="$emit('reset-filters')"
+    />
+
     <!-- Grid Body -->
     <div class="flex-1 overflow-y-auto overflow-x-auto relative bg-white custom-scrollbar" ref="gridContainer">
       <div class="min-w-[800px] flex flex-col relative" :style="{ height: gridHeight + 'px' }">
@@ -80,6 +98,7 @@
 import { ref, computed } from 'vue';
 import TripBlock from './TripBlock.vue';
 import LeaveBlock from './LeaveBlock.vue';
+import ScheduleFilters from './ScheduleFilters.vue';
 
 const props = defineProps({
   selectedDriver: { type: Object, default: null },
@@ -88,10 +107,19 @@ const props = defineProps({
   loadingSchedule: { type: Boolean, default: false },
   statsTrips: { type: Array, default: () => [] },
   getTripsForDay: { type: Function, required: true },
-  getLeavesForDay: { type: Function, required: true }
+  getLeavesForDay: { type: Function, required: true },
+  filterSearch: { type: String, default: '' },
+  filterTripStatus: { type: String, default: '' },
+  filterRoute: { type: String, default: '' },
+  filterVehicle: { type: String, default: '' },
+  filterTimePeriod: { type: String, default: '' },
+  routeOptions: { type: Array, default: () => [] },
+  vehicleOptions: { type: Array, default: () => [] },
+  resultCount: { type: Number, default: 0 },
+  hasActiveFilters: Boolean
 });
 
-defineEmits(['change-week', 'reset-week', 'open-trip', 'open-leave']);
+defineEmits(['change-week', 'reset-week', 'open-trip', 'open-leave', 'update:filterSearch', 'update:filterTripStatus', 'update:filterRoute', 'update:filterVehicle', 'update:filterTimePeriod', 'reset-filters']);
 
 const tripStats = computed(() => {
   let total = 0;

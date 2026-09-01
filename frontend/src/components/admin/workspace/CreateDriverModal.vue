@@ -16,8 +16,12 @@
             <input v-model="form.fullName" required type="text" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2 font-bold focus:border-primary outline-none" placeholder="Nguyễn Văn A" />
           </div>
           <div class="space-y-1">
+            <label class="text-xs font-black uppercase text-slate-500">Tên đăng nhập</label>
+            <input v-model.trim="form.username" required type="text" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2 font-bold focus:border-primary outline-none" placeholder="Ví dụ: taixe1" />
+          </div>
+          <div class="space-y-1">
             <label class="text-xs font-black uppercase text-slate-500">Số Điện Thoại</label>
-            <input v-model="form.phone" required type="text" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2 font-bold focus:border-primary outline-none" placeholder="090..." />
+            <input v-model.trim="form.phone" required type="tel" inputmode="tel" class="w-full border-2 border-slate-200 rounded-xl px-4 py-2 font-bold focus:border-primary outline-none" placeholder="0901234567" />
           </div>
           <div class="space-y-1">
             <label class="text-xs font-black uppercase text-slate-500">Mật khẩu khởi tạo</label>
@@ -82,14 +86,14 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'submit']);
 
-const form = ref({ fullName: '', phone: '', password: '', avatarUrl: '' });
+const form = ref({ fullName: '', username: '', phone: '', password: '', avatarUrl: '' });
 const fileInput = ref(null);
 const uploading = ref(false);
 const imageUrlInput = ref('');
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
-    form.value = { fullName: '', phone: '', password: '', avatarUrl: '' };
+    form.value = { fullName: '', username: '', phone: '', password: '', avatarUrl: '' };
     imageUrlInput.value = '';
   }
 });

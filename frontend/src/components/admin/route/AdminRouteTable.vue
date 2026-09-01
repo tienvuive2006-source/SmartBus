@@ -21,6 +21,7 @@
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Thời gian</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Giá cơ bản</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Hiển thị</th>
+            <th class="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Khứ hồi</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Thao tác</th>
           </tr>
         </thead>
@@ -54,6 +55,21 @@
                 />
               </button>
             </td>
+            <td class="px-4 py-5 text-center">
+              <button
+                type="button"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                :class="route.roundTripEnabled === true ? 'bg-emerald-600' : 'bg-slate-200'"
+                :aria-pressed="route.roundTripEnabled === true"
+                :title="route.roundTripEnabled === true ? 'Tắt khai thác khứ hồi' : 'Bật khai thác khứ hồi'"
+                @click="$emit('toggle-round-trip', idx)"
+              >
+                <span
+                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  :class="route.roundTripEnabled === true ? 'translate-x-6' : 'translate-x-1'"
+                />
+              </button>
+            </td>
             <td class="px-6 py-5 text-center">
               <div class="flex items-center justify-center gap-2">
                 <button @click="$emit('manage-stops', idx)" class="w-8 h-8 flex items-center justify-center rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-all shadow-sm border border-slate-100" title="Quản lý điểm dừng">
@@ -71,7 +87,7 @@
         </tbody>
         <tbody v-else>
           <tr>
-            <td colspan="8" class="py-20 text-center">
+            <td colspan="9" class="py-20 text-center">
               <div class="flex flex-col items-center">
                 <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                   <span class="material-symbols-outlined text-4xl text-slate-300">map_off</span>
@@ -95,5 +111,5 @@ defineProps({
   }
 });
 
-defineEmits(['toggle-visibility', 'edit-route', 'delete-route', 'manage-stops']);
+defineEmits(['toggle-visibility', 'toggle-round-trip', 'edit-route', 'delete-route', 'manage-stops']);
 </script>

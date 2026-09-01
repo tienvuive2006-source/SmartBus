@@ -1,20 +1,32 @@
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl w-full max-w-6xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
-        <div class="p-6 bg-[#075955] text-white flex justify-between items-center shrink-0">
+    <div v-if="isOpen" class="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 lg:p-5">
+      <div class="route-modal-shell bg-white rounded-3xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scale-up">
+        <header class="route-modal-header px-7 py-5 text-white flex justify-between items-center shrink-0">
           <div class="flex items-center gap-3">
-           <span class="material-symbols-outlined">{{ editingIndex >= 0 ? 'edit_square' : 'add_circle' }}</span>
-             <h3 class="text-sm font-black uppercase tracking-widest">{{ editingIndex >= 0 ? 'Chỉnh sửa tuyến đường ' : 'Tạo tuyến đường ' }}</h3>
+            <span class="route-header-icon material-symbols-outlined">{{ editingIndex >= 0 ? 'edit_square' : 'add_circle' }}</span>
+            <div>
+              <h3 class="text-base font-black tracking-tight">{{ editingIndex >= 0 ? 'Chỉnh sửa tuyến đường ' : 'Tạo tuyến đường ' }}</h3>
+              <p class="mt-0.5 text-[11px] font-medium text-emerald-50/75">Thiết lập lộ trình, dòng xe và phương tiện khai thác</p>
+            </div>
           </div>
-          <button @click="closeModal" class="hover:rotate-90 transition-transform bg-white/10 p-1.5 rounded-full flex items-center justify-center">
+          <button @click="closeModal" class="route-close-button flex items-center justify-center" aria-label="Đóng">
             <span class="material-symbols-outlined text-sm">close</span>
           </button>
-        </div>
+        </header>
         
         <div class="flex-1 flex overflow-hidden">
           <!-- Left: Form Column -->
-          <form @submit.prevent="saveRoute" class="w-1/2 p-8 space-y-6 overflow-y-auto border-r border-slate-100 bg-white relative">
+          <div class="route-form-pane flex min-h-0 flex-col border-r border-slate-200 bg-[#f6f8f7]">
+          <form id="route-editor-form" ref="formScroll" @submit.prevent="saveRoute" class="route-form-scroll flex-1 space-y-6 overflow-y-auto p-7 lg:p-8">
+            <section class="route-section-card space-y-5">
+              <div class="route-section-heading">
+                <span class="material-symbols-outlined">route</span>
+                <div>
+                  <h4>Thông tin lộ trình</h4>
+                  <p>Nhập điểm đi, điểm đến và thông tin cơ bản của tuyến.</p>
+                </div>
+              </div>
             <div class="space-y-1.5 relative">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1">
                 <span>Tên tuyến đường (Tùy chọn)</span>
@@ -23,7 +35,7 @@
                 <input 
                   v-model="form.name" 
                   placeholder="VD: Tuyến Cao Nguyên, Tuyến Biển..." 
-                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all" 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3.5 text-[15px] font-bold outline-none transition-all" 
                 />
               </div>
             </div>
@@ -40,7 +52,7 @@
                   @blur="closeLocationDropdown('departure')"
                   @keyup.enter="autoGeocode(form.departurePoint, 'departure')"
                   required placeholder="Ví dụ: Bến xe Đà Nẵng" 
-                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-3.5 text-sm font-bold outline-none transition-all" 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-4 text-[15px] font-bold outline-none transition-all" 
                 />
                 <button type="button" @click="autoGeocode(form.departurePoint, 'departure')" class="absolute right-3 text-slate-400 hover:text-[#075955] p-1">
                   <span class="material-symbols-outlined text-lg">my_location</span>
@@ -90,7 +102,7 @@
                   @blur="closeLocationDropdown('arrival')"
                   @keyup.enter="autoGeocode(form.arrivalPoint, 'arrival')"
                   required placeholder="Ví dụ: Bến xe Miền Tây" 
-                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-3.5 text-sm font-bold outline-none transition-all" 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl pl-4 pr-10 py-4 text-[15px] font-bold outline-none transition-all" 
                 />
                 <button type="button" @click="autoGeocode(form.arrivalPoint, 'arrival')" class="absolute right-3 text-slate-400 hover:text-[#075955] p-1">
                   <span class="material-symbols-outlined text-lg">my_location</span>
@@ -126,7 +138,7 @@
                   v-model.number="form.basePrice"
                   type="number"
                   placeholder="VD: 100000" 
-                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold outline-none transition-all font-mono" 
+                  class="w-full border-2 border-slate-100 focus:border-[#075955] bg-slate-50 rounded-xl px-4 py-3.5 text-[15px] font-bold outline-none transition-all font-mono" 
                 />
               </div>
             </div>
@@ -158,15 +170,43 @@
               </div>
             </div>
 
-            <div class="pt-10 flex justify-end gap-3 shrink-0 mt-auto">
-              <button type="button" @click="closeModal" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">Hủy bỏ</button>
-              <button type="submit" class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all">Lưu & Lưu mẫu</button>
-            </div>
+            </section>
+
+            <RouteBusTypeSelector
+              v-model="allowedBusTypeIds"
+              v-model:unrestricted="unrestrictedBusTypes"
+              v-model:default-bus-type-id="defaultBusTypeId"
+              :bus-types="busTypes"
+              :loading="busTypeConfigLoading"
+            />
+
+            <RouteVehicleSelector
+              v-model:primary-bus-ids="primaryBusIds"
+              v-model:backup-bus-ids="backupBusIds"
+              v-model:unrestricted="unrestrictedVehicles"
+              :buses="buses"
+              :bus-types="busTypes"
+              :allowed-bus-type-ids="allowedBusTypeIds"
+              :unrestricted-bus-types="unrestrictedBusTypes"
+              :loading="vehicleConfigLoading"
+            />
+
           </form>
+          <footer class="route-form-footer flex shrink-0 items-center justify-between gap-3">
+            <p class="hidden text-[11px] font-medium text-slate-500 lg:block">Các trường có dấu * là bắt buộc</p>
+            <div class="ml-auto flex items-center gap-3">
+              <button type="button" @click="closeModal" class="route-cancel-button">Hủy bỏ</button>
+              <button type="submit" form="route-editor-form" class="route-save-button">
+                <span class="material-symbols-outlined text-base">save</span>
+                Lưu tuyến đường
+              </button>
+            </div>
+          </footer>
+          </div>
 
           <!-- Right: Map Preview Column -->
-          <div class="w-1/2 bg-slate-50 relative flex flex-col border-l border-slate-100">
-              <div class="absolute top-5 left-5 right-5 z-[1000] bg-white shadow-xl rounded-2xl p-4 border border-slate-200">
+          <div class="route-map-pane bg-slate-50 relative flex flex-col border-l border-slate-100">
+              <div class="route-map-summary absolute top-5 left-5 right-5 z-[1000] bg-white rounded-2xl p-4 border border-slate-200">
                  <div class="flex items-center justify-between mb-2">
                     <h4 class="text-[11px] font-black text-[#075955] uppercase flex items-center gap-2">
                        <span class="material-symbols-outlined text-[#075955] text-base">explore</span> Bản đồ lộ trình
@@ -214,6 +254,15 @@ import { computed, ref, watch, nextTick } from 'vue';
 import axios from 'axios';
 import { useApi } from '@/composables/useApi';
 import { decodePolyline, uploadPolylineToCloudinary, fetchPolylineFromCloudinary } from '@/utils/polyline';
+import RouteBusTypeSelector from './RouteBusTypeSelector.vue';
+import { useRouteBusTypeApi } from '@/services/routeBusTypeApi';
+import RouteVehicleSelector from './RouteVehicleSelector.vue';
+import { useRouteVehicleApi } from '@/services/routeVehicleApi';
+
+const props = defineProps({
+  busTypes: { type: Array, default: () => [] },
+  buses: { type: Array, default: () => [] }
+});
 
 const emit = defineEmits(['save']);
 
@@ -228,11 +277,22 @@ const leafletMap = ref(null);
 const fileInput = ref(null);
 const uploading = ref(false);
 const api = useApi();
+const routeBusTypeApi = useRouteBusTypeApi();
+const routeVehicleApi = useRouteVehicleApi();
+const allowedBusTypeIds = ref([]);
+const unrestrictedBusTypes = ref(true);
+const defaultBusTypeId = ref(null);
+const busTypeConfigLoading = ref(false);
+const primaryBusIds = ref([]);
+const backupBusIds = ref([]);
+const unrestrictedVehicles = ref(true);
+const vehicleConfigLoading = ref(false);
 const savedLocations = ref([]);
 const savedLocationsLoading = ref(false);
 const savedLocationsError = ref('');
 const showFromDropdown = ref(false);
 const showToDropdown = ref(false);
+const formScroll = ref(null);
 
 const filterSavedLocations = query => {
   const normalizedQuery = String(query || '').trim().toLocaleLowerCase('vi-VN');
@@ -310,6 +370,52 @@ const selectSavedLocation = (location, target) => {
   updateMap();
 };
 
+const loadBusTypeConfig = async routeId => {
+  allowedBusTypeIds.value = [];
+  unrestrictedBusTypes.value = true;
+  defaultBusTypeId.value = null;
+  if (!routeId) return;
+
+  busTypeConfigLoading.value = true;
+  try {
+    const response = await routeBusTypeApi.getConfig(routeId);
+    const config = response.data;
+    unrestrictedBusTypes.value = config.unrestricted !== false;
+    allowedBusTypeIds.value = unrestrictedBusTypes.value
+      ? []
+      : (config.busTypes || []).map(busType => busType.id);
+    defaultBusTypeId.value = config.defaultBusTypeId || allowedBusTypeIds.value[0] || null;
+  } catch (error) {
+    console.error('Không tải được cấu hình dòng xe của tuyến:', error);
+  } finally {
+    busTypeConfigLoading.value = false;
+  }
+};
+
+const loadVehicleConfig = async routeId => {
+  primaryBusIds.value = [];
+  backupBusIds.value = [];
+  unrestrictedVehicles.value = true;
+  if (!routeId) return;
+
+  vehicleConfigLoading.value = true;
+  try {
+    const response = await routeVehicleApi.getConfig(routeId);
+    const config = response.data;
+    unrestrictedVehicles.value = config.unrestricted !== false;
+    primaryBusIds.value = (config.vehicles || [])
+      .filter(vehicle => vehicle.role === 'PRIMARY')
+      .map(vehicle => vehicle.busId);
+    backupBusIds.value = (config.vehicles || [])
+      .filter(vehicle => vehicle.role === 'BACKUP')
+      .map(vehicle => vehicle.busId);
+  } catch (error) {
+    console.error('Không tải được nhóm xe của tuyến:', error);
+  } finally {
+    vehicleConfigLoading.value = false;
+  }
+};
+
 const openModal = (route, idx = -1) => {
   editingIndex.value = idx;
   if (route) {
@@ -319,6 +425,11 @@ const openModal = (route, idx = -1) => {
     form.value = { name: '', departurePoint: '', arrivalPoint: '', departureLat: 0, departureLng: 0, arrivalLat: 0, arrivalLng: 0, duration: '', basePrice: null, imageUrl: '', routeData: '', isVisible: true };
   }
   isOpen.value = true;
+  nextTick(() => {
+    if (formScroll.value) formScroll.value.scrollTop = 0;
+  });
+  loadBusTypeConfig(route?.id);
+  loadVehicleConfig(route?.id);
   loadSavedLocations();
   initMap();
 };
@@ -362,6 +473,12 @@ const parseCoordinates = (val, target) => {
 };
 
 const saveRoute = () => {
+  if (!unrestrictedBusTypes.value && !allowedBusTypeIds.value.length) {
+    return alert('Vui lòng chọn ít nhất một dòng xe được phép khai thác.');
+  }
+  if (!unrestrictedVehicles.value && !primaryBusIds.value.length && !backupBusIds.value.length) {
+    return alert('Vui lòng gán ít nhất một biển số xe cho tuyến.');
+  }
   if (!form.value.departurePoint || !form.value.arrivalPoint) return alert('Vui lòng nhập điểm đi và điểm đến!');
   
   const shortDep = form.value.departurePoint.split(',')[0].trim();
@@ -383,7 +500,25 @@ const saveRoute = () => {
     isVisible: form.value.isVisible !== false
   };
   
-  emit('save', { route: newRoute, index: editingIndex.value, formImageUrl: form.value.imageUrl, shortDep, shortArr });
+  emit('save', {
+    route: newRoute,
+    index: editingIndex.value,
+    formImageUrl: form.value.imageUrl,
+    shortDep,
+    shortArr,
+    busTypeConfig: {
+      unrestricted: unrestrictedBusTypes.value,
+      busTypeIds: unrestrictedBusTypes.value ? [] : allowedBusTypeIds.value,
+      defaultBusTypeId: unrestrictedBusTypes.value
+        ? null
+        : (defaultBusTypeId.value || allowedBusTypeIds.value[0])
+    },
+    vehicleConfig: {
+      unrestricted: unrestrictedVehicles.value,
+      primaryBusIds: unrestrictedVehicles.value ? [] : primaryBusIds.value,
+      backupBusIds: unrestrictedVehicles.value ? [] : backupBusIds.value
+    }
+  });
   closeModal();
 };
 
@@ -589,5 +724,167 @@ defineExpose({
 }
 .animate-scale-up {
   animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.route-modal-shell {
+  width: min(94vw, 1320px);
+  height: min(94dvh, 920px);
+  border-radius: 1.5rem;
+  box-shadow: 0 32px 90px rgba(4, 47, 44, 0.28);
+}
+
+.route-modal-header {
+  min-height: 76px;
+  background: #075955;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.route-header-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.route-close-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.route-close-button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: rotate(4deg);
+}
+
+.route-form-pane {
+  width: 54%;
+}
+
+.route-map-pane {
+  width: 46%;
+  min-width: 0;
+  box-shadow: inset 1px 0 rgba(15, 88, 83, 0.08);
+}
+
+.route-map-summary {
+  box-shadow: 0 16px 36px rgba(7, 66, 62, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.route-form-scroll {
+  scrollbar-color: #9bbcb8 transparent;
+  scrollbar-width: thin;
+}
+
+.route-section-card {
+  border: 1px solid #dce7e5;
+  border-radius: 18px;
+  background: #fff;
+  padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(18, 78, 73, 0.055);
+}
+
+.route-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #e8efee;
+}
+
+.route-section-heading > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  background: #e8f4f1;
+  color: #075955;
+  font-size: 19px;
+}
+
+.route-section-heading h4 {
+  color: #173b38;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.route-section-heading p {
+  margin-top: 2px;
+  color: #7b928f;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.route-form-footer {
+  min-height: 72px;
+  padding: 0.85rem 1.75rem;
+  border-top: 1px solid #dce7e5;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -12px 30px rgba(27, 75, 71, 0.06);
+}
+
+.route-cancel-button,
+.route-save-button {
+  min-height: 42px;
+  border-radius: 11px;
+  padding: 0 1.15rem;
+  font-size: 11px;
+  font-weight: 800;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.route-cancel-button {
+  border: 1px solid #d6e1df;
+  background: #fff;
+  color: #536b68;
+}
+
+.route-cancel-button:hover {
+  background: #f4f7f6;
+  color: #173b38;
+}
+
+.route-save-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #075955;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(7, 89, 85, 0.2);
+}
+
+.route-save-button:hover {
+  background: #064b48;
+  box-shadow: 0 10px 24px rgba(7, 89, 85, 0.28);
+  transform: translateY(-1px);
+}
+
+.route-cancel-button:active,
+.route-save-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+@media (max-width: 900px) {
+  .route-modal-shell {
+    width: 96vw;
+    height: 94dvh;
+  }
+
+  .route-form-pane {
+    width: 58%;
+    padding: 1.5rem;
+  }
+
+  .route-map-pane {
+    width: 42%;
+  }
 }
 </style>

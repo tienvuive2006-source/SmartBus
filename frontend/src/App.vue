@@ -1,6 +1,7 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import { onMounted } from 'vue'
+import RouteAccessToast from '@/components/common/RouteAccessToast.vue'
 
 onMounted(() => {
   // Chờ app render xong, thêm một chút delay để hiệu ứng mượt mà
@@ -24,5 +25,6 @@ onMounted(() => {
 </script>
 
 <template>
+  <RouteAccessToast />
   <RouterView />
 </template>

@@ -35,12 +35,23 @@
       </button>
     </div>
 
+    <BookingFilters
+      v-if="activeTab === 'bookings'"
+      v-model:search-query="searchQuery"
+      v-model:status-filter="statusFilter"
+      v-model:payment-filter="paymentFilter"
+      v-model:route-filter="routeFilter"
+      v-model:date-from="dateFrom"
+      v-model:date-to="dateTo"
+      :route-options="routeOptions"
+      @reset="resetFilters"
+      @refresh="refreshBookings"
+    />
+
     <!-- 2. Main Content: Table -->
     <BookingTable 
       v-if="activeTab === 'bookings'"
       :bookings="filteredBookings"
-      v-model:searchQuery="searchQuery"
-      v-model:statusFilter="statusFilter"
       :statusLabels="statusLabels"
       :statusStyles="statusStyles"
       @view="viewDetail"
@@ -65,15 +76,22 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
 import BookingStats from '../../components/admin/booking/BookingStats.vue';
 import BookingTable from '../../components/admin/booking/BookingTable.vue';
+import BookingFilters from '../../components/admin/booking/BookingFilters.vue';
 import BookingExchangeTable from '../../components/admin/booking/BookingExchangeTable.vue';
 import AdminPagination from '@/components/admin/common/AdminPagination.vue';
 import { useRouteStopApi } from '@/services/routeStopApi';
+import { formatSeatWithType } from '@/utils/seatTypePresentation';
 
 const api = useApi();
 const routeStopApi = useRouteStopApi();
 const bookings = ref([]);
 const searchQuery = ref('');
 const statusFilter = ref('ALL');
+const paymentFilter = ref('ALL');
+const routeFilter = ref('ALL');
+const dateFrom = ref('');
+const dateTo = ref('');
+const routeOptions = ref([]);
 const activeTab = ref('bookings');
 const exchanges = ref([]);
 const currentPage = ref(0);
@@ -114,8 +132,19 @@ const mapBooking = b => {
 const fetchBookings = async () => {
   const sequence = ++requestSequence;
   try {
+    const [departurePoint, arrivalPoint] = parseRouteFilter(routeFilter.value);
     const response = await api.get('/admin/bookings/page', {
-      params: { page: currentPage.value, size: pageSize, search: searchQuery.value || undefined, status: statusFilter.value }
+      params: {
+        page: currentPage.value,
+        size: pageSize,
+        search: searchQuery.value || undefined,
+        status: statusFilter.value,
+        paymentMethod: paymentFilter.value,
+        dateFrom: dateFrom.value || undefined,
+        dateTo: dateTo.value || undefined,
+        departurePoint: departurePoint || undefined,
+        arrivalPoint: arrivalPoint || undefined
+      }
     });
     if (sequence !== requestSequence) return;
     const payload = response.data || {};
@@ -128,6 +157,7 @@ const fetchBookings = async () => {
     totalPages.value = Number(payload.totalPages || 0);
     totalElements.value = Number(payload.totalElements || 0);
     statusCounts.value = payload.statusCounts || {};
+    if (Array.isArray(payload.routeOptions)) routeOptions.value = payload.routeOptions;
   } catch (error) {
     console.error('Lỗi khi tải danh sách vé:', error);
     try {
@@ -139,13 +169,21 @@ const fetchBookings = async () => {
         return counts;
       }, {});
       const query = searchQuery.value.trim().toLowerCase();
+      const [departurePoint, arrivalPoint] = parseRouteFilter(routeFilter.value);
       const filtered = allBookings.filter(booking => {
         const matchesStatus = statusFilter.value === 'ALL' || booking.status === statusFilter.value;
+        const matchesPayment = paymentFilter.value === 'ALL' || booking.paymentMethod === paymentFilter.value;
+        const createdDate = booking.createdAt ? booking.createdAt.slice(0, 10) : '';
+        const matchesDateFrom = !dateFrom.value || createdDate >= dateFrom.value;
+        const matchesDateTo = !dateTo.value || createdDate <= dateTo.value;
+        const matchesRoute = !departurePoint || (
+          booking.trip?.departurePoint === departurePoint && booking.trip?.arrivalPoint === arrivalPoint
+        );
         const matchesSearch = !query
           || String(booking.id).includes(query)
           || String(booking.customerName || '').toLowerCase().includes(query)
           || String(booking.customerPhone || '').includes(query);
-        return matchesStatus && matchesSearch;
+        return matchesStatus && matchesPayment && matchesDateFrom && matchesDateTo && matchesRoute && matchesSearch;
       });
       totalElements.value = filtered.length;
       totalPages.value = Math.ceil(filtered.length / pageSize);
@@ -183,6 +221,13 @@ const tabClass = tab => [
 
 const filteredBookings = computed(() => bookings.value);
 
+const parseRouteFilter = value => {
+  if (!value || value === 'ALL') return ['', ''];
+  const separatorIndex = value.indexOf('|||');
+  if (separatorIndex < 0) return ['', ''];
+  return [value.slice(0, separatorIndex), value.slice(separatorIndex + 3)];
+};
+
 const paidCount = computed(() => Number(statusCounts.value.PAID || 0) + Number(statusCounts.value.SUCCESS || 0));
 const pendingCount = computed(() => Number(statusCounts.value.PENDING || 0));
 const checkedInCount = computed(() => Number(statusCounts.value.CHECKED_IN || 0));
@@ -193,7 +238,7 @@ const changePage = page => {
   fetchBookings();
 };
 
-watch(statusFilter, () => {
+watch([statusFilter, paymentFilter, routeFilter, dateFrom, dateTo], () => {
   currentPage.value = 0;
   fetchBookings();
 });
@@ -203,6 +248,21 @@ watch(searchQuery, () => {
   if (searchTimer) clearTimeout(searchTimer);
   searchTimer = setTimeout(fetchBookings, 300);
 });
+
+const resetFilters = () => {
+  searchQuery.value = '';
+  statusFilter.value = 'ALL';
+  paymentFilter.value = 'ALL';
+  routeFilter.value = 'ALL';
+  dateFrom.value = '';
+  dateTo.value = '';
+  currentPage.value = 0;
+};
+
+const refreshBookings = () => {
+  currentPage.value = 0;
+  fetchBookings();
+};
 
 const updateStatus = async (id, newStatus) => {
   if (!confirm(`Xác nhận thay đổi trạng thái đơn #${id}?`)) return;
@@ -214,7 +274,10 @@ const updateStatus = async (id, newStatus) => {
 };
 
 const viewDetail = (booking) => {
-  let msg = `CHI TIẾT VÉ #${booking.id}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${booking.seats.join(', ')}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`;
+  const seatDescription = booking.seats
+    .map(seatNumber => formatSeatWithType(seatNumber, booking.seatTypes))
+    .join(', ');
+  let msg = `CHI TIẾT VÉ #${booking.id}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${seatDescription}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`;
   if (booking.discountAmount > 0) {
     msg += `\nĐã giảm giá: -${booking.discountAmount.toLocaleString()}đ (Mã Voucher)`;
   }
@@ -233,8 +296,7 @@ const viewReason = (reason) => {
 };
 
 onMounted(async () => {
-  await fetchExchanges();
-  await fetchBookings();
+  await Promise.all([fetchExchanges(), fetchBookings()]);
 });
 onUnmounted(() => {
   if (searchTimer) clearTimeout(searchTimer);

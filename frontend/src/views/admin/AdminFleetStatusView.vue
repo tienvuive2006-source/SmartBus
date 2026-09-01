@@ -22,7 +22,7 @@
     </div>
 
     <!-- TABS NAVIGATION -->
-    <div class="flex gap-4 mb-8">
+    <div class="flex flex-wrap gap-4 mb-8">
       <button 
         @click="activeTab = 'FLEET'"
         :class="activeTab === 'FLEET' ? 'bg-primary text-white shadow-md' : 'bg-surface-container text-on-surface hover:bg-surface-variant'"
@@ -38,6 +38,14 @@
       >
         <span class="material-symbols-outlined">category</span>
         Danh Mục Dòng Xe
+      </button>
+      <button
+        @click="activeTab = 'MAINTENANCE'"
+        :class="activeTab === 'MAINTENANCE' ? 'bg-primary text-white shadow-md' : 'bg-surface-container text-on-surface hover:bg-surface-variant'"
+        class="px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2"
+      >
+        <span class="material-symbols-outlined">engineering</span>
+        Bảo trì & kilomet
       </button>
     </div>
 
@@ -78,6 +86,10 @@
     <div v-else-if="activeTab === 'CATALOG'" class="animate-fade-in">
       <BusTypeManager />
     </div>
+
+    <div v-else class="animate-fade-in">
+      <MaintenancePanel :buses="buses" @refresh-buses="fetchBuses" />
+    </div>
   </div>
 </template>
 
@@ -88,6 +100,7 @@ import FleetStats from '../../components/admin/fleet/FleetStats.vue';
 import FleetTable from '../../components/admin/fleet/FleetTable.vue';
 import FleetModal from '../../components/admin/fleet/FleetModal.vue';
 import BusTypeManager from '../../components/admin/fleet/BusTypeManager.vue';
+import MaintenancePanel from '../../components/admin/maintenance/MaintenancePanel.vue';
 
 const activeTab = ref('FLEET');
 const api = useApi();
@@ -139,7 +152,7 @@ const fetchDrivers = async () => {
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
-const form = ref({ id: null, licensePlate: '', busType: '', currentStation: 'Hà Nội', status: 'ĐANG NGHỈ', imageUrl: '' });
+const form = ref({ id: null, licensePlate: '', busType: '', currentStation: '', inspectionExpiryDate: '', status: 'ĐANG NGHỈ', imageUrl: '' });
 
 const openCreateModal = () => {
   isEditMode.value = false;
@@ -148,7 +161,8 @@ const openCreateModal = () => {
     id: null, 
     licensePlate: '', 
     busType: defaultType?.name || '', 
-    currentStation: 'Hà Nội', 
+    currentStation: '',
+    inspectionExpiryDate: '',
     status: 'ĐANG NGHỈ', 
     imageUrl: defaultType?.imageUrl || '' 
   };

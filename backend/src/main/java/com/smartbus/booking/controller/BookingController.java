@@ -55,9 +55,14 @@ public class BookingController {
     @Autowired
     private com.smartbus.booking.service.RouteStopService routeStopService;
 
+    @Autowired
+    private com.smartbus.booking.repository.SeatRepository seatRepository;
+
     @GetMapping
     public List<Booking> getAllBookings() {
-        return bookingRepository.findAllByOrderByCreatedAtDesc();
+        List<Booking> bookings = bookingRepository.findAllByOrderByCreatedAtDesc();
+        enrichSeatTypes(bookings);
+        return bookings;
     }
 
     @GetMapping("/page")
@@ -65,30 +70,97 @@ public class BookingController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size,
             @RequestParam(value = "search", required = false) String search,
-            @RequestParam(value = "status", required = false) String status) {
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "paymentMethod", required = false) String paymentMethod,
+            @RequestParam(value = "dateFrom", required = false) String dateFrom,
+            @RequestParam(value = "dateTo", required = false) String dateTo,
+            @RequestParam(value = "departurePoint", required = false) String departurePoint,
+            @RequestParam(value = "arrivalPoint", required = false) String arrivalPoint) {
         int safePage = Math.max(0, page);
         int safeSize = Math.min(100, Math.max(1, size));
         String safeSearch = search == null || search.isBlank() ? "" : search.trim();
         String safeStatus = status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)
                 ? "" : status.trim().toUpperCase();
+        String safePaymentMethod = paymentMethod == null || paymentMethod.isBlank() || "ALL".equalsIgnoreCase(paymentMethod)
+                ? "" : paymentMethod.trim().toUpperCase();
+        String safeDeparturePoint = departurePoint == null ? "" : departurePoint.trim();
+        String safeArrivalPoint = arrivalPoint == null ? "" : arrivalPoint.trim();
+        java.time.LocalDateTime createdFrom = parseFilterDate(dateFrom, false);
+        java.time.LocalDateTime createdTo = parseFilterDate(dateTo, true);
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                 safePage, safeSize, org.springframework.data.domain.Sort.by("createdAt").descending());
         org.springframework.data.domain.Page<Booking> result = bookingRepository.searchAdminBookings(
-                safeSearch, safeStatus, pageable);
+                safeSearch, safeStatus, safePaymentMethod, createdFrom, createdTo,
+                safeDeparturePoint, safeArrivalPoint, pageable);
 
         java.util.Map<String, Long> statusCounts = new java.util.HashMap<>();
         bookingRepository.countByStatusGrouped().forEach(row ->
                 statusCounts.put(String.valueOf(row[0]).toUpperCase(), ((Number) row[1]).longValue()));
 
         java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+        enrichSeatTypes(result.getContent());
         response.put("content", result.getContent());
         response.put("page", result.getNumber());
         response.put("size", result.getSize());
         response.put("totalElements", result.getTotalElements());
         response.put("totalPages", result.getTotalPages());
         response.put("statusCounts", statusCounts);
+        response.put("routeOptions", bookingRepository.findAdminRouteOptions().stream()
+                .map(row -> java.util.Map.of(
+                        "departurePoint", String.valueOf(row[0]),
+                        "arrivalPoint", String.valueOf(row[1])))
+                .toList());
         return ResponseEntity.ok(response);
+    }
+
+    private java.time.LocalDateTime parseFilterDate(String value, boolean endExclusive) {
+        if (value == null || value.isBlank()) {
+            return endExclusive
+                    ? java.time.LocalDate.of(9999, 12, 31).atStartOfDay()
+                    : java.time.LocalDate.of(1970, 1, 1).atStartOfDay();
+        }
+        try {
+            java.time.LocalDate date = java.time.LocalDate.parse(value.trim());
+            return endExclusive ? date.plusDays(1).atStartOfDay() : date.atStartOfDay();
+        } catch (java.time.format.DateTimeParseException exception) {
+            throw new IllegalArgumentException("Ngày lọc không đúng định dạng yyyy-MM-dd.");
+        }
+    }
+
+    private void enrichSeatTypes(List<Booking> bookings) {
+        List<Long> tripIds = bookings.stream()
+                .filter(booking -> booking.getTrip() != null && booking.getTrip().getId() != null)
+                .map(booking -> booking.getTrip().getId())
+                .distinct()
+                .toList();
+        if (tripIds.isEmpty()) return;
+
+        Map<Long, Map<String, com.smartbus.booking.entity.SeatType>> typesByTrip = seatRepository
+                .findByTripIdInOrderByTripIdAscSeatNumberAsc(tripIds)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        seat -> seat.getTrip().getId(),
+                        java.util.LinkedHashMap::new,
+                        java.util.stream.Collectors.toMap(
+                                com.smartbus.booking.entity.Seat::getSeatNumber,
+                                com.smartbus.booking.entity.Seat::getSeatType,
+                                (first, ignored) -> first,
+                                java.util.LinkedHashMap::new)));
+
+        for (Booking booking : bookings) {
+            if (booking.getTrip() == null || booking.getSeatNumbers() == null) continue;
+            Long tripId = booking.getTrip().getId();
+            Map<String, com.smartbus.booking.entity.SeatType> tripSeatTypes = typesByTrip.getOrDefault(
+                    tripId, java.util.Collections.emptyMap());
+            Map<String, com.smartbus.booking.entity.SeatType> bookingSeatTypes = new java.util.LinkedHashMap<>();
+            for (String seatNumber : booking.getSeatNumbers()) {
+                bookingSeatTypes.put(
+                        seatNumber,
+                        tripSeatTypes.getOrDefault(seatNumber, com.smartbus.booking.entity.SeatType.STANDARD));
+            }
+            booking.setSeatTypes(bookingSeatTypes);
+        }
     }
 
     @jakarta.annotation.PostConstruct
@@ -379,6 +451,9 @@ public class BookingController {
                                 Long.valueOf(payload.get("returnTripId").toString()) : null;
             List<String> returnSeats = payload.containsKey("returnSeats") && payload.get("returnSeats") != null ? 
                                        (List<String>) payload.get("returnSeats") : null;
+            String holdToken = payload.get("holdToken") != null
+                    ? payload.get("holdToken").toString()
+                    : "PAYMENT-" + java.util.UUID.randomUUID();
 
             Long customerId = extractPayloadUserId(payload);
             if (customerId != null) {
@@ -395,9 +470,12 @@ public class BookingController {
             }
             
             // 2. Giữ ghế (Seat Holding)
-            seatService.holdSeats(outboundTripId, outboundSeats);
+            LocalDateTime holdExpiresAt = seatService.holdSeats(outboundTripId, outboundSeats, holdToken);
             if (returnTripId != null && returnSeats != null) {
-                seatService.holdSeats(returnTripId, returnSeats);
+                LocalDateTime returnHoldExpiresAt = seatService.holdSeats(returnTripId, returnSeats, holdToken);
+                if (returnHoldExpiresAt.isBefore(holdExpiresAt)) {
+                    holdExpiresAt = returnHoldExpiresAt;
+                }
             }
 
             // Áp dụng voucher
@@ -431,7 +509,8 @@ public class BookingController {
             return ResponseEntity.ok(Map.of(
                 "paymentOrderId", savedPo.getId(),
                 "paymentCode", savedPo.getPaymentCode(),
-                "totalAmount", savedPo.getTotalAmount()
+                "totalAmount", savedPo.getTotalAmount(),
+                "expiresAt", holdExpiresAt.atZone(java.time.ZoneId.systemDefault()).toInstant().toString()
             ));
             
         } catch (Exception e) {

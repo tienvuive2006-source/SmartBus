@@ -162,6 +162,10 @@
                 <div class="p-4">
                   <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Vé cũ</p>
                   <p class="text-xs font-black text-slate-700">{{ exchangeRoute(ticket.exchange.oldTicket) }}</p>
+                  <p class="mt-2 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                    <span class="material-symbols-outlined text-[15px] text-slate-400">directions_bus</span>
+                    {{ exchangeBusLine(ticket.exchange.oldTicket) }}
+                  </p>
                   <p class="mt-2 text-xs font-semibold text-slate-500">{{ exchangeSchedule(ticket.exchange.oldTicket) }}</p>
                   <p class="mt-1 text-xs font-bold text-slate-500">Ghế {{ ticket.exchange.oldTicket.seatNumbers.join(', ') }}</p>
                   <p class="mt-2 font-black text-slate-600">{{ Number(ticket.exchange.oldTicket.price).toLocaleString('vi-VN') }}đ</p>
@@ -172,6 +176,10 @@
                 <div class="bg-white/60 p-4">
                   <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-blue-500">Vé mới</p>
                   <p class="text-xs font-black text-slate-800">{{ exchangeRoute(ticket.exchange.newTicket) }}</p>
+                  <p class="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#075955]">
+                    <span class="material-symbols-outlined text-[15px]">directions_bus</span>
+                    {{ exchangeBusLine(ticket.exchange.newTicket) }}
+                  </p>
                   <p class="mt-2 text-xs font-semibold text-slate-600">{{ exchangeSchedule(ticket.exchange.newTicket) }}</p>
                   <p class="mt-1 text-xs font-bold text-[#f03a17]">Ghế {{ ticket.exchange.newTicket.seatNumbers.join(', ') }}</p>
                   <p class="mt-2 font-black text-[#075955]">{{ Number(ticket.exchange.newTicket.price).toLocaleString('vi-VN') }}đ</p>
@@ -718,6 +726,14 @@ const exchangeSchedule = ticket => {
   if (!ticket) return '';
   const date = ticket.departureDate ? ticket.departureDate.split('-').reverse().join('/') : 'Chưa cập nhật';
   return `${ticket.departureTime || '--:--'} · ${date}`;
+};
+const exchangeBusLine = ticket => {
+  if (!ticket) return 'Chưa cập nhật dòng xe';
+  const company = String(ticket.companyName || '').trim();
+  const busType = String(ticket.busType || '').trim();
+  const licensePlate = String(ticket.licensePlate || '').trim();
+  const name = [company, busType].filter(Boolean).join(' · ');
+  return [name || 'Chưa cập nhật dòng xe', licensePlate].filter(Boolean).join(' · ');
 };
 
 const closeModal = () => {

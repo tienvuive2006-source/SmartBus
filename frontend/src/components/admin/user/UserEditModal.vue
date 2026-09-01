@@ -1,241 +1,233 @@
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      <!-- Backdrop -->
-      <div @click="$emit('close')" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in"></div>
-      
-      <!-- Modal Content -->
-      <div class="bg-white w-full max-w-xl max-h-[95vh] rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden animate-scale-up relative flex flex-col">
-        <!-- Header -->
-        <div class="p-8 pb-4 flex justify-between items-start">
-          <div>
-            <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
-              <span class="material-symbols-outlined text-3xl">manage_accounts</span>
-            </div>
-            <h3 class="text-2xl font-black text-slate-800">Thông tin tài khoản</h3>
-            <p class="text-xs font-medium text-slate-500 mt-1 uppercase tracking-widest" v-if="form.id">ID: #{{ form.id }}</p>
-          </div>
-          <button @click="$emit('close')" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
-            <span class="material-symbols-outlined text-slate-400">close</span>
-          </button>
-        </div>
-
-        <!-- Form Body -->
-        <form @submit.prevent="handleSubmit" autocomplete="off" class="overflow-y-auto hide-scrollbar flex-1 p-8 pt-2 space-y-6">
-          <div class="space-y-4">
+    <div v-if="isOpen" class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5">
+      <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" @click="$emit('close')"></div>
+      <section class="relative flex max-h-[94vh] w-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl" :class="isInspector ? 'max-w-4xl' : 'max-w-xl'" role="dialog" aria-modal="true" aria-labelledby="user-form-title">
+        <header class="flex items-start justify-between border-b border-slate-100 px-6 py-5 sm:px-8">
+          <div class="flex items-center gap-4">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-700"><span class="material-symbols-outlined text-[28px]">{{ isInspector ? 'badge' : 'manage_accounts' }}</span></span>
             <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Họ và Tên {{ form.role === 'USER' ? 'khách hàng' : 'nhân viên' }}</label>
-              <input 
-                v-model="form.fullName" 
-                type="text" 
-                required
-                :disabled="!isCreateMode"
-                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50"
-              />
-            </div>
-
-            <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Số điện thoại liên hệ</label>
-              <input 
-                v-model="form.phone" 
-                type="tel" 
-                required
-                :disabled="!isCreateMode"
-                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-mono disabled:opacity-50"
-              />
-            </div>
-
-            <div v-if="form.role === 'USER' || form.role === 'ADMIN'">
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Địa chỉ Email (Tuỳ chọn)</label>
-              <input 
-                v-model="form.email" 
-                type="email" 
-                autocomplete="off"
-                data-lpignore="true"
-                :disabled="!isCreateMode && form.role === 'USER'"
-                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Mật khẩu {{ isCreateMode ? '(Mặc định: 123456)' : '(Để trống nếu không đổi)' }}</label>
-              <input 
-                v-model="form.password" 
-                type="password" 
-                autocomplete="new-password"
-                data-lpignore="true"
-                :disabled="!isCreateMode && form.role === 'USER'"
-                :placeholder="(!isCreateMode && form.role === 'USER') ? 'Không thể đổi mật khẩu khách hàng' : (isCreateMode ? 'Nhập mật khẩu hoặc để trống' : 'Nhập mật khẩu mới')"
-                class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all font-mono disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Phân quyền</label>
-                <select 
-                  v-model="form.role" 
-                  class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-800 focus:bg-white focus:border-primary outline-none transition-all cursor-pointer appearance-none"
-                >
-                  <option value="USER">Khách hàng</option>
-                  <option value="ADMIN">Quản trị viên</option>
-                  <option value="INSPECTOR">Lơ xe (Soát vé)</option>
-                  <option value="DRIVER">Tài xế (Lái xe)</option>
-                </select>
-              </div>
-              <div v-if="form.role === 'USER'">
-                <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 ml-1">Số dư ví (đ)</label>
-                <input 
-                  v-model.number="form.walletBalance" 
-                  type="number" 
-                  step="any"
-                  required
-                  class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black text-emerald-600 focus:bg-white focus:border-emerald-500 outline-none transition-all"
-                />
-              </div>
+              <p class="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">{{ isInspector ? 'Hồ sơ nhân viên vận hành' : 'Quản lý tài khoản' }}</p>
+              <h3 id="user-form-title" class="mt-1 text-xl font-black text-slate-900 sm:text-2xl">{{ isCreateMode ? (isInspector ? 'Thêm lơ xe mới' : 'Thêm tài khoản mới') : (isInspector ? 'Thông tin lơ xe' : 'Thông tin tài khoản') }}</h3>
+              <p v-if="form.id" class="mt-1 text-xs font-bold text-slate-400">Mã nhân viên: {{ employeeCode }} · ID #{{ form.id }}</p>
             </div>
           </div>
+          <button type="button" class="grid h-10 w-10 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" @click="$emit('close')"><span class="material-symbols-outlined">close</span></button>
+        </header>
 
-          <!-- Image Upload (3x4 ratio) - Chỉ hiển thị cho nhân viên -->
-          <div v-if="form.role === 'INSPECTOR' || form.role === 'DRIVER'" class="flex flex-col items-center mt-2 mb-4">
-            <div class="relative group mb-3">
-              <div class="w-24 h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-colors shadow-sm" @click="$refs.fileInput.click()">
-                <img v-if="form.avatarUrl" :src="form.avatarUrl" class="w-full h-full object-cover" />
-                <div v-else class="text-center p-2">
-                  <span class="material-symbols-outlined text-slate-300 text-[32px]">add_photo_alternate</span>
-                  <p class="text-[9px] text-slate-500 font-black uppercase mt-2 tracking-widest">Ảnh 3x4</p>
+        <form class="flex-1 overflow-y-auto px-6 py-5 sm:px-8" autocomplete="off" @submit.prevent="handleSubmit">
+          <div v-if="isInspector" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_180px]">
+            <div class="space-y-6">
+              <FormSection icon="account_circle" title="Tài khoản & liên hệ" description="Thông tin dùng để đăng nhập và liên lạc với nhân viên.">
+                <div class="field-grid">
+                  <FormField label="Họ và tên" required class="sm:col-span-2"><input v-model.trim="form.fullName" type="text" required placeholder="Nhập họ tên nhân viên" class="form-control" /></FormField>
+                  <FormField label="Tên đăng nhập" required><input v-model.trim="form.username" type="text" required minlength="4" maxlength="30" placeholder="Ví dụ: nhanvien01" class="form-control" /></FormField>
+                  <FormField label="Số điện thoại" required><input v-model.trim="form.phone" type="tel" required placeholder="09xxxxxxxx" class="form-control font-mono" /></FormField>
+                  <FormField label="Email"><input v-model.trim="form.email" type="email" placeholder="nhanvien@nhaxe.vn" class="form-control" /></FormField>
+                  <FormField label="Mật khẩu"><input v-model="form.password" type="password" autocomplete="new-password" :placeholder="isCreateMode ? 'Mặc định 123456 nếu để trống' : 'Để trống nếu không đổi'" class="form-control" /></FormField>
                 </div>
-              </div>
-              <div v-if="form.avatarUrl" class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center cursor-pointer backdrop-blur-sm" @click="$refs.fileInput.click()">
-                <span class="material-symbols-outlined text-white">edit</span>
-              </div>
-              <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileUpload" />
-              <div v-if="uploading" class="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center z-10">
-                 <div class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2"></div>
-                 <span class="text-[9px] font-black uppercase tracking-widest text-primary animate-pulse">Đang tải</span>
-              </div>
+              </FormSection>
+
+              <FormSection icon="id_card" title="Thông tin cá nhân" description="Thông tin nhận diện phục vụ hồ sơ lao động.">
+                <div class="field-grid">
+                  <FormField label="Giới tính"><select v-model="form.gender" class="form-control"><option value="">Chưa cập nhật</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option></select></FormField>
+                  <FormField label="Ngày sinh"><input v-model="form.dateOfBirth" type="date" class="form-control" /></FormField>
+                  <FormField label="Số CCCD/CMND"><input v-model.trim="form.citizenId" type="text" inputmode="numeric" maxlength="12" placeholder="Nhập số giấy tờ" class="form-control font-mono" /></FormField>
+                  <FormField label="Ngày cấp"><input v-model="form.citizenIdIssueDate" type="date" class="form-control" /></FormField>
+                  <FormField label="Địa chỉ thường trú" class="sm:col-span-2"><textarea v-model.trim="form.address" rows="2" placeholder="Số nhà, phường/xã, quận/huyện, tỉnh/thành" class="form-control resize-none"></textarea></FormField>
+                </div>
+              </FormSection>
+
+              <FormSection icon="contact_emergency" title="Liên hệ khẩn cấp" description="Người cần liên hệ khi phát sinh sự cố trong chuyến.">
+                <div class="field-grid">
+                  <FormField label="Họ tên người liên hệ"><input v-model.trim="form.emergencyContactName" type="text" placeholder="Nhập họ tên" class="form-control" /></FormField>
+                  <FormField label="Số điện thoại"><input v-model.trim="form.emergencyContactPhone" type="tel" placeholder="09xxxxxxxx" class="form-control font-mono" /></FormField>
+                </div>
+              </FormSection>
+
+              <FormSection icon="work_history" title="Thông tin công việc" description="Thông tin nghiệp vụ dùng khi điều phối lơ xe.">
+                <div class="field-grid">
+                  <FormField label="Phân quyền" class="sm:col-span-2"><select v-model="form.role" class="form-control" disabled><option value="INSPECTOR">Lơ xe / Soát vé</option></select></FormField>
+                  <FormField label="Ghi chú nghiệp vụ" class="sm:col-span-2"><textarea v-model.trim="form.driverNotes" rows="3" maxlength="500" placeholder="Kinh nghiệm, khu vực quen thuộc hoặc lưu ý khi phân công..." class="form-control resize-none"></textarea></FormField>
+                </div>
+              </FormSection>
+
+              <InspectorRouteSection :form="form" :routes="routes" :loading="loadingRoutes" />
             </div>
-            
-            <div class="w-full flex items-center gap-2">
-              <input 
-                type="url" 
-                placeholder="Hoặc dán link ảnh trực tiếp từ web..." 
-                class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary outline-none transition-all"
-                v-model="imageUrlInput"
-                @keydown.enter.prevent="handleUrlUpload"
-              />
-              <button 
-                type="button" 
-                @click="handleUrlUpload" 
-                :disabled="!imageUrlInput || uploading"
-                class="px-4 py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl text-xs font-black tracking-widest uppercase transition-all disabled:opacity-50"
-              >
-                Tải lên
+
+            <aside class="lg:sticky lg:top-0 lg:self-start">
+              <p class="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Ảnh hồ sơ 3×4</p>
+              <button type="button" class="group relative aspect-[3/4] w-full overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-teal-500" @click="fileInput?.click()">
+                <img v-if="form.avatarUrl" :src="form.avatarUrl" alt="Ảnh hồ sơ lơ xe" class="h-full w-full object-cover" />
+                <span v-else class="grid h-full place-items-center px-4 text-center"><span><span class="material-symbols-outlined text-4xl text-slate-300">add_photo_alternate</span><span class="mt-2 block text-xs font-bold text-slate-500">Chọn ảnh nhân viên</span></span></span>
+                <span v-if="uploading" class="absolute inset-0 grid place-items-center bg-white/90 text-xs font-black text-teal-700">ĐANG TẢI...</span>
+                <span v-else-if="form.avatarUrl" class="absolute inset-x-0 bottom-0 bg-slate-950/70 py-2 text-center text-xs font-bold text-white opacity-0 transition group-hover:opacity-100">Đổi ảnh</span>
               </button>
+              <input ref="fileInput" type="file" class="hidden" accept="image/jpeg,image/png,image/webp" @change="handleFileUpload" />
+              <p class="mt-3 text-[11px] leading-5 text-slate-400">Ảnh rõ khuôn mặt, nền sáng. Tỷ lệ dọc 3×4 giúp nhận diện nhanh khi phân công.</p>
+              <div class="mt-4">
+                <label for="inspector-avatar-url" class="mb-2 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Hoặc dán link ảnh</label>
+                <div class="flex">
+                  <input
+                    id="inspector-avatar-url"
+                    v-model.trim="imageUrlInput"
+                    type="url"
+                    inputmode="url"
+                    placeholder="https://..."
+                    :disabled="uploading"
+                    class="min-w-0 flex-1 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-700 outline-none transition focus:border-teal-600 focus:bg-white"
+                    @keydown.enter.prevent="handleUrlUpload"
+                  />
+                  <button type="button" :disabled="uploading || !imageUrlInput" class="grid w-11 place-items-center rounded-r-xl border border-teal-200 bg-teal-50 text-teal-700 transition hover:bg-teal-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50" title="Tải ảnh từ liên kết" @click="handleUrlUpload">
+                    <span class="material-symbols-outlined text-lg">link</span>
+                  </button>
+                </div>
+                <p class="mt-2 text-[10px] leading-4 text-slate-400">Dán địa chỉ ảnh công khai. Hệ thống sẽ tải ảnh lên và lưu link vào hồ sơ.</p>
+              </div>
+              <p v-if="imageUploadError" class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold leading-4 text-rose-700">{{ imageUploadError }}</p>
+              <button v-if="form.avatarUrl" type="button" class="mt-3 w-full rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50" @click="form.avatarUrl = ''">Xóa ảnh</button>
+            </aside>
+          </div>
+
+          <div v-else class="space-y-4">
+            <FormField :label="`Họ và tên ${form.role === 'USER' ? 'khách hàng' : 'nhân viên'}`" required><input v-model.trim="form.fullName" type="text" required class="form-control" /></FormField>
+            <FormField label="Tên đăng nhập" :required="form.role !== 'USER'"><input v-model.trim="form.username" type="text" :required="form.role !== 'USER'" class="form-control" /></FormField>
+            <FormField label="Số điện thoại" required><input v-model.trim="form.phone" type="tel" required class="form-control font-mono" /></FormField>
+            <FormField label="Email"><input v-model.trim="form.email" type="email" class="form-control" /></FormField>
+            <FormField label="Mật khẩu"><input v-model="form.password" type="password" autocomplete="new-password" :placeholder="isCreateMode ? 'Mặc định 123456 nếu để trống' : 'Để trống nếu không đổi'" class="form-control" /></FormField>
+            <div class="grid grid-cols-2 gap-4">
+              <FormField label="Phân quyền"><select v-model="form.role" class="form-control"><option value="USER">Khách hàng</option><option value="ADMIN">Quản trị viên</option><option value="INSPECTOR">Lơ xe / Soát vé</option><option value="DRIVER">Tài xế</option></select></FormField>
+              <FormField v-if="form.role === 'USER'" label="Số dư ví (đ)"><input v-model.number="form.walletBalance" type="number" min="0" class="form-control" /></FormField>
             </div>
           </div>
 
-          <!-- Footer Buttons -->
-          <div class="flex gap-3 pt-4">
-            <button 
-              type="button" 
-              @click="$emit('close')" 
-              class="flex-1 px-6 py-4 rounded-2xl text-sm font-black text-slate-500 hover:bg-slate-100 transition-all active:scale-95"
-            >
-              HỦY BỎ
-            </button>
-            <button 
-              type="submit" 
-              :disabled="submitting"
-              class="flex-[2] bg-slate-900 text-white px-6 py-4 rounded-2xl text-sm font-black shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
-            >
-              {{ submitting ? 'ĐANG LƯU...' : 'CẬP NHẬT' }}
-            </button>
-          </div>
+          <p v-if="serverError" class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{{ serverError }}</p>
+          <footer class="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur sm:-mx-8 sm:px-8">
+            <button type="button" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50" @click="$emit('close')">Hủy bỏ</button>
+            <button type="submit" :disabled="submitting || uploading" class="rounded-xl bg-teal-700 px-6 py-3 text-sm font-black text-white shadow-lg shadow-teal-900/10 transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50">{{ submitting ? 'Đang lưu...' : (isCreateMode ? 'Tạo hồ sơ' : 'Lưu thay đổi') }}</button>
+          </footer>
         </form>
-      </div>
+      </section>
     </div>
   </Teleport>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import axios from 'axios';
+import { computed, ref, watch } from 'vue'
+import axios from 'axios'
+import FormField from './FormField.vue'
+import FormSection from './FormSection.vue'
+import InspectorRouteSection from './InspectorRouteSection.vue'
+import { useApi } from '@/composables/useApi'
+import { useRouteInspectorApi } from '@/services/routeInspectorApi'
 
-const props = defineProps({
-  isOpen: Boolean,
-  isCreateMode: Boolean,
-  form: Object,
-  submitting: Boolean
-});
+const props = defineProps({ isOpen: Boolean, isCreateMode: Boolean, form: { type: Object, required: true }, submitting: Boolean, serverError: { type: String, default: '' } })
+const emit = defineEmits(['close', 'submit'])
+const api = useApi()
+const routeInspectorApi = useRouteInspectorApi()
+const fileInput = ref(null)
+const uploading = ref(false)
+const imageUrlInput = ref('')
+const imageUploadError = ref('')
+const routes = ref([])
+const loadingRoutes = ref(false)
+const isInspector = computed(() => props.form.role === 'INSPECTOR')
+const employeeCode = computed(() => props.form.id ? `NV${String(props.form.id).padStart(3, '0')}` : 'Tự động sau khi tạo')
+const handleSubmit = () => emit('submit')
 
-const emit = defineEmits(['close', 'submit']);
-
-const handleSubmit = () => {
-  emit('submit');
-};
-
-
-const fileInput = ref(null);
-const uploading = ref(false);
-const imageUrlInput = ref('');
-
-const handleFileUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  uploading.value = true;
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', 'skybus_preset'); // Cloudinary preset
-
+const loadRouteAssignments = async () => {
+  if (!isInspector.value) return
+  loadingRoutes.value = true
+  props.form.primaryRouteIds = []
+  props.form.backupRouteIds = []
   try {
-    const res = await axios.post('https://api.cloudinary.com/v1_1/dzydry2xn/image/upload', formData);
-    // Cập nhật form.avatarUrl
-    props.form.avatarUrl = res.data.secure_url;
-  } catch (err) {
-    console.error(err);
-    alert("Lỗi upload ảnh. Vui lòng thử lại!");
+    const routesResponse = await api.get('/routes')
+    routes.value = (Array.isArray(routesResponse.data) ? routesResponse.data : [])
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'))
+    if (props.form.id) {
+      const assignmentsResponse = await routeInspectorApi.getInspectorRoutes(props.form.id)
+      const assignments = Array.isArray(assignmentsResponse.data) ? assignmentsResponse.data : []
+      props.form.primaryRouteIds = assignments.filter(item => item.role === 'PRIMARY').map(item => item.routeId)
+      props.form.backupRouteIds = assignments.filter(item => item.role === 'BACKUP').map(item => item.routeId)
+    }
+  } catch (error) {
+    console.error('Không tải được tuyến phụ trách của lơ xe:', error)
   } finally {
-    uploading.value = false;
-    e.target.value = ''; // Reset input
+    loadingRoutes.value = false
   }
-};
+}
+
+watch(() => props.isOpen, open => {
+  if (open) {
+    imageUrlInput.value = ''
+    imageUploadError.value = ''
+    loadRouteAssignments()
+  }
+}, { immediate: true })
+
+const uploadAvatarToCloudinary = async source => {
+  const data = new FormData()
+  data.append('file', source)
+  data.append('upload_preset', 'skybus_preset')
+  const response = await axios.post('https://api.cloudinary.com/v1_1/dzydry2xn/image/upload', data)
+  props.form.avatarUrl = response.data.secure_url
+}
+
+const handleFileUpload = async event => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    imageUploadError.value = 'Ảnh phải có định dạng JPG, PNG hoặc WEBP.'
+    return
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    imageUploadError.value = 'Dung lượng ảnh không được vượt quá 2 MB.'
+    return
+  }
+  uploading.value = true
+  imageUploadError.value = ''
+  try {
+    await uploadAvatarToCloudinary(file)
+  } catch (error) {
+    console.error(error)
+    imageUploadError.value = 'Không thể tải ảnh. Vui lòng kiểm tra kết nối và thử lại.'
+  } finally {
+    uploading.value = false
+  }
+}
 
 const handleUrlUpload = async () => {
-  if (!imageUrlInput.value) return;
-  
-  uploading.value = true;
-  const formData = new FormData();
-  formData.append('file', imageUrlInput.value);
-  formData.append('upload_preset', 'skybus_preset');
-
+  let parsedUrl
   try {
-    const res = await axios.post('https://api.cloudinary.com/v1_1/dzydry2xn/image/upload', formData);
-    props.form.avatarUrl = res.data.secure_url;
-    imageUrlInput.value = '';
-  } catch (err) {
-    console.error(err);
-    alert("Lỗi tải ảnh từ URL. Đảm bảo link ảnh hiển thị hợp lệ và có quyền truy cập công khai.");
-  } finally {
-    uploading.value = false;
+    parsedUrl = new URL(imageUrlInput.value)
+  } catch {
+    imageUploadError.value = 'Link ảnh không hợp lệ.'
+    return
   }
-};
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    imageUploadError.value = 'Link ảnh phải bắt đầu bằng http:// hoặc https://.'
+    return
+  }
+
+  uploading.value = true
+  imageUploadError.value = ''
+  try {
+    await uploadAvatarToCloudinary(parsedUrl.href)
+    imageUrlInput.value = ''
+  } catch (error) {
+    console.error('Không tải được ảnh lơ xe từ liên kết:', error)
+    imageUploadError.value = 'Không đọc được ảnh từ link này. Hãy dán địa chỉ ảnh công khai rồi thử lại.'
+  } finally {
+    uploading.value = false
+  }
+}
 </script>
 
 <style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes scaleUp {
-  from { transform: scale(0.92); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-.animate-scale-up {
-  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
+.field-grid { display: grid; gap: 1rem; }
+.form-control { width: 100%; min-height: 2.8rem; border: 1px solid #dce5e7; border-radius: .8rem; background: #f8fafb; padding: .72rem .9rem; color: #24343d; font-size: .82rem; font-weight: 700; outline: none; transition: .18s ease; }
+.form-control:focus { border-color: #168a7a; background: white; box-shadow: 0 0 0 3px rgb(13 148 136 / .09); }
+.form-control:disabled { cursor: not-allowed; color: #687982; background: #eef3f3; }
+@media (min-width: 640px) { .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>

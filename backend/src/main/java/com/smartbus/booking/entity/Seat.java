@@ -28,6 +28,11 @@ public class Seat {
     @Column(nullable = false)
     private Boolean isBooked; // true: Đã bán, false: Trống
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private SeatType seatType = SeatType.STANDARD;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trip_id", nullable = false)
     @JsonIgnore // Tránh lặp vô tận vòng tròn khi render JSON

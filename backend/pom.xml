@@ -132,6 +132,9 @@
 	</dependencies>
 
 	<build>
+		<!-- Tách output Maven khỏi target do Java Language Server của VS Code
+		     có thể ghi problem-class vào cùng thư mục và làm hỏng lúc chạy. -->
+		<directory>${project.basedir}/.maven-build</directory>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

@@ -21,6 +21,7 @@
     <AdminRouteTable 
       :routes="routes"
       @toggle-visibility="toggleVisibility"
+      @toggle-round-trip="toggleRoundTrip"
       @edit-route="editRoute"
       @delete-route="deleteRoute"
       @manage-stops="manageStops"
@@ -29,6 +30,8 @@
     <!-- Create/Edit Route Modal -->
     <AdminRouteModal 
       ref="routeModal"
+      :bus-types="busTypes"
+      :buses="buses"
       @save="onRouteSaved"
     />
     <RouteStopManagerModal ref="stopModal" @notify="showStopToast" />
@@ -48,9 +51,15 @@ import AdminRouteTable from '@/components/admin/route/AdminRouteTable.vue';
 import AdminRouteModal from '@/components/admin/route/AdminRouteModal.vue';
 import RouteStopManagerModal from '@/components/admin/route/RouteStopManagerModal.vue';
 import AdminActionToast from '@/components/admin/AdminActionToast.vue';
+import { useRouteBusTypeApi } from '@/services/routeBusTypeApi';
+import { useRouteVehicleApi } from '@/services/routeVehicleApi';
 
 const api = useApi();
+const routeBusTypeApi = useRouteBusTypeApi();
+const routeVehicleApi = useRouteVehicleApi();
 const routes = ref([]);
+const busTypes = ref([]);
+const buses = ref([]);
 const routeModal = ref(null);
 const stopModal = ref(null);
 const stopToast = ref({ show: false, type: 'success', message: '' });
@@ -69,6 +78,26 @@ const loadRoutes = async () => {
   } catch (err) {
     console.error('Lỗi khi tải danh sách tuyến đường:', err);
     routes.value = [];
+  }
+};
+
+const loadBusTypes = async () => {
+  try {
+    const response = await api.get('/bus-types');
+    busTypes.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Không tải được catalog dòng xe:', error);
+    busTypes.value = [];
+  }
+};
+
+const loadBuses = async () => {
+  try {
+    const response = await api.get('/buses');
+    buses.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Không tải được danh sách phương tiện:', error);
+    buses.value = [];
   }
 };
 
@@ -126,15 +155,48 @@ const toggleVisibility = async (idx) => {
   }
 };
 
-const onRouteSaved = async ({ route, index, formImageUrl, shortDep, shortArr }) => {
+const toggleRoundTrip = async (idx) => {
+  const route = routes.value[idx];
+  const newStatus = route.roundTripEnabled !== true;
+
   try {
-    if (index >= 0) {
+    const response = await api.put(`/routes/${route.id}`, {
+      ...route,
+      roundTripEnabled: newStatus
+    });
+    routes.value[idx] = response.data;
+    showStopToast({
+      type: 'success',
+      message: newStatus
+        ? 'Đã bật khai thác khứ hồi cho tuyến.'
+        : 'Đã tắt khai thác khứ hồi cho tuyến.'
+    });
+  } catch (error) {
+    console.error('Không thể cập nhật trạng thái khứ hồi:', error);
+    showStopToast({ type: 'error', message: 'Không thể cập nhật trạng thái khứ hồi. Vui lòng thử lại.' });
+  }
+};
+
+const onRouteSaved = async ({ route, index, formImageUrl, shortDep, shortArr, busTypeConfig, vehicleConfig }) => {
+  const isEditing = index >= 0;
+  try {
+    let savedRoute;
+    if (isEditing) {
       const existingRouteId = routes.value[index].id;
       const res = await api.put(`/routes/${existingRouteId}`, route);
       routes.value[index] = res.data;
+      savedRoute = res.data;
     } else {
       const res = await api.post('/routes', route);
       routes.value.push(res.data);
+      savedRoute = res.data;
+    }
+
+    if (savedRoute?.id && busTypeConfig) {
+      await routeBusTypeApi.updateConfig(savedRoute.id, busTypeConfig);
+    }
+    if (savedRoute?.id && vehicleConfig) {
+      await routeVehicleApi.updateConfig(savedRoute.id, vehicleConfig);
     }
 
     if (formImageUrl) {
@@ -143,14 +205,30 @@ const onRouteSaved = async ({ route, index, formImageUrl, shortDep, shortArr }) 
       routeImages[`${shortArr}||${shortDep}`] = formImageUrl;
       localStorage.setItem('smartbus_route_images', JSON.stringify(routeImages));
     }
+
+    showStopToast({
+      type: 'success',
+      message: isEditing
+        ? 'Đã cập nhật tuyến đường và cấu hình phương tiện.'
+        : 'Đã tạo tuyến đường và lưu cấu hình phương tiện.'
+    });
   } catch (error) {
     console.error(error);
-    alert('Không thể lưu tuyến đường lên máy chủ! Vui lòng thử lại.');
+    showStopToast({
+      type: 'error',
+      message: error?.response?.data?.message
+        || error?.response?.data?.error
+        || (isEditing
+          ? 'Không thể cập nhật tuyến đường. Vui lòng thử lại.'
+          : 'Không thể tạo tuyến đường. Vui lòng thử lại.')
+    });
   }
 };
 
 onMounted(() => {
   loadRoutes();
+  loadBusTypes();
+  loadBuses();
 });
 
 onBeforeUnmount(() => {

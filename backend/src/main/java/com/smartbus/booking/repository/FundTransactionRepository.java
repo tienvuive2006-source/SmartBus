@@ -10,8 +10,12 @@ import java.util.List;
 public interface FundTransactionRepository extends JpaRepository<FundTransaction, Long> {
 
     List<FundTransaction> findByFundTypeOrderByTransactionDateDesc(String fundType);
+
+    List<FundTransaction> findByReferenceIdStartingWith(String prefix);
     
     boolean existsByReferenceId(String referenceId);
+
+    boolean existsByReferenceIdAndTransactionType(String referenceId, String transactionType);
 
     List<FundTransaction> findByFundTypeAndTransactionDateBetweenOrderByTransactionDateDesc(String fundType, java.time.LocalDateTime start, java.time.LocalDateTime end);
     

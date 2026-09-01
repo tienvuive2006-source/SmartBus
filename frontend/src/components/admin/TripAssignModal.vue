@@ -1,258 +1,112 @@
 <template>
   <Teleport to="body">
-    <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <!-- Backdrop -->
+    <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-3">
       <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="close"></div>
-      
-      <!-- Modal Content -->
-      <div class="relative w-full max-w-6xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fade-in-up">
-        
-        <!-- Header -->
-        <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-          <div>
-            <h3 class="text-title-lg font-black text-slate-800 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-[28px]">smart_toy</span>
-              Phân Công Thông Minh
-            </h3>
-            <p class="text-body-sm text-slate-500 mt-1">Hệ thống tự động phân tích Không gian & Thời gian: Khớp bến nối chuyến nghỉ 1 tiếng, Sai bến (phải di chuyển rỗng) ép nghỉ 12 tiếng.</p>
+
+      <section class="assignment-modal relative flex flex-col overflow-hidden bg-white animate-fade-in-up">
+        <AssignmentModalHeader @close="close" />
+
+        <TripAssignmentOverview :trip="trip" :ready="Boolean(selectedDriver && selectedBus)" @suggest="applyAutomaticSuggestion" />
+
+        <div class="assignment-grid-scroll min-h-0 flex-1 bg-slate-100">
+          <div class="assignment-grid">
+            <DriverTabbedSelectionColumn
+              v-model:active-role="activeDriverRole"
+              :primary-drivers="filteredDrivers"
+              :secondary-drivers="filteredSecondaryDrivers"
+              :primary-selected="selectedDriver"
+              :secondary-selected="selectedSecondaryDriver"
+              v-model:primary-search="driverSearch"
+              v-model:secondary-search="secondaryDriverSearch"
+              :allow-outside="!routeDriverConfig.unrestricted"
+              v-model:show-outside="showOutsideRouteDrivers"
+              @select-primary="selectPrimaryDriver"
+              @select-secondary="selectSecondaryDriver"
+              @clear-secondary="!readOnly && (selectedSecondaryDriver = null)"
+            />
+            <VehicleSelectionColumn
+              :buses="filteredBuses"
+              :selected="selectedBus"
+              v-model:search="busSearch"
+              :loading="routeVehicleLoading"
+              :route-count="compatibleRouteVehicleCount"
+              :allow-outside="!routeVehicleConfig.unrestricted"
+              v-model:show-outside="showOutsideRoute"
+              @select="!readOnly && (selectedBus = $event)"
+            />
+            <InspectorSelectionColumn
+              :inspectors="filteredInspectors"
+              :selected="selectedInspector"
+              v-model:search="inspectorSearch"
+              :loading="routeInspectorLoading"
+              :allow-outside="!routeInspectorConfig.unrestricted"
+              v-model:show-outside="showOutsideRouteInspectors"
+              @select="!readOnly && (selectedInspector = $event)"
+              @clear="!readOnly && (selectedInspector = null)"
+            />
+            <AssignmentSummaryPanel
+              :driver="selectedDriver"
+              :secondary-driver="selectedSecondaryDriver"
+              :bus="selectedBus"
+              :inspector="selectedInspector"
+              :conflict-free="assignmentConflictFree"
+              :has-return="Boolean(suggestedReturnTrip)"
+              :trip="trip"
+              :score="assignmentScore"
+            />
           </div>
-          <button @click="close" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 flex items-center justify-center transition-colors">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        
-        <!-- Trip Summary Strip -->
-        <div class="bg-primary/5 border-b border-primary/10 px-6 py-4 flex flex-col sm:flex-row gap-4 sm:items-center justify-between shrink-0">
-           <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-xl bg-white shadow-sm border border-primary/20 flex flex-col items-center justify-center text-primary">
-                 <span class="text-[10px] font-black uppercase tracking-widest">{{ trip?.departureDate?.split('-')[2] }}/{{ trip?.departureDate?.split('-')[1] }}</span>
-                 <span class="text-sm font-black leading-none">{{ trip?.departureTime }}</span>
-              </div>
-              <div>
-                 <h4 class="font-bold text-slate-800">{{ trip?.departurePoint?.split(',')[0] }} <span class="text-slate-400 mx-1">➔</span> {{ trip?.arrivalPoint?.split(',')[0] }}</h4>
-                 <p class="text-xs text-slate-500 font-medium">Giờ đến dự kiến: <strong class="text-slate-700">{{ trip?.arrivalTime || 'Chưa rõ' }}</strong></p>
-              </div>
-           </div>
-        </div>
-
-        <!-- Body: 2 Columns -->
-        <div class="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50/50">
-          
-          <!-- Column 1: Chọn Tài Xế -->
-          <div class="flex-1 flex flex-col min-w-0">
-            <div class="p-4 border-b border-slate-200 bg-white shrink-0">
-              <h4 class="font-black text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-3">
-                 <span class="material-symbols-outlined text-amber-500">badge</span>
-                 Chọn Tài Xế
-              </h4>
-              <div class="grid grid-cols-2 gap-2 mb-3 p-1 rounded-xl bg-slate-100">
-                <button type="button" @click="activeDriverRole = 'PRIMARY'" class="rounded-lg px-3 py-2 text-xs font-black transition-colors" :class="activeDriverRole === 'PRIMARY' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500'">
-                  Tài xế chính
-                  <span v-if="selectedDriver" class="block mt-0.5 truncate text-[10px] opacity-90">{{ selectedDriver.fullName }}</span>
-                </button>
-                <button type="button" @click="activeDriverRole = 'SECONDARY'" class="rounded-lg px-3 py-2 text-xs font-black transition-colors" :class="activeDriverRole === 'SECONDARY' ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-500'">
-                  Tài xế phụ
-                  <span class="block mt-0.5 truncate text-[10px] opacity-90">{{ selectedSecondaryDriver?.fullName || 'Không bố trí' }}</span>
-                </button>
-              </div>
-              <button v-if="selectedSecondaryDriver" type="button" @click="selectedSecondaryDriver = null" class="mb-3 w-full rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-[11px] font-bold text-sky-700 hover:bg-sky-100">
-                Bỏ tài xế phụ khỏi chuyến
-              </button>
-              <div class="relative shadow-sm">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-                <input v-model="driverSearch" type="text" placeholder="Tìm tên tài xế..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-              </div>
-            </div>
-            
-            <div class="flex-1 overflow-y-auto p-4 space-y-2">
-               <div v-if="filteredDrivers.length === 0" class="text-center text-sm text-slate-500 py-8">Không có tài xế nào.</div>
-               
-               <div 
-                  v-for="driver in filteredDrivers" :key="driver.id"
-                  @click="!driver.conflict && selectDriverForRole(driver)"
-                  class="p-3 rounded-xl border transition-all flex items-center justify-between"
-                  :class="[
-                     driver.conflict ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed' : 'bg-white border-slate-200 cursor-pointer hover:border-primary/50',
-                     activeSelectedDriver?.id === driver.id ? 'ring-2 ring-primary border-primary bg-primary/5' : ''
-                  ]"
-               >
-                  <div class="flex items-center gap-3">
-                     <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden relative border border-slate-200">
-                        <img v-if="driver.avatarUrl" :src="driver.avatarUrl" class="w-full h-full object-cover" />
-                        <span v-else>{{ driver.fullName.charAt(0) }}</span>
-                     </div>
-                     <div>
-                        <p class="font-bold text-sm text-slate-800">{{ driver.fullName }}</p>
-                        <p class="text-xs text-slate-500">{{ driver.phone }}</p>
-                     </div>
-                  </div>
-                  
-                  <div class="max-w-[48%] shrink-0 text-right">
-                     <span v-if="driver.isCurrentAssignee" class="text-[10px] font-black px-2 py-0.5 rounded uppercase" :class="driver.leaveWarning ? 'text-rose-600 bg-rose-50' : 'text-blue-600 bg-blue-50'">
-                        Đang gán {{ driver.leaveWarning ? `(${driver.leaveWarning})` : '' }}
-                     </span>
-                     <span v-else-if="driver.conflict" class="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase">
-                        {{ driver.conflictReason }}
-                     </span>
-                     <div v-else class="flex flex-col items-end gap-1">
-                       <span class="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-600">
-                         Rảnh
-                       </span>
-                       <span v-if="driver.lastKnownLocation" class="max-w-full text-wrap text-[10px] font-semibold leading-tight text-slate-500" :title="(driver.isLocationProjected ? 'Dự kiến tại ' : 'Đang ở ') + driver.lastKnownLocation">
-                         {{ driver.isLocationProjected ? 'Dự kiến tại' : 'Đang ở' }} {{ driver.lastKnownLocation }}
-                       </span>
-                     </div>
-                     
-                     <div v-if="activeSelectedDriver?.id === driver.id" class="mt-1 flex justify-end">
-                        <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
-                     </div>
-                  </div>
-               </div>
-            </div>
-          </div>
-          
-          <!-- Column 2: Chọn Phương Tiện -->
-          <div class="flex-1 flex flex-col min-w-0 border-l border-slate-200">
-             <div class="p-4 border-b border-slate-200 bg-white shrink-0">
-              <h4 class="font-black text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-3">
-                 <span class="material-symbols-outlined text-emerald-500">directions_bus</span>
-                 Chọn Phương Tiện
-              </h4>
-              <div class="relative shadow-sm">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-                <input v-model="busSearch" type="text" placeholder="Tìm biển số xe..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-              </div>
-            </div>
-            
-            <div class="flex-1 overflow-y-auto p-4 space-y-2">
-               <div v-if="filteredBuses.length === 0" class="text-center text-sm text-slate-500 py-8">Không có phương tiện nào phù hợp với dòng xe của lộ trình.</div>
-               <div 
-                  v-for="bus in filteredBuses" :key="bus.id"
-                  @click="!bus.conflict && (selectedBus = bus)"
-                  class="p-3 rounded-xl border transition-all flex items-center justify-between"
-                  :class="[
-                     bus.conflict ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed' : 'bg-white border-slate-200 cursor-pointer hover:border-primary/50',
-                     selectedBus?.id === bus.id ? 'ring-2 ring-primary border-primary bg-primary/5' : ''
-                  ]"
-               >
-                   <div class="flex items-center gap-3">
-                     <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0 border border-slate-200">
-                        <span class="material-symbols-outlined">directions_bus</span>
-                     </div>
-                     <div>
-                        <p class="font-bold text-sm text-slate-800">{{ bus.licensePlate }}</p>
-                        <p class="text-[10px] text-slate-500 font-semibold">{{ bus.busType }}</p>
-                     </div>
-                  </div>
-                  <div class="text-right">
-                     <span v-if="bus.isCurrentAssignee" class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase block truncate max-w-[120px]">Đang gán</span>
-                     <span v-else-if="bus.conflict" class="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase block truncate max-w-[120px]" :title="bus.conflictReason">
-                        {{ bus.conflictReason }}
-                     </span>
-                     <span v-else class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">Rảnh</span>
-                     
-                     <div v-if="selectedBus?.id === bus.id" class="mt-1 flex justify-end">
-                        <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
-                     </div>
-                  </div>
-               </div>
-            </div>
-          </div>
-
-          <!-- Column 3: Chọn Lơ Xe -->
-          <div class="flex-1 flex flex-col min-w-0 border-l border-slate-200">
-            <div class="p-4 border-b border-slate-200 bg-white shrink-0">
-              <h4 class="font-black text-sm text-slate-800 uppercase tracking-widest flex items-center gap-2 mb-3">
-                <span class="material-symbols-outlined text-violet-500">support_agent</span>
-                Chọn Lơ Xe
-              </h4>
-              <div class="relative shadow-sm">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
-                <input v-model="inspectorSearch" type="text" placeholder="Tìm tên lơ xe..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-              </div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-4 space-y-2">
-              <!-- Tùy chọn: không gán lơ xe -->
-              <div
-                @click="selectedInspector = null"
-                class="p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer"
-                :class="selectedInspector === null ? 'ring-2 ring-primary border-primary bg-primary/5' : 'bg-white border-slate-200 hover:border-primary/50'"
-              >
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0 border border-slate-200">
-                    <span class="material-symbols-outlined text-[18px]">do_not_disturb</span>
-                  </div>
-                  <p class="font-bold text-sm text-slate-500">Không có lơ xe</p>
-                </div>
-                <div v-if="selectedInspector === null">
-                  <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
-                </div>
-              </div>
-
-              <div v-if="filteredInspectors.length === 0" class="text-center text-sm text-slate-500 py-4">Không tìm thấy lơ xe.</div>
-
-              <div
-                v-for="inspector in filteredInspectors" :key="inspector.id"
-                @click="!inspector.conflict && (selectedInspector = inspector)"
-                class="p-3 rounded-xl border transition-all flex items-center justify-between"
-                :class="[
-                   inspector.conflict ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed' : 'bg-white border-slate-200 cursor-pointer hover:border-primary/50',
-                   selectedInspector?.id === inspector.id ? 'ring-2 ring-primary border-primary bg-primary/5' : ''
-                ]"
-              >
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full bg-violet-800 text-white flex items-center justify-center font-bold text-sm shrink-0 border border-violet-700">
-                    {{ inspector.fullName.charAt(0) }}
-                  </div>
-                  <div>
-                    <p class="font-bold text-sm text-slate-800">{{ inspector.fullName }}</p>
-                    <p class="text-xs text-slate-500">{{ inspector.phone }}</p>
-                    <p v-if="inspector.employeeCode" class="text-[10px] text-violet-600 font-semibold">{{ inspector.employeeCode }}</p>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <span v-if="inspector.isCurrentAssignee" class="text-[10px] font-black px-2 py-0.5 rounded uppercase" :class="inspector.leaveWarning ? 'text-rose-600 bg-rose-50' : 'text-blue-600 bg-blue-50'">
-                     Đang gán {{ inspector.leaveWarning ? `(${inspector.leaveWarning})` : '' }}
-                  </span>
-                  <span v-else-if="inspector.conflict" class="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded uppercase">
-                    {{ inspector.conflictReason }}
-                  </span>
-                  <span v-else class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase">Rảnh</span>
-                  
-                  <div v-if="selectedInspector?.id === inspector.id" class="mt-1 flex justify-end">
-                    <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
         </div>
 
-        <!-- Footer -->
-        <div class="px-6 py-4 border-t border-slate-100 bg-white flex justify-end gap-3 shrink-0">
-          <button @click="close" class="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-colors">
-            Hủy bỏ
-          </button>
-          <button 
-            @click="submit" 
-            :disabled="!selectedDriver || !selectedBus || submitting"
-            class="bg-slate-900 hover:bg-slate-800 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-          >
-            <span v-if="submitting" class="material-symbols-outlined animate-spin text-[18px]">sync</span>
-            <span v-else class="material-symbols-outlined text-[18px]">save</span>
-            Lưu Phân Công
-          </button>
-        </div>
+        <AssignmentInsights
+          :driver="selectedDriver"
+          :bus="selectedBus"
+          :conflict-free="assignmentConflictFree"
+          @suggest="applyAutomaticSuggestion"
+        />
 
-      </div>
+        <ReturnTripSuggestion
+          v-if="suggestedReturnTrip"
+          v-model="assignSuggestedReturn"
+          :outbound-trip="trip"
+          :return-trip="suggestedReturnTrip"
+          :driver-name="selectedDriver?.fullName || 'Chưa chọn tài xế'"
+          :license-plate="selectedBus?.licensePlate || 'Chưa chọn xe'"
+        />
+
+        <AssignmentModalFooter
+          v-model:note="assignmentNote"
+          :has-assignment="hasAssignment"
+          :confirming-unassign="confirmingUnassign"
+          :submitting="submitting"
+          :can-submit="Boolean(selectedDriver && selectedBus && assignmentConflictFree)"
+          :read-only="readOnly"
+          @close="close"
+          @submit="submit"
+          @request-unassign="confirmingUnassign = true"
+          @cancel-unassign="confirmingUnassign = false"
+          @unassign="unassign"
+        />
+      </section>
     </div>
   </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { useApi } from '@/composables/useApi';
+import { useRouteVehicleApi } from '@/services/routeVehicleApi';
+import { useRouteDriverApi } from '@/services/routeDriverApi';
+import { useRouteInspectorApi } from '@/services/routeInspectorApi';
+import ReturnTripSuggestion from '@/components/admin/assignment/ReturnTripSuggestion.vue';
+import TripAssignmentOverview from '@/components/admin/assignment/TripAssignmentOverview.vue';
+import DriverTabbedSelectionColumn from '@/components/admin/assignment/DriverTabbedSelectionColumn.vue';
+import VehicleSelectionColumn from '@/components/admin/assignment/VehicleSelectionColumn.vue';
+import InspectorSelectionColumn from '@/components/admin/assignment/InspectorSelectionColumn.vue';
+import AssignmentSummaryPanel from '@/components/admin/assignment/AssignmentSummaryPanel.vue';
+import AssignmentModalHeader from '@/components/admin/assignment/AssignmentModalHeader.vue';
+import AssignmentInsights from '@/components/admin/assignment/AssignmentInsights.vue';
+import AssignmentModalFooter from '@/components/admin/assignment/AssignmentModalFooter.vue';
+import { findSuggestedReturnTrip } from '@/utils/tripReturnSuggestion';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -261,12 +115,18 @@ const props = defineProps({
   allBuses: Array,
   allTrips: Array,
   allLeaves: Array,
-  allInspectors: Array // Danh sách lơ xe
+  allInspectors: Array, // Danh sách lơ xe
+  readOnly: Boolean
 });
 
-const emit = defineEmits(['close', 'submit']);
+const emit = defineEmits(['close', 'submit', 'unassign']);
+const api = useApi();
+const routeVehicleApi = useRouteVehicleApi();
+const routeDriverApi = useRouteDriverApi();
+const routeInspectorApi = useRouteInspectorApi();
 
 const driverSearch = ref('');
+const secondaryDriverSearch = ref('');
 const busSearch = ref('');
 const inspectorSearch = ref('');
 const selectedDriver = ref(null);
@@ -275,11 +135,107 @@ const activeDriverRole = ref('PRIMARY');
 const selectedBus = ref(null);
 const selectedInspector = ref(null);
 const submitting = ref(false);
+const confirmingUnassign = ref(false);
+const assignSuggestedReturn = ref(true);
+const routeVehicleLoading = ref(false);
+const showOutsideRoute = ref(false);
+const routeVehicleConfig = ref({ unrestricted: true, vehicles: [] });
+const routeDriverLoading = ref(false);
+const showOutsideRouteDrivers = ref(false);
+const routeDriverConfig = ref({ unrestricted: true, drivers: [] });
+const routeInspectorLoading = ref(false);
+const showOutsideRouteInspectors = ref(false);
+const routeInspectorConfig = ref({ unrestricted: true, inspectors: [] });
+const assignmentNote = ref('');
+const latestBuses = ref([]);
+
+const normalizePoint = value => String(value || '')
+  .trim()
+  .toLocaleLowerCase('vi-VN')
+  .replace(/\s+/g, ' ');
+
+const resolveRouteId = async () => {
+  if (props.trip?.routeId) return props.trip.routeId;
+  const response = await api.get('/routes');
+  const routes = Array.isArray(response.data) ? response.data : [];
+  const departure = normalizePoint(props.trip?.departurePoint);
+  const arrival = normalizePoint(props.trip?.arrivalPoint);
+  const route = routes.find(item =>
+    (normalizePoint(item.departurePoint) === departure && normalizePoint(item.arrivalPoint) === arrival) ||
+    (normalizePoint(item.departurePoint) === arrival && normalizePoint(item.arrivalPoint) === departure)
+  );
+  return route?.id || null;
+};
+
+const loadRouteVehicleConfig = async () => {
+  routeVehicleConfig.value = { unrestricted: true, vehicles: [] };
+  showOutsideRoute.value = false;
+  if (!props.trip) return;
+
+  routeVehicleLoading.value = true;
+  try {
+    const routeId = await resolveRouteId();
+    if (!routeId) return;
+    const response = await routeVehicleApi.getConfig(routeId);
+    routeVehicleConfig.value = response.data;
+  } catch (error) {
+    console.error('Không tải được nhóm xe của tuyến:', error);
+  } finally {
+    routeVehicleLoading.value = false;
+  }
+};
+
+const loadRouteDriverConfig = async () => {
+  routeDriverConfig.value = { unrestricted: true, drivers: [] };
+  showOutsideRouteDrivers.value = false;
+  if (!props.trip) return;
+
+  routeDriverLoading.value = true;
+  try {
+    const routeId = await resolveRouteId();
+    if (!routeId) return;
+    const response = await routeDriverApi.getConfig(routeId);
+    routeDriverConfig.value = response.data;
+  } catch (error) {
+    console.error('Không tải được nhóm tài xế của tuyến:', error);
+  } finally {
+    routeDriverLoading.value = false;
+  }
+};
+
+const loadRouteInspectorConfig = async () => {
+  routeInspectorConfig.value = { unrestricted: true, inspectors: [] };
+  showOutsideRouteInspectors.value = false;
+  if (!props.trip) return;
+
+  routeInspectorLoading.value = true;
+  try {
+    const routeId = await resolveRouteId();
+    if (!routeId) return;
+    const response = await routeInspectorApi.getConfig(routeId);
+    routeInspectorConfig.value = response.data;
+  } catch (error) {
+    console.error('Không tải được nhóm lơ xe của tuyến:', error);
+  } finally {
+    routeInspectorLoading.value = false;
+  }
+};
+
+const loadLatestBuses = async () => {
+  try {
+    const response = await api.get('/buses');
+    latestBuses.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    latestBuses.value = [];
+    console.error('Không tải được vị trí GPS mới nhất của xe:', error);
+  }
+};
 
 // Reset state when opened
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     driverSearch.value = '';
+    secondaryDriverSearch.value = '';
     busSearch.value = '';
     inspectorSearch.value = '';
     selectedDriver.value = null;
@@ -288,6 +244,13 @@ watch(() => props.isOpen, (newVal) => {
     selectedBus.value = null;
     selectedInspector.value = null;
     submitting.value = false;
+    confirmingUnassign.value = false;
+    assignSuggestedReturn.value = true;
+    assignmentNote.value = '';
+    loadRouteVehicleConfig();
+    loadRouteDriverConfig();
+    loadRouteInspectorConfig();
+    loadLatestBuses();
     
     // Nếu trip đã có gán, pre-select
     if (props.trip?.assignedDriverUsername) {
@@ -307,6 +270,21 @@ watch(() => props.isOpen, (newVal) => {
 
 const close = () => emit('close');
 
+const suggestedReturnTrip = computed(() => findSuggestedReturnTrip(props.trip, props.allTrips));
+
+const hasAssignment = computed(() => Boolean(
+  props.trip?.assignedDriverUsername ||
+  props.trip?.secondaryDriverUsername ||
+  props.trip?.assignedLicensePlate ||
+  props.trip?.inspector
+));
+
+const unassign = () => {
+  if (!hasAssignment.value) return;
+  submitting.value = true;
+  emit('unassign');
+};
+
 const submit = () => {
   if (!selectedDriver.value || !selectedBus.value) return;
   submitting.value = true;
@@ -316,11 +294,24 @@ const submit = () => {
     secondaryDriverUsername: selectedSecondaryDriver.value?.phone || null,
     secondaryDriverFullName: selectedSecondaryDriver.value?.fullName || null,
     licensePlate: selectedBus.value.licensePlate,
+    returnTripId: assignSuggestedReturn.value ? suggestedReturnTrip.value?.id || null : null,
     inspector: selectedInspector.value ? { id: selectedInspector.value.id, phone: selectedInspector.value.phone, fullName: selectedInspector.value.fullName, employeeCode: selectedInspector.value.employeeCode } : null
   });
 };
 
 const activeSelectedDriver = computed(() => activeDriverRole.value === 'PRIMARY' ? selectedDriver.value : selectedSecondaryDriver.value);
+
+const selectPrimaryDriver = driver => {
+  if (props.readOnly) return;
+  if (selectedSecondaryDriver.value?.id === driver.id) selectedSecondaryDriver.value = null;
+  selectedDriver.value = driver;
+};
+
+const selectSecondaryDriver = driver => {
+  if (props.readOnly) return;
+  if (selectedDriver.value?.id === driver.id) return;
+  selectedSecondaryDriver.value = driver;
+};
 
 const selectDriverForRole = (driver) => {
   if (activeDriverRole.value === 'PRIMARY') {
@@ -378,13 +369,39 @@ const processedInspectors = computed(() => {
   });
 });
 
-const filteredInspectors = computed(() => {
+const routeEligibleInspectors = computed(() => {
   let list = processedInspectors.value;
-  if (inspectorSearch.value) {
-    const q = inspectorSearch.value.toLowerCase();
-    list = list.filter(i => i.fullName.toLowerCase().includes(q) || i.phone.includes(q));
+  const roleByPhone = new Map(
+    (routeInspectorConfig.value.inspectors || []).map(inspector => [inspector.phone, inspector.role])
+  );
+  if (!routeInspectorConfig.value.unrestricted && !showOutsideRouteInspectors.value) {
+    list = list.filter(inspector =>
+      roleByPhone.has(inspector.phone) ||
+      inspector.isCurrentAssignee ||
+      selectedInspector.value?.id === inspector.id
+    );
   }
-  return list.sort((a, b) => (a.conflict === b.conflict ? 0 : a.conflict ? 1 : -1));
+  const roleOrder = { PRIMARY: 0, BACKUP: 1, OUTSIDE: 2 };
+  return list
+    .map(inspector => ({
+      ...inspector,
+      routeRole: routeInspectorConfig.value.unrestricted
+        ? null
+        : (roleByPhone.get(inspector.phone) || 'OUTSIDE')
+    }))
+    .sort((a, b) => {
+      if (a.conflict !== b.conflict) return a.conflict ? 1 : -1;
+      return (roleOrder[a.routeRole] ?? 2) - (roleOrder[b.routeRole] ?? 2);
+    });
+});
+
+const filteredInspectors = computed(() => {
+  let list = routeEligibleInspectors.value;
+  if (inspectorSearch.value) {
+    const q = inspectorSearch.value.toLocaleLowerCase('vi-VN');
+    list = list.filter(i => i.fullName.toLocaleLowerCase('vi-VN').includes(q) || i.phone.includes(q));
+  }
+  return list;
 });
 
 // Cho phép parent component reset nút khi API lỗi
@@ -401,8 +418,24 @@ const parseAbsoluteMinutes = (dateStr, timeStr) => {
   if (!dateStr || !timeStr) return 0;
   const [year, month, day] = dateStr.split('-').map(Number);
   const [h, m] = timeStr.split(':').map(Number);
-  const dayMinutes = (year * 365 + month * 31 + day) * 1440;
-  return dayMinutes + h * 60 + m;
+  return new Date(year, month - 1, day, h, m, 0, 0).getTime() / 60000;
+};
+
+const getTripArrivalMinutes = trip => {
+  if (!trip) return 0;
+  const departure = parseAbsoluteMinutes(trip.departureDate, trip.departureTime);
+  if (!trip.arrivalTime) return departure + 120;
+  let arrival = parseAbsoluteMinutes(trip.departureDate, trip.arrivalTime);
+  if (arrival <= departure) arrival += 1440;
+  return arrival;
+};
+
+const formatTripArrival = trip => {
+  const arrivalMinutes = getTripArrivalMinutes(trip);
+  if (!arrivalMinutes) return '';
+  const value = new Date(arrivalMinutes * 60000);
+  const pad = number => String(number).padStart(2, '0');
+  return `${pad(value.getHours())}:${pad(value.getMinutes())} ngày ${pad(value.getDate())}/${pad(value.getMonth() + 1)}/${value.getFullYear()}`;
 };
 
 const checkConflict = (targetTrip, testTrip) => {
@@ -410,14 +443,10 @@ const checkConflict = (targetTrip, testTrip) => {
   if (targetTrip.id === testTrip.id) return false;
 
   const targetStart = parseAbsoluteMinutes(targetTrip.departureDate, targetTrip.departureTime);
-  const targetEnd   = targetTrip.arrivalTime
-    ? parseAbsoluteMinutes(targetTrip.departureDate, targetTrip.arrivalTime)
-    : targetStart + 120;
+  const targetEnd = getTripArrivalMinutes(targetTrip);
 
   const testStart = parseAbsoluteMinutes(testTrip.departureDate, testTrip.departureTime);
-  const testEnd   = testTrip.arrivalTime
-    ? parseAbsoluteMinutes(testTrip.departureDate, testTrip.arrivalTime)
-    : testStart + 120;
+  const testEnd = getTripArrivalMinutes(testTrip);
 
   // Lấy tên tỉnh/thành phố ngắn gọn để so sánh (VD: "Đà Nẵng", "Cà Mau")
   const getCity = (point) => {
@@ -457,6 +486,7 @@ const processedDrivers = computed(() => {
     let isCurrentAssignee = false;
     let leaveWarning = '';
     let lastKnownLocation = '';
+    let lastKnownAt = '';
 
     const leaveStatus = getDriverLeaveStatus(driver.phone, props.trip.departureDate);
     if (leaveStatus === 'PENDING') leaveWarning = 'Xin nghỉ';
@@ -474,7 +504,7 @@ const processedDrivers = computed(() => {
     
     for (const t of driverTrips) {
        if (t.id === props.trip.id) continue;
-       const tEnd = t.arrivalTime ? parseAbsoluteMinutes(t.departureDate, t.arrivalTime) : parseAbsoluteMinutes(t.departureDate, t.departureTime) + 120;
+       const tEnd = getTripArrivalMinutes(t);
        if (tEnd <= targetStart) {
           const diff = targetStart - tEnd;
           if (diff < minDiff) {
@@ -486,6 +516,7 @@ const processedDrivers = computed(() => {
     
     if (closestTripBefore && closestTripBefore.arrivalPoint) {
        lastKnownLocation = closestTripBefore.arrivalPoint.split(',').pop().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+       lastKnownAt = formatTripArrival(closestTripBefore);
        isLocationProjected = closestTripBefore.status !== 'COMPLETED';
     }
 
@@ -504,36 +535,135 @@ const processedDrivers = computed(() => {
         }
     }
 
-    return { ...driver, conflict, conflictReason, isCurrentAssignee, leaveWarning, lastKnownLocation, isLocationProjected };
+    return { ...driver, conflict, conflictReason, isCurrentAssignee, leaveWarning, lastKnownLocation, lastKnownAt, isLocationProjected };
   });
 });
 
-const filteredDrivers = computed(() => {
+const routeEligibleDrivers = computed(() => {
   let list = processedDrivers.value;
-  if (driverSearch.value) {
-    const q = driverSearch.value.toLowerCase();
-    list = list.filter(d => d.fullName.toLowerCase().includes(q) || d.phone.includes(q));
+  const roleByDriverId = new Map(
+    (routeDriverConfig.value.drivers || []).map(driver => [driver.driverId, driver.role])
+  );
+  if (!routeDriverConfig.value.unrestricted && !showOutsideRouteDrivers.value) {
+    list = list.filter(driver =>
+      roleByDriverId.has(driver.id) ||
+      driver.isCurrentAssignee ||
+      selectedDriver.value?.id === driver.id ||
+      selectedSecondaryDriver.value?.id === driver.id
+    );
   }
-  if (activeDriverRole.value === 'SECONDARY' && selectedDriver.value) {
-    list = list.map(driver => driver.id === selectedDriver.value.id
+  const roleOrder = { PRIMARY: 0, BACKUP: 1, OUTSIDE: 2 };
+  return list
+    .map(driver => ({
+      ...driver,
+      routeRole: routeDriverConfig.value.unrestricted
+        ? null
+        : (roleByDriverId.get(driver.id) || 'OUTSIDE')
+    }))
+    .sort((a, b) => {
+      if (a.conflict !== b.conflict) return a.conflict ? 1 : -1;
+      return (roleOrder[a.routeRole] ?? 2) - (roleOrder[b.routeRole] ?? 2);
+    });
+});
+
+const matchesDriverSearch = (driver, search) => {
+  const query = String(search || '').trim().toLocaleLowerCase('vi-VN');
+  if (!query) return true;
+  return driver.fullName?.toLocaleLowerCase('vi-VN').includes(query) || driver.phone?.includes(query);
+};
+
+const filteredDrivers = computed(() =>
+  routeEligibleDrivers.value.filter(driver => matchesDriverSearch(driver, driverSearch.value))
+);
+
+const filteredSecondaryDrivers = computed(() =>
+  routeEligibleDrivers.value
+    .filter(driver => matchesDriverSearch(driver, secondaryDriverSearch.value))
+    .map(driver => driver.id === selectedDriver.value?.id
       ? { ...driver, conflict: true, conflictReason: 'Đã chọn làm tài xế chính' }
-      : driver);
-  }
-  // Sắp xếp: Rảnh lên trước, kẹt xuống dưới
-  return list.sort((a, b) => (a.conflict === b.conflict ? 0 : a.conflict ? 1 : -1));
+      : driver)
+);
+
+const assignmentConflictFree = computed(() =>
+  !selectedDriver.value?.conflict &&
+  !selectedSecondaryDriver.value?.conflict &&
+  !selectedBus.value?.conflict &&
+  !selectedInspector.value?.conflict
+);
+
+const assignmentScore = computed(() => {
+  let score = 20;
+  if (selectedDriver.value) score += 35;
+  if (selectedBus.value) score += 30;
+  if (assignmentConflictFree.value && selectedDriver.value && selectedBus.value) score += 15;
+  return Math.min(score, 100);
+});
+
+const applyAutomaticSuggestion = () => {
+  if (props.readOnly) return;
+  const suggestedDriver = filteredDrivers.value.find(driver => !driver.conflict);
+  const suggestedBus = filteredBuses.value.find(bus => !bus.conflict);
+  if (suggestedDriver) selectPrimaryDriver(suggestedDriver);
+  if (suggestedBus) selectedBus.value = suggestedBus;
+};
+
+const routeVehicleRoleByBusId = computed(() => new Map(
+  (routeVehicleConfig.value.vehicles || []).map(vehicle => [vehicle.busId, vehicle.role])
+));
+
+const busSource = computed(() => latestBuses.value.length ? latestBuses.value : (props.allBuses || []));
+
+const shortStation = value => String(value || '').split(',')[0].trim();
+
+const operationalBusLocation = bus => {
+  const busTrips = (props.allTrips || [])
+    .filter(candidate =>
+      candidate.assignedLicensePlate === bus.licensePlate &&
+      candidate.status !== 'CANCELLED'
+    );
+
+  const runningTrip = busTrips.find(candidate => candidate.status === 'IN_PROGRESS');
+  if (runningTrip) return shortStation(runningTrip.departurePoint);
+
+  const latestCompletedTrip = busTrips
+    .filter(candidate => candidate.status === 'COMPLETED')
+    .sort((left, right) =>
+      parseAbsoluteMinutes(right.departureDate, right.departureTime) -
+      parseAbsoluteMinutes(left.departureDate, left.departureTime)
+    )[0];
+  if (latestCompletedTrip) return shortStation(latestCompletedTrip.arrivalPoint);
+
+  return 'Chưa xác định';
+};
+
+const compatibleRouteVehicleCount = computed(() => {
+  if (!props.trip) return 0;
+  return (props.allBuses || []).filter(bus =>
+    bus.busType === props.trip.busType && routeVehicleRoleByBusId.value.has(bus.id)
+  ).length;
 });
 
 const processedBuses = computed(() => {
   if (!props.trip) return [];
-  // Lọc chỉ các xe có cùng dòng xe (busType)
-  const compatibleBuses = (props.allBuses || []).filter(b => b.busType === props.trip.busType);
+  // Một chuyến chỉ được phân công xe đúng dòng đã chọn khi tạo chuyến.
+  let compatibleBuses = busSource.value.filter(bus => bus.busType === props.trip.busType);
+  if (!routeVehicleConfig.value.unrestricted && !showOutsideRoute.value) {
+    compatibleBuses = compatibleBuses.filter(bus =>
+      routeVehicleRoleByBusId.value.has(bus.id) ||
+      props.trip.assignedLicensePlate === bus.licensePlate
+    );
+  }
   
   return compatibleBuses.map(bus => {
     let conflict = false;
     let conflictReason = '';
     let isCurrentAssignee = false;
+    const assignmentLocation = operationalBusLocation(bus);
 
-    if (props.trip.assignedLicensePlate === bus.licensePlate) {
+    if (bus.status === 'BẢO TRÌ') {
+      conflict = true;
+      conflictReason = 'Xe đang bảo trì';
+    } else if (props.trip.assignedLicensePlate === bus.licensePlate) {
         isCurrentAssignee = true;
     } else {
         const conflictingTrip = (props.allTrips || []).find(t => 
@@ -546,7 +676,18 @@ const processedBuses = computed(() => {
         }
     }
 
-    return { ...bus, conflict, conflictReason, isCurrentAssignee };
+    const configuredRole = routeVehicleRoleByBusId.value.get(bus.id);
+    const routeRole = routeVehicleConfig.value.unrestricted
+      ? null
+      : (configuredRole || 'OUTSIDE');
+    return {
+      ...bus,
+      conflict,
+      conflictReason,
+      isCurrentAssignee,
+      routeRole,
+      assignmentLocation
+    };
   });
 });
 
@@ -556,6 +697,48 @@ const filteredBuses = computed(() => {
     const q = busSearch.value.toLowerCase();
     list = list.filter(b => b.licensePlate.toLowerCase().includes(q) || b.busType.toLowerCase().includes(q));
   }
-  return list.sort((a, b) => (a.conflict === b.conflict ? 0 : a.conflict ? 1 : -1));
+  const roleOrder = { PRIMARY: 0, BACKUP: 1, OUTSIDE: 2 };
+  return list.sort((a, b) => {
+    if (a.conflict !== b.conflict) return a.conflict ? 1 : -1;
+    return (roleOrder[a.routeRole] ?? 0) - (roleOrder[b.routeRole] ?? 0);
+  });
 });
 </script>
+
+<style scoped>
+.assignment-modal {
+  width: calc(100vw - 1rem);
+  max-width: 102rem;
+  height: min(96vh, 61rem);
+  border-radius: 1.15rem;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.28);
+}
+
+.assignment-grid-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.assignment-grid {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns:
+    minmax(19rem, 1.18fr)
+    minmax(17rem, 1fr)
+    minmax(17rem, 1fr)
+    minmax(17rem, 0.95fr);
+  width: 100%;
+  min-width: 70rem;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 1280px) {
+  .assignment-modal {
+    width: calc(100vw - 0.5rem);
+    height: 97vh;
+    border-radius: 0.85rem;
+  }
+}
+</style>

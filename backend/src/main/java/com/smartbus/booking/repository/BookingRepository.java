@@ -20,15 +20,36 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @org.springframework.data.jpa.repository.Query(
             value = "SELECT b FROM Booking b WHERE " +
                     "(:status = '' OR UPPER(b.status) = :status) AND " +
+                    "(:paymentMethod = '' OR UPPER(b.paymentMethod) = :paymentMethod) AND " +
+                    "b.createdAt >= :createdFrom AND b.createdAt < :createdTo AND " +
+                    "(:departurePoint = '' OR LOWER(b.trip.departurePoint) = LOWER(:departurePoint)) AND " +
+                    "(:arrivalPoint = '' OR LOWER(b.trip.arrivalPoint) = LOWER(:arrivalPoint)) AND " +
                     "(:search = '' OR LOWER(COALESCE(b.customerName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR COALESCE(b.customerPhone, '') LIKE CONCAT('%', :search, '%') " +
                     "OR STR(b.id) LIKE CONCAT('%', :search, '%'))",
             countQuery = "SELECT COUNT(b) FROM Booking b WHERE " +
                     "(:status = '' OR UPPER(b.status) = :status) AND " +
+                    "(:paymentMethod = '' OR UPPER(b.paymentMethod) = :paymentMethod) AND " +
+                    "b.createdAt >= :createdFrom AND b.createdAt < :createdTo AND " +
+                    "(:departurePoint = '' OR LOWER(b.trip.departurePoint) = LOWER(:departurePoint)) AND " +
+                    "(:arrivalPoint = '' OR LOWER(b.trip.arrivalPoint) = LOWER(:arrivalPoint)) AND " +
                     "(:search = '' OR LOWER(COALESCE(b.customerName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR COALESCE(b.customerPhone, '') LIKE CONCAT('%', :search, '%') " +
                     "OR STR(b.id) LIKE CONCAT('%', :search, '%'))")
-    Page<Booking> searchAdminBookings(@Param("search") String search, @Param("status") String status, Pageable pageable);
+    Page<Booking> searchAdminBookings(
+            @Param("search") String search,
+            @Param("status") String status,
+            @Param("paymentMethod") String paymentMethod,
+            @Param("createdFrom") java.time.LocalDateTime createdFrom,
+            @Param("createdTo") java.time.LocalDateTime createdTo,
+            @Param("departurePoint") String departurePoint,
+            @Param("arrivalPoint") String arrivalPoint,
+            Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT DISTINCT b.trip.departurePoint, b.trip.arrivalPoint FROM Booking b " +
+                    "WHERE b.trip IS NOT NULL ORDER BY b.trip.departurePoint, b.trip.arrivalPoint")
+    List<Object[]> findAdminRouteOptions();
     
     @EntityGraph(attributePaths = {"trip", "trip.inspector", "seatNumbers", "user"})
     List<Booking> findByUserIdOrderByCreatedAtDesc(Long userId);

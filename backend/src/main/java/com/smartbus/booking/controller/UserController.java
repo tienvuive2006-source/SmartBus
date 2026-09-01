@@ -183,9 +183,26 @@ public class UserController {
 
         // Check if phone already exists
         if (userUpdates.getPhone() != null && !userUpdates.getPhone().equals(existingUser.getPhone())) {
-            if (userRepository.findByPhone(userUpdates.getPhone()).isPresent()) {
+            String normalizedPhone = userUpdates.getPhone().replaceAll("[\\s.-]", "");
+            if (!normalizedPhone.matches("(?:\\+84|0)\\d{9}")) {
+                return ResponseEntity.status(400).body(java.util.Map.of("message", "Số điện thoại phải gồm 10 chữ số hoặc bắt đầu bằng +84."));
+            }
+            userUpdates.setPhone(normalizedPhone);
+            if (userRepository.findByPhone(normalizedPhone).isPresent()) {
                 return ResponseEntity.status(400).body(java.util.Map.of("message", "Số điện thoại này đã được sử dụng bởi một tài khoản khác. Vui lòng chọn số khác!"));
             }
+        }
+
+        if (userUpdates.getUsername() != null && !userUpdates.getUsername().isBlank()) {
+            String username = userUpdates.getUsername().trim().toLowerCase(java.util.Locale.ROOT);
+            if (!username.matches("[a-z][a-z0-9._-]{3,29}")) {
+                return ResponseEntity.status(400).body(java.util.Map.of("message", "Tên đăng nhập phải bắt đầu bằng chữ và có 4-30 ký tự không dấu."));
+            }
+            Optional<User> usernameOwner = userRepository.findByUsernameIgnoreCase(username);
+            if (usernameOwner.isPresent() && !usernameOwner.get().getId().equals(existingUser.getId())) {
+                return ResponseEntity.status(400).body(java.util.Map.of("message", "Tên đăng nhập này đã được sử dụng."));
+            }
+            existingUser.setUsername(username);
         }
 
         existingUser.setFullName(userUpdates.getFullName());
@@ -195,6 +212,21 @@ public class UserController {
         
         if (isAdmin) {
             existingUser.setRole(userUpdates.getRole());
+            existingUser.setDriverStatus(userUpdates.getDriverStatus());
+            existingUser.setGender(userUpdates.getGender());
+            existingUser.setDateOfBirth(userUpdates.getDateOfBirth());
+            existingUser.setCitizenId(userUpdates.getCitizenId());
+            existingUser.setCitizenIdIssueDate(userUpdates.getCitizenIdIssueDate());
+            existingUser.setAddress(userUpdates.getAddress());
+            existingUser.setEmergencyContactName(userUpdates.getEmergencyContactName());
+            existingUser.setEmergencyContactPhone(userUpdates.getEmergencyContactPhone());
+            existingUser.setDriverLicenseClass(userUpdates.getDriverLicenseClass());
+            existingUser.setDriverLicenseNumber(userUpdates.getDriverLicenseNumber());
+            existingUser.setDriverLicenseIssueDate(userUpdates.getDriverLicenseIssueDate());
+            existingUser.setDriverLicenseExpiryDate(userUpdates.getDriverLicenseExpiryDate());
+            existingUser.setDrivingExperienceYears(userUpdates.getDrivingExperienceYears());
+            existingUser.setDriverShift(userUpdates.getDriverShift());
+            existingUser.setDriverNotes(userUpdates.getDriverNotes());
             if (userUpdates.getWalletBalance() != null) {
                 existingUser.setWalletBalance(userUpdates.getWalletBalance());
                 // Push WebSocket notification

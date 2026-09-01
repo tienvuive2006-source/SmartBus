@@ -14,7 +14,9 @@
 
 
 
-    <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto px-4 pt-3 pb-8">
+      <BookingProgress :active-step="progressStep" class="mb-5" />
+
       <div v-if="loading" class="flex justify-center py-32">
         <div class="w-10 h-10 border-4 border-gray-200 border-t-[#075955] rounded-full animate-spin"></div>
       </div>
@@ -218,17 +220,12 @@
                  <p class="text-xs font-bold text-gray-500">Vui lòng điền thông tin hành khách để tiếp tục</p>
               </div>
 
-              <div v-else-if="selectedMethod === 'QR' && showQrCode" class="w-full bg-[#075955]/5 border border-[#075955]/20 rounded-2xl p-5 flex flex-col items-center justify-center gap-2 relative overflow-hidden group">
-                <div class="absolute inset-0 bg-[#075955]/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                <p class="text-[10px] text-[#075955] font-black uppercase tracking-widest relative z-10">Thời gian giữ chỗ</p>
-                <div class="text-4xl font-black tabular-nums transition-colors duration-300 tracking-tight relative z-10" :class="timeLeft <= 60 ? 'text-red-500 animate-pulse' : 'text-[#075955]'">
-                  {{ formattedTime }}
-                </div>
-                <div class="flex items-center gap-2 mt-2 relative z-10">
-                   <div class="w-3.5 h-3.5 border-2 border-[#075955] border-t-transparent rounded-full animate-spin"></div>
-                   <span class="text-[10px] font-bold text-[#075955] uppercase tracking-widest">Đang chờ nhận tiền...</span>
-                </div>
-              </div>
+              <SeatHoldTimer
+                v-else-if="selectedMethod === 'QR' && showQrCode"
+                :expires-at="holdExpiresAt"
+                status-text="Đang chờ nhận tiền..."
+                @expired="handleHoldExpired"
+              />
 
               <button v-else-if="selectedMethod === 'QR' && !showQrCode"
                 @click="generateQrCode" :disabled="!isFormComplete"
@@ -265,6 +262,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/composables/useApi';
 import BookingStopSelector from '@/components/booking/BookingStopSelector.vue';
+import BookingProgress from '@/components/booking/flow/BookingProgress.vue';
+import SeatHoldTimer from '@/components/booking/flow/SeatHoldTimer.vue';
+import { clearSeatHoldSession, createSeatHoldKey, loadSeatHoldSession, saveSeatHoldSession } from '@/utils/seatHoldSession';
+import { clearSeatHoldToken } from '@/utils/seatHoldToken';
 
 const route = useRoute();
 const router = useRouter();
@@ -307,31 +308,16 @@ const finalAmount = computed(() => {
 
 const activePaymentOrderId = ref(null);
 const activePaymentCode = ref('');
+const holdExpiresAt = ref(null);
+const holdToken = route.query.holdToken || null;
 
 const paymentSuccess = ref(false);
-const timeLeft = ref(600); // 10 phút
-let countdownTimer = null;
-
-const formattedTime = computed(() => {
-  const m = Math.floor(timeLeft.value / 60).toString().padStart(2, '0');
-  const s = (timeLeft.value % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
+const holdSessionKey = createSeatHoldKey({
+  tripId,
+  seats: seatsArray.value,
+  returnTripId,
+  returnSeats: returnSeatsArray.value
 });
-
-const startCountdown = () => {
-  if (countdownTimer) clearInterval(countdownTimer);
-  timeLeft.value = 600;
-  countdownTimer = setInterval(() => {
-    if (timeLeft.value > 0) {
-      timeLeft.value--;
-    } else {
-      clearInterval(countdownTimer);
-      stopRealBankWebhook();
-      alert('Thời gian giữ chỗ đã hết! Vui lòng đặt vé lại.');
-      router.push('/');
-    }
-  }, 1000);
-};
 const customerName = ref('');
 const customerPhone = ref('');
 const customerEmail = ref('');
@@ -346,13 +332,25 @@ const isFormComplete = computed(() => {
          (!returnTripId || returnStopSelection.value.valid !== false);
 });
 
+const progressStep = computed(() => (showQrCode.value || isFormComplete.value ? 3 : 2));
+
+const handleHoldExpired = () => {
+  stopRealBankWebhook();
+  clearSeatHoldSession(holdSessionKey);
+  if (holdToken) {
+    api.post('/seat-holds/release-session', { holdToken }).catch(() => {});
+    clearSeatHoldToken();
+  }
+  alert('Thời gian giữ chỗ đã hết! Vui lòng chọn lại ghế.');
+  router.push({ path: '/booking/seat', query: { tripId, ...(returnTripId ? { outboundTripId: tripId, returnTripId } : {}) } });
+};
+
 const generateQrCode = async () => {
   if (!activePaymentOrderId.value) {
     const success = await createPaymentOrder();
     if (!success) return;
   }
   showQrCode.value = true;
-  startCountdown();
   startRealBankWebhook();
 };
 
@@ -389,6 +387,7 @@ const createPaymentOrder = async () => {
       user: authStore.currentUser ? { id: authStore.currentUser.id } : null,
       userVoucherId: selectedVoucherId.value
     };
+    if (holdToken) payload.holdToken = holdToken;
     payload.outboundPickupStopId = outboundStopSelection.value.pickupStopId || null;
     payload.outboundDropoffStopId = outboundStopSelection.value.dropoffStopId || null;
     if (returnTripId) {
@@ -399,6 +398,12 @@ const createPaymentOrder = async () => {
     const res = await api.post('/admin/bookings/create-roundtrip', payload);
     activePaymentOrderId.value = res.data.paymentOrderId;
     activePaymentCode.value = res.data.paymentCode;
+    holdExpiresAt.value = res.data.expiresAt;
+    saveSeatHoldSession(holdSessionKey, {
+      paymentOrderId: activePaymentOrderId.value,
+      paymentCode: activePaymentCode.value,
+      expiresAt: holdExpiresAt.value
+    });
     return true;
   } catch (err) {
     alert('Không thể tạo giao dịch giữ chỗ. Vui lòng thử lại!');
@@ -486,6 +491,8 @@ const processPayment = async () => {
       localStorage.setItem('trungnam_history', JSON.stringify(history));
 
       paymentSuccess.value = true;
+      clearSeatHoldSession(holdSessionKey);
+      clearSeatHoldToken();
 
       setTimeout(() => {
         router.push({ 
@@ -560,25 +567,22 @@ watch(isFormComplete, (newComplete) => {
   if (!newComplete) {
     showQrCode.value = false;
     stopRealBankWebhook();
-    if (countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-      timeLeft.value = 600;
-    }
   }
 });
 
 watch(selectedMethod, () => {
   showQrCode.value = false;
   stopRealBankWebhook();
-  if (countdownTimer) {
-    clearInterval(countdownTimer);
-    countdownTimer = null;
-    timeLeft.value = 600;
-  }
 });
 
 onMounted(() => {
+  const existingHold = loadSeatHoldSession(holdSessionKey);
+  if (existingHold) {
+    activePaymentOrderId.value = existingHold.paymentOrderId;
+    activePaymentCode.value = existingHold.paymentCode;
+    holdExpiresAt.value = existingHold.expiresAt;
+  }
+
   if (authStore.isLoggedIn) {
     customerName.value = authStore.currentUser?.fullName || '';
     customerPhone.value = authStore.currentUser?.phone?.startsWith('GG_') ? '' : (authStore.currentUser?.phone || '');
@@ -599,7 +603,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (countdownTimer) clearInterval(countdownTimer);
   stopRealBankWebhook();
 });
 </script>

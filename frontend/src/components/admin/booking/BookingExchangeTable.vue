@@ -42,11 +42,31 @@
             </td>
             <td class="px-5 py-4">
               <template v-if="item.exchangeType === 'SEAT'">
-                <p class="text-xs font-bold text-slate-500">{{ item.oldSeatNumbers }} <span class="mx-1 text-[#075955]">→</span> <strong class="text-slate-800">{{ item.newSeatNumbers }}</strong></p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <BookingSeatBadges
+                    :seat-numbers="seatArray(item.oldSeatNumbers)"
+                    :seat-types="item.oldSeatTypes"
+                  />
+                  <span class="material-symbols-outlined text-base text-[#075955]">arrow_forward</span>
+                  <BookingSeatBadges
+                    :seat-numbers="seatArray(item.newSeatNumbers)"
+                    :seat-types="item.newSeatTypes"
+                  />
+                </div>
               </template>
               <template v-else>
                 <p class="text-xs font-bold text-slate-500">Chuyến #{{ item.oldTripId }} <span class="mx-1 text-[#075955]">→</span> <strong class="text-slate-800">#{{ item.newTripId }}</strong></p>
-                <p class="mt-1 text-[10px] font-semibold text-slate-400">Ghế {{ item.oldSeatNumbers }} → {{ item.newSeatNumbers }}</p>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <BookingSeatBadges
+                    :seat-numbers="seatArray(item.oldSeatNumbers)"
+                    :seat-types="item.oldSeatTypes"
+                  />
+                  <span class="material-symbols-outlined text-base text-[#075955]">arrow_forward</span>
+                  <BookingSeatBadges
+                    :seat-numbers="seatArray(item.newSeatNumbers)"
+                    :seat-types="item.newSeatTypes"
+                  />
+                </div>
               </template>
             </td>
             <td class="px-5 py-4">
@@ -91,6 +111,8 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import BookingSeatBadges from './BookingSeatBadges.vue'
+import { formatSeatWithType } from '@/utils/seatTypePresentation'
 
 const props = defineProps({ exchanges: { type: Array, default: () => [] } })
 const search = ref('')
@@ -109,6 +131,13 @@ watch([search, () => props.exchanges], () => { page.value = 1 })
 
 const money = value => `${Number(value || 0).toLocaleString('vi-VN')}đ`
 const formatDateTime = value => value ? new Date(value).toLocaleString('vi-VN') : ''
+const seatArray = value => String(value || '')
+  .split(',')
+  .map(seat => seat.trim().toUpperCase())
+  .filter(Boolean)
+const formattedSeats = (value, seatTypes) => seatArray(value)
+  .map(seat => formatSeatWithType(seat, seatTypes))
+  .join(', ')
 const paymentLabel = item => {
   const difference = Number(item?.priceDifference || 0)
   const method = String(item?.paymentMethod || '').toUpperCase()
@@ -127,6 +156,6 @@ const statusClass = value => ({
 }[value] || 'border-slate-200 bg-slate-50 text-slate-500')
 
 const showDetail = item => {
-  alert(`CHI TIẾT ĐỔI VÉ #DX${item.id}\n------------------\nMã vé: #${item.bookingId}\nKhách: ${item.customerName}\nLoại: ${item.exchangeType === 'SEAT' ? 'Đổi ghế' : 'Đổi ngày/chuyến'}\nChuyến: #${item.oldTripId} → #${item.newTripId}\nGhế: ${item.oldSeatNumbers} → ${item.newSeatNumbers}\nGiá cũ: ${money(item.oldPrice)}\nGiá mới: ${money(item.newPrice)}\nChênh lệch: ${money(item.priceDifference)}\nThanh toán: ${paymentLabel(item)}\nTrạng thái: ${statusLabel(item.status)}\nLý do: ${item.reason || 'Không có'}`)
+  alert(`CHI TIẾT ĐỔI VÉ #DX${item.id}\n------------------\nMã vé: #${item.bookingId}\nKhách: ${item.customerName}\nLoại: ${item.exchangeType === 'SEAT' ? 'Đổi ghế' : 'Đổi ngày/chuyến'}\nChuyến: #${item.oldTripId} → #${item.newTripId}\nGhế: ${formattedSeats(item.oldSeatNumbers, item.oldSeatTypes)} → ${formattedSeats(item.newSeatNumbers, item.newSeatTypes)}\nGiá cũ: ${money(item.oldPrice)}\nGiá mới: ${money(item.newPrice)}\nChênh lệch: ${money(item.priceDifference)}\nThanh toán: ${paymentLabel(item)}\nTrạng thái: ${statusLabel(item.status)}\nLý do: ${item.reason || 'Không có'}`)
 }
 </script>

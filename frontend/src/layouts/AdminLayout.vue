@@ -99,10 +99,7 @@
         </div>
 
         <div class="flex items-center gap-6">
-          <button class="relative text-gray-500 hover:text-gray-700 transition-colors">
-            <span class="material-symbols-outlined text-2xl">notifications</span>
-            <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-          </button>
+          <NotificationBell class="text-gray-500 hover:text-gray-700" />
           
           <div class="flex items-center gap-3 border-l pl-6 border-gray-200 cursor-pointer">
             <div class="text-right hidden md:block">
@@ -129,6 +126,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const isSidebarOpen = ref(false)
 const router = useRouter()

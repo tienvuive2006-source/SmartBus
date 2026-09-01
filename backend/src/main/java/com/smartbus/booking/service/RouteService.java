@@ -12,6 +12,9 @@ import java.util.List;
 public class RouteService {
 
     private final RouteRepository routeRepository;
+    private final com.smartbus.booking.repository.RouteBusTypeAssignmentRepository routeBusTypeAssignmentRepository;
+    private final com.smartbus.booking.repository.RouteVehicleAssignmentRepository routeVehicleAssignmentRepository;
+    private final com.smartbus.booking.repository.RouteDriverAssignmentRepository routeDriverAssignmentRepository;
 
     public List<Route> getAllRoutes() {
         return routeRepository.findAll();
@@ -26,7 +29,11 @@ public class RouteService {
         return routeRepository.save(route);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteRoute(Long id) {
+        routeDriverAssignmentRepository.deleteByRouteId(id);
+        routeVehicleAssignmentRepository.deleteByRouteId(id);
+        routeBusTypeAssignmentRepository.deleteByRouteId(id);
         routeRepository.deleteById(id);
     }
 }

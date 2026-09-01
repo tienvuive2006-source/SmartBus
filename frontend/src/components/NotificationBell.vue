@@ -99,6 +99,7 @@ const goToProfile = () => {
 };
 
 const notificationIcon = notif => {
+  if (notif.type === 'MAINTENANCE_DUE') return 'car_repair';
   if (notif.type === 'EXCHANGE') return 'swap_horiz';
   if (['REFUND_NEEDS_INFO', 'REFUND_REJECTED'].includes(notif.type)) return 'edit_note';
   if (notif.type === 'REFUND_APPROVED') return 'hourglass_top';
@@ -107,6 +108,7 @@ const notificationIcon = notif => {
 };
 
 const notificationColor = notif => {
+  if (notif.type === 'MAINTENANCE_DUE') return 'bg-amber-100 text-amber-700';
   if (notif.type === 'EXCHANGE') return 'bg-blue-100 text-blue-600';
   if (['REFUND_NEEDS_INFO', 'REFUND_REJECTED'].includes(notif.type)) return 'bg-rose-100 text-rose-600';
   if (notif.type === 'REFUND_APPROVED') return 'bg-amber-100 text-amber-700';
@@ -115,6 +117,7 @@ const notificationColor = notif => {
 };
 
 const notificationTitleColor = notif => {
+  if (notif.type === 'MAINTENANCE_DUE') return 'text-amber-800';
   if (notif.type === 'EXCHANGE') return 'text-blue-700';
   if (['REFUND_NEEDS_INFO', 'REFUND_REJECTED'].includes(notif.type)) return 'text-rose-700';
   if (notif.type === 'REFUND_APPROVED') return 'text-amber-700';

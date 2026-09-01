@@ -43,6 +43,10 @@ public class Route {
     @Column(name = "is_visible", columnDefinition = "boolean default true")
     private Boolean isVisible = true;
 
+    @Builder.Default
+    @Column(name = "round_trip_enabled", columnDefinition = "boolean default false")
+    private Boolean roundTripEnabled = false;
+
     @Column(columnDefinition = "TEXT")
     private String routeData;
 }

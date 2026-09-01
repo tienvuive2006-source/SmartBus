@@ -51,8 +51,8 @@ export const useAuthStore = defineStore('auth', () => {
   // ─── ACTIONS ──────────────────────────────────────────────────────
 
   // ✅ Đăng nhập
-  const login = async (phone, password) => {
-    const response = await axios.post(`${API_BASE}/auth/login`, { phone, password })
+  const login = async (identifier, password) => {
+    const response = await axios.post(`${API_BASE}/auth/login`, { username: identifier, password })
     _saveSession(response.data)
     return response.data
   }
@@ -65,8 +65,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // ✅ Đăng ký
-  const register = async (fullName, phone, password, email = null) => {
-    const response = await axios.post(`${API_BASE}/auth/register`, { fullName, phone, password, email })
+  const sendRegistrationCode = async (email, phone) => {
+    const response = await axios.post(`${API_BASE}/auth/register/send-code`, { email, phone })
+    return response.data
+  }
+
+  const register = async (fullName, phone, password, email, verificationCode) => {
+    const response = await axios.post(`${API_BASE}/auth/register`, { fullName, phone, password, email, verificationCode })
     _saveSession(response.data)
     return response.data
   }
@@ -196,6 +201,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = data.token
     user.value = {
       id: data.id,
+      username: data.username || '',
       phone: data.phone,
       fullName: data.fullName,
       role: data.role,
@@ -277,6 +283,23 @@ export const useAuthStore = defineStore('auth', () => {
               newRefundsCount.value++
             }
           })
+
+          stompClient.subscribe(`/topic/admin/maintenance`, (message) => {
+            try {
+              const data = JSON.parse(message.body)
+              addNotification({
+                type: 'MAINTENANCE_DUE',
+                title: data.title || 'Nhắc lịch bảo trì xe',
+                message: data.message,
+                busId: data.busId,
+                licensePlate: data.licensePlate,
+                date: data.date || new Date().toISOString()
+              })
+              window.dispatchEvent(new CustomEvent('maintenance-alert', { detail: data }))
+            } catch (error) {
+              console.error('Không đọc được cảnh báo bảo trì:', error)
+            }
+          })
         }
       }
     })
@@ -318,6 +341,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     googleLogin,
     completeGooglePhone,
+    sendRegistrationCode,
     register,
     logout,
     fetchMe,

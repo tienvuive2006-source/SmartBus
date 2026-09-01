@@ -3,6 +3,7 @@ package com.smartbus.booking.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,6 +22,9 @@ public class User {
 
     @Column(nullable = false, unique = true)
     private String phone;
+
+    @Column(unique = true, length = 50)
+    private String username;
 
     @Column(nullable = false)
     private String password;
@@ -64,6 +68,49 @@ public class User {
     @Builder.Default
     @Column(name = "driver_status")
     private String driverStatus = "FREE"; // FREE, DRIVING, ON_LEAVE, SUSPENDED
+
+    // Driver profile fields. They stay nullable so existing staff accounts remain valid.
+    @Column(name = "gender", length = 20)
+    private String gender;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Column(name = "citizen_id", length = 20)
+    private String citizenId;
+
+    @Column(name = "citizen_id_issue_date")
+    private LocalDate citizenIdIssueDate;
+
+    @Column(name = "address", length = 500)
+    private String address;
+
+    @Column(name = "emergency_contact_name", length = 150)
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_phone", length = 30)
+    private String emergencyContactPhone;
+
+    @Column(name = "driver_license_class", length = 20)
+    private String driverLicenseClass;
+
+    @Column(name = "driver_license_number", length = 50)
+    private String driverLicenseNumber;
+
+    @Column(name = "driver_license_issue_date")
+    private LocalDate driverLicenseIssueDate;
+
+    @Column(name = "driver_license_expiry_date")
+    private LocalDate driverLicenseExpiryDate;
+
+    @Column(name = "driving_experience_years")
+    private Integer drivingExperienceYears;
+
+    @Column(name = "driver_shift", length = 50)
+    private String driverShift;
+
+    @Column(name = "driver_notes", length = 1000)
+    private String driverNotes;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

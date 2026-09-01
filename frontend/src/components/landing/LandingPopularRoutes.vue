@@ -38,7 +38,10 @@
             </div>
           </div>
           
-          <h3 :title="route.customName || `${route.shortFrom} → ${route.shortTo}`" class="text-xl lg:text-2xl font-bold text-white leading-tight tracking-tight drop-shadow-md truncate">
+          <h3
+            :title="route.customName || `${route.shortFrom} → ${route.shortTo}`"
+            class="block w-full whitespace-nowrap text-[1.05rem] font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-md xl:text-xl"
+          >
             <template v-if="route.customName">
               {{ route.customName }}
             </template>

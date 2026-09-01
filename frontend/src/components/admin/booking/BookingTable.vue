@@ -1,35 +1,11 @@
 <template>
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-    <!-- Toolbar -->
-    <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50">
+    <!-- Table heading -->
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
       <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
          <span class="material-symbols-outlined text-[#075955] text-[20px]">list_alt</span>
          Danh sách Đơn hàng
       </h3>
-      
-      <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-        <div class="relative flex-1 sm:w-64">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-          <input 
-            :value="searchQuery"
-            @input="$emit('update:searchQuery', $event.target.value)"
-            type="text" 
-            placeholder="Tìm mã vé, SĐT..."
-            class="w-full pl-9 pr-4 py-2 bg-white rounded-lg border border-slate-200 focus:border-[#075955] focus:ring-1 focus:ring-[#075955] outline-none transition-all text-xs text-slate-700 placeholder:text-slate-400 shadow-sm"
-          />
-        </div>
-        <select 
-          :value="statusFilter"
-          @change="$emit('update:statusFilter', $event.target.value)"
-          class="w-full sm:w-auto bg-white border border-slate-200 rounded-lg px-4 py-2 outline-none text-xs font-semibold text-slate-700 shadow-sm focus:border-[#075955]"
-        >
-          <option value="ALL">Tất cả trạng thái</option>
-          <option value="PAID">Đã thanh toán</option>
-          <option value="PENDING">Chờ thanh toán</option>
-          <option value="CHECKED_IN">Đã lên xe</option>
-          <option value="CANCELLED">Đã hủy</option>
-        </select>
-      </div>
     </div>
 
     <!-- Table -->
@@ -83,7 +59,7 @@
 
                 <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-semibold text-slate-500">
                   <span class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-slate-400">schedule</span>{{ booking.departureTime }}</span>
-                  <span class="inline-flex items-center gap-1 font-bold text-[#075955]"><span class="material-symbols-outlined text-[13px]">airline_seat_recline_normal</span>Ghế {{ booking.seats.join(', ') }}</span>
+                  <BookingSeatBadges :seat-numbers="booking.seats" :seat-types="booking.seatTypes" />
                   <span v-if="booking.trip?.busType" class="inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px] text-violet-500">directions_bus</span>{{ booking.trip.busType }}</span>
                 </div>
 
@@ -192,16 +168,15 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import BookingSeatBadges from './BookingSeatBadges.vue';
 
 const props = defineProps({
   bookings: Array,
-  searchQuery: String,
-  statusFilter: String,
   statusLabels: Object,
   statusStyles: Object
 });
 
-defineEmits(['update:searchQuery', 'update:statusFilter', 'view', 'update-status', 'view-reason']);
+defineEmits(['view', 'update-status', 'view-reason']);
 
 // Pagination Logic
 const currentPage = ref(1);

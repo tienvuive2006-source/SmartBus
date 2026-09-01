@@ -1,31 +1,17 @@
 <template>
   <div class="min-h-screen bg-[#f4f7f6] font-sans text-slate-800 pb-20">
+    <SeatTypeNotice :notice="specialSeatNotice" @close="hideSpecialSeatNotice" />
 
+    <div class="max-w-6xl mx-auto px-4 pt-3">
+      <BookingProgress :active-step="1" />
+    </div>
 
-    <main class="max-w-6xl mx-auto px-4 py-8 flex flex-col xl:flex-row gap-8">
+    <main class="max-w-6xl mx-auto px-4 pt-5 pb-8 flex flex-col xl:flex-row gap-8">
       
       <!-- CỘT TRÁI: SƠ ĐỒ GHẾ -->
       <div class="flex-1 space-y-6">
         
-        <!-- Legend (Chú thích) -->
-        <div class="bg-white p-4 border border-gray-100 rounded-2xl flex flex-wrap items-center justify-center gap-6 md:gap-12 shadow-sm">
-             <div class="flex items-center gap-2 group">
-                <div class="w-6 h-6 rounded-lg border-2 border-gray-200 bg-white group-hover:border-gray-300 transition-colors"></div>
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Ghế Trống</span>
-             </div>
-             <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-lg border-2 border-[#075955] bg-[#075955] shadow-[0_0_10px_rgba(7,89,85,0.4)] relative flex items-center justify-center">
-                   <div class="w-2.5 h-1 bg-white/60 rounded-full absolute bottom-1"></div>
-                </div>
-                <span class="text-xs font-black text-[#075955] uppercase tracking-widest">Đang Chọn</span>
-             </div>
-             <div class="flex items-center gap-2 opacity-70">
-                <div class="w-6 h-6 rounded-lg border-2 border-gray-300 bg-gray-200 flex items-center justify-center">
-                   <span class="material-symbols-outlined text-[14px] text-gray-500 font-black">lock</span>
-                </div>
-                <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Đã Bán</span>
-             </div>
-        </div>
+        <BookingSeatLegend />
 
         <!-- ROUND TRIP TABS -->
         <div v-if="isRoundTrip" class="flex gap-4 p-1 bg-gray-200/50 rounded-2xl w-fit">
@@ -75,22 +61,11 @@
                <!-- Grid Ghế -->
                <div class="grid grid-cols-3 gap-y-4 gap-x-4">
                  <div v-for="seat in floor1Seats" :key="seat.id" class="flex justify-center">
-                    <button 
-                      @click="toggleSeat(seat)"
-                      :disabled="seat.isBooked"
-                      :class="['w-12 h-14 border-2 rounded-xl flex flex-col items-center justify-center transition-all duration-300 font-black relative overflow-hidden group',
-                        seat.isBooked ? 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed opacity-80' : 
-                        activeSelectedSeats.includes(seat.seatNumber) ? 'bg-[#075955] border-[#075955] text-white shadow-[0_8px_20px_rgba(7,89,85,0.4)] -translate-y-1 scale-105 z-10' : 
-                        'bg-white border-gray-200 hover:border-[#075955] hover:bg-emerald-50 text-gray-600 hover:text-[#075955] hover:-translate-y-1 hover:shadow-md']"
-                    >
-                      <span v-if="seat.isBooked" class="material-symbols-outlined text-[16px]">lock</span>
-                      <span v-else class="text-xs z-10">{{ seat.seatNumber }}</span>
-                      
-                      <!-- Gối tựa -->
-                      <div :class="['absolute top-1.5 w-6 h-1.5 rounded-full transition-colors duration-300', activeSelectedSeats.includes(seat.seatNumber) ? 'bg-white/30' : seat.isBooked ? 'bg-gray-400/30' : 'bg-gray-200 group-hover:bg-emerald-200']"></div>
-                      <!-- Chỗ để chân -->
-                      <div :class="['absolute bottom-1.5 w-8 h-1 rounded-full transition-colors duration-300', activeSelectedSeats.includes(seat.seatNumber) ? 'bg-white/50' : seat.isBooked ? 'bg-gray-400/50' : 'bg-gray-300 group-hover:bg-emerald-300']"></div>
-                    </button>
+                    <BookingSeatCell
+                      :seat="seat"
+                      :selected="activeSelectedSeats.includes(seat.seatNumber)"
+                      @toggle="toggleSeatRealtime"
+                    />
                  </div>
                </div>
                
@@ -123,22 +98,11 @@
                <!-- Grid Ghế -->
                <div class="grid grid-cols-3 gap-y-4 gap-x-4">
                  <div v-for="seat in floor2Seats" :key="seat.id" class="flex justify-center">
-                    <button 
-                      @click="toggleSeat(seat)"
-                      :disabled="seat.isBooked"
-                      :class="['w-12 h-14 border-2 rounded-xl flex flex-col items-center justify-center transition-all duration-300 font-black relative overflow-hidden group',
-                        seat.isBooked ? 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed opacity-80' : 
-                        activeSelectedSeats.includes(seat.seatNumber) ? 'bg-[#075955] border-[#075955] text-white shadow-[0_8px_20px_rgba(7,89,85,0.4)] -translate-y-1 scale-105 z-10' : 
-                        'bg-white border-gray-200 hover:border-[#075955] hover:bg-emerald-50 text-gray-600 hover:text-[#075955] hover:-translate-y-1 hover:shadow-md']"
-                    >
-                      <span v-if="seat.isBooked" class="material-symbols-outlined text-[16px]">lock</span>
-                      <span v-else class="text-xs z-10">{{ seat.seatNumber }}</span>
-                      
-                      <!-- Gối tựa -->
-                      <div :class="['absolute top-1.5 w-6 h-1.5 rounded-full transition-colors duration-300', activeSelectedSeats.includes(seat.seatNumber) ? 'bg-white/30' : seat.isBooked ? 'bg-gray-400/30' : 'bg-gray-200 group-hover:bg-emerald-200']"></div>
-                      <!-- Chỗ để chân -->
-                      <div :class="['absolute bottom-1.5 w-8 h-1 rounded-full transition-colors duration-300', activeSelectedSeats.includes(seat.seatNumber) ? 'bg-white/50' : seat.isBooked ? 'bg-gray-400/50' : 'bg-gray-300 group-hover:bg-emerald-300']"></div>
-                    </button>
+                    <BookingSeatCell
+                      :seat="seat"
+                      :selected="activeSelectedSeats.includes(seat.seatNumber)"
+                      @toggle="toggleSeatRealtime"
+                    />
                  </div>
                </div>
                
@@ -155,6 +119,13 @@
       <!-- CỘT PHẢI: TÓM TẮT ĐƠN HÀNG (STICKY) -->
       <div class="w-full xl:w-[380px] shrink-0">
         <div class="sticky top-24 space-y-6">
+          <SeatHoldTimer
+            :pending="!holdExpiresAt"
+            :expires-at="holdExpiresAt"
+            status-text="Ghế đang được giữ, vui lòng tiếp tục thanh toán"
+            @expired="handleHoldExpired"
+          />
+
           <div class="bg-white rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
              <!-- Header Card -->
              <div class="relative h-24 bg-[#075955] p-6 text-white overflow-hidden">
@@ -171,7 +142,9 @@
                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Ghế đã chọn</p>
                    <div class="flex flex-wrap gap-2 min-h-[40px]">
                       <template v-if="activeSelectedSeats && activeSelectedSeats.length > 0">
-                         <span v-for="s in activeSelectedSeats" :key="s" class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black border border-emerald-200 shadow-sm animate-fade-in-up">
+                         <span v-for="s in activeSelectedSeats" :key="s" class="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black border border-emerald-200 shadow-sm animate-fade-in-up">
+                            <span v-if="getActiveSeatType(s) === 'PRIORITY'" class="material-symbols-outlined text-[13px] text-amber-600">star</span>
+                            <span v-else-if="getActiveSeatType(s) === 'CHILD'" class="material-symbols-outlined text-[13px] text-sky-600">child_care</span>
                             {{ s }}
                          </span>
                       </template>
@@ -244,9 +217,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useApi } from '@/composables/useApi';
+import BookingSeatCell from '@/components/booking/seat/BookingSeatCell.vue';
+import BookingSeatLegend from '@/components/booking/seat/BookingSeatLegend.vue';
+import BookingProgress from '@/components/booking/flow/BookingProgress.vue';
+import SeatHoldTimer from '@/components/booking/flow/SeatHoldTimer.vue';
+import { getOrCreateSeatHoldToken } from '@/utils/seatHoldToken';
+import { createSeatRealtimeClient } from '@/services/seatRealtime';
+import { getSpecialSeatNotice } from '@/utils/seatSelectionNotice';
+import SeatTypeNotice from '@/components/booking/seat/SeatTypeNotice.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -266,6 +247,13 @@ const returnSeats = ref([]);
 
 const selectedOutboundSeats = ref([]);
 const selectedReturnSeats = ref([]);
+const holdExpiresAt = ref(null);
+const holdToken = getOrCreateSeatHoldToken();
+const pendingSeatActions = new Set();
+const specialSeatNotice = ref(null);
+let proceedingToPayment = false;
+let realtimeClient = null;
+let specialSeatNoticeTimer = null;
 
 const activeTrip = computed(() => currentTab.value === 'outbound' ? outboundTrip.value : returnTrip.value);
 const activeSeats = computed(() => currentTab.value === 'outbound' ? outboundSeats.value : returnSeats.value);
@@ -273,6 +261,10 @@ const activeSelectedSeats = computed(() => currentTab.value === 'outbound' ? sel
 
 const floor1Seats = computed(() => activeSeats.value.filter(s => s.seatFloor === 1));
 const floor2Seats = computed(() => activeSeats.value.filter(s => s.seatFloor === 2));
+
+const getActiveSeatType = seatNumber => (
+  activeSeats.value.find(seat => seat.seatNumber === seatNumber)?.seatType || 'STANDARD'
+);
 
 const totalPrice = computed(() => {
   const outTotal = selectedOutboundSeats.value.length * (outboundTrip.value?.price || 0);
@@ -311,31 +303,120 @@ const fetchTripData = async () => {
       returnTrip.value = retRes.data;
       returnSeats.value = retSeatsRes.data;
     }
+    await restoreOwnedHolds();
   } catch (err) {
     console.error("Lỗi tải dữ liệu:", err);
   }
 };
 
-const toggleSeat = (seat) => {
-  const arr = currentTab.value === 'outbound' ? selectedOutboundSeats.value : selectedReturnSeats.value;
-  const index = arr.indexOf(seat.seatNumber);
-  
-  if (index > -1) {
-    arr.splice(index, 1);
-  } else {
-    if (arr.length >= 5) {
-      alert('Bạn chỉ có thể chọn tối đa 5 ghế cho mỗi chuyến!');
-      return;
+const getTripState = tripId => String(tripId) === String(outboundTripId)
+  ? { seats: outboundSeats.value, selected: selectedOutboundSeats.value }
+  : { seats: returnSeats.value, selected: selectedReturnSeats.value };
+
+const restoreOwnedHolds = async () => {
+  try {
+    const { data } = await api.get('/seat-holds/session', { params: { holdToken } });
+    for (const held of data.seats || []) {
+      if (![String(outboundTripId), String(returnTripId)].includes(String(held.tripId))) continue;
+      const state = getTripState(held.tripId);
+      if (!state.selected.includes(held.seatNumber)) state.selected.push(held.seatNumber);
+      const seat = state.seats.find(item => item.seatNumber === held.seatNumber);
+      if (seat) seat.isBooked = false;
     }
-    arr.push(seat.seatNumber);
+    holdExpiresAt.value = data.expiresAt || null;
+  } catch (error) {
+    console.error('Không khôi phục được phiên giữ ghế:', error);
   }
 };
 
+const applyRealtimeEvent = event => {
+  const state = getTripState(event.tripId);
+  const seat = state.seats.find(item => item.seatNumber === event.seatNumber);
+  if (!seat) return;
+  const selectedIndex = state.selected.indexOf(event.seatNumber);
+
+  if (event.status === 'AVAILABLE') {
+    seat.isBooked = false;
+    if (selectedIndex > -1) state.selected.splice(selectedIndex, 1);
+  } else if (selectedIndex === -1) {
+    seat.isBooked = true;
+  }
+};
+
+const hideSpecialSeatNotice = () => {
+  specialSeatNotice.value = null;
+  if (specialSeatNoticeTimer) clearTimeout(specialSeatNoticeTimer);
+  specialSeatNoticeTimer = null;
+};
+
+const showSpecialSeatNotice = seat => {
+  const notice = getSpecialSeatNotice(seat);
+  if (!notice) return;
+  hideSpecialSeatNotice();
+  specialSeatNotice.value = { ...notice, seatNumber: seat.seatNumber };
+  specialSeatNoticeTimer = setTimeout(hideSpecialSeatNotice, 5000);
+};
+
+const toggleSeatRealtime = async seat => {
+  const arr = currentTab.value === 'outbound' ? selectedOutboundSeats.value : selectedReturnSeats.value;
+  const tripId = currentTab.value === 'outbound' ? outboundTripId : returnTripId;
+  const actionKey = `${tripId}:${seat.seatNumber}`;
+  if (pendingSeatActions.has(actionKey)) return;
+
+  const index = arr.indexOf(seat.seatNumber);
+  pendingSeatActions.add(actionKey);
+  if (index > -1) {
+    arr.splice(index, 1);
+    try {
+      await api.post('/seat-holds/release', { tripId, seatNumber: seat.seatNumber, holdToken });
+      if (selectedOutboundSeats.value.length + selectedReturnSeats.value.length === 0) holdExpiresAt.value = null;
+    } catch (error) {
+      arr.push(seat.seatNumber);
+      alert('Không thể bỏ giữ ghế lúc này. Vui lòng thử lại.');
+    } finally {
+      pendingSeatActions.delete(actionKey);
+    }
+    return;
+  }
+
+  if (arr.length >= 5) {
+    pendingSeatActions.delete(actionKey);
+    alert('Bạn chỉ có thể chọn tối đa 5 ghế cho mỗi chuyến!');
+    return;
+  }
+
+  showSpecialSeatNotice(seat);
+
+  arr.push(seat.seatNumber);
+  try {
+    const { data } = await api.post('/seat-holds', { tripId, seatNumber: seat.seatNumber, holdToken });
+    holdExpiresAt.value = data.expiresAt;
+    seat.isBooked = false;
+  } catch (error) {
+    const selectedIndex = arr.indexOf(seat.seatNumber);
+    if (selectedIndex > -1) arr.splice(selectedIndex, 1);
+    if (error.response?.status === 409) seat.isBooked = true;
+    alert(error.response?.data?.error || 'Không thể giữ ghế. Vui lòng thử lại.');
+  } finally {
+    pendingSeatActions.delete(actionKey);
+  }
+};
+
+const handleHoldExpired = async () => {
+  selectedOutboundSeats.value = [];
+  selectedReturnSeats.value = [];
+  holdExpiresAt.value = null;
+  alert('Thời gian giữ ghế đã hết. Vui lòng chọn lại ghế.');
+  await fetchTripData();
+};
+
 const goToPayment = () => {
+  proceedingToPayment = true;
   const query = {
     tripId: outboundTripId,
     seats: selectedOutboundSeats.value.join(','),
-    total: totalPrice.value
+    total: totalPrice.value,
+    holdToken
   };
   
   if (isRoundTrip.value) {
@@ -346,5 +427,20 @@ const goToPayment = () => {
   router.push({ path: '/booking/payment', query });
 };
 
-onMounted(fetchTripData);
+onMounted(() => {
+  realtimeClient = createSeatRealtimeClient({
+    tripIds: [outboundTripId, returnTripId],
+    onSeatChanged: applyRealtimeEvent
+  });
+  realtimeClient.connect();
+  fetchTripData();
+});
+
+onBeforeUnmount(() => {
+  hideSpecialSeatNotice();
+  realtimeClient?.disconnect();
+  if (!proceedingToPayment && (selectedOutboundSeats.value.length || selectedReturnSeats.value.length)) {
+    api.post('/seat-holds/release-session', { holdToken }).catch(() => {});
+  }
+});
 </script>

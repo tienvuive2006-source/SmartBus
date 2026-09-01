@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
+import { queueRouteAccessNotice } from '@/utils/routeAccessNotice'
 
 // Tối ưu hóa hiệu năng bằng Lazy Loading (Code Splitting)
 // Việc này giúp Vite tách các file js ra, người dùng vào trang nào tải js trang đó, tăng tốc độ truy cập trang chủ x10 lần.
@@ -324,11 +325,11 @@ router.beforeEach((to, from) => {
   // 🔒 Bảo vệ route ADMIN
   if (to.path.startsWith('/admin')) {
     if (!token) {
-      alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Quản Trị Viên!");
+      queueRouteAccessNotice('Vui lòng đăng nhập bằng tài khoản quản trị viên để tiếp tục.')
       return { path: '/auth/login', query: { redirect: to.fullPath } };
     }
     if (userRole !== 'ADMIN') {
-      alert("⛔ CẢNH BÁO: Bạn không có đặc quyền truy cập Bảng Quản Trị!\nHệ thống sẽ trục xuất bạn về Trang Chủ.");
+      queueRouteAccessNotice('Tài khoản hiện tại không có quyền truy cập trang quản trị.')
       return '/';
     }
   }
@@ -336,11 +337,11 @@ router.beforeEach((to, from) => {
   // 🔒 Bảo vệ route INSPECTOR
   if (to.path.startsWith('/inspector')) {
     if (!token) {
-      alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Nhân viên Soát vé!");
+      queueRouteAccessNotice('Vui lòng đăng nhập bằng tài khoản nhân viên soát vé để tiếp tục.')
       return { path: '/auth/login', query: { redirect: to.fullPath } };
     }
     if (userRole !== 'INSPECTOR' && userRole !== 'ADMIN') {
-      alert("⛔ CẢNH BÁO: Bạn không có quyền hạn Soát vé!");
+      queueRouteAccessNotice('Tài khoản hiện tại không có quyền truy cập khu vực soát vé.')
       return '/';
     }
   }
@@ -348,11 +349,11 @@ router.beforeEach((to, from) => {
   // 🔒 Bảo vệ route DRIVER
   if (to.path.startsWith('/driver')) {
     if (!token) {
-      alert("🔒 BẢO MẬT: Vui lòng đăng nhập tài khoản Lái xe!");
+      queueRouteAccessNotice('Vui lòng đăng nhập bằng tài khoản lái xe để tiếp tục.')
       return { path: '/auth/login', query: { redirect: to.fullPath } };
     }
     if (userRole !== 'DRIVER' && userRole !== 'ADMIN') {
-      alert("⛔ CẢNH BÁO: Bạn không có quyền hạn Lái xe!");
+      queueRouteAccessNotice('Tài khoản hiện tại không có quyền truy cập khu vực lái xe.')
       return '/';
     }
   }

@@ -9,7 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByPhone(String phone);
+    Optional<User> findByUsernameIgnoreCase(String username);
     Optional<User> findByEmail(String email);
+    Optional<User> findByEmailIgnoreCase(String email);
     java.util.List<User> findByRole(String role);
 
     @org.springframework.data.jpa.repository.Query(
@@ -19,6 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     "(:locked IS NULL OR u.isLocked = :locked) AND " +
                     "(:search = '' OR LOWER(COALESCE(u.fullName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR COALESCE(u.phone, '') LIKE CONCAT('%', :search, '%') " +
+                    "OR LOWER(COALESCE(u.username, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :search, '%')))",
             countQuery = "SELECT COUNT(u) FROM User u WHERE " +
                     "(:role = '' OR UPPER(u.role) = :role) AND " +
@@ -26,6 +29,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     "(:locked IS NULL OR u.isLocked = :locked) AND " +
                     "(:search = '' OR LOWER(COALESCE(u.fullName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR COALESCE(u.phone, '') LIKE CONCAT('%', :search, '%') " +
+                    "OR LOWER(COALESCE(u.username, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<User> searchAdminUsers(@Param("role") String role,
                                 @Param("search") String search,

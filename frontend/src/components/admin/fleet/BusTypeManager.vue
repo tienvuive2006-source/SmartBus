@@ -37,7 +37,7 @@
             Cách thức hoạt động?
           </h4>
           <p class="text-body-md text-on-surface-variant leading-relaxed">
-            Các dòng xe được bạn khai báo tại đây (Ví dụ: <i>Limousine VIP 21 Phòng</i>) sẽ **tự động đồng bộ hóa** sang các ô lựa chọn trên trang **Tạo chuyến xe** và **Quản lý hạm đội**. 
+            Các dòng xe được bạn khai báo tại đây (Ví dụ: <i>Limousine VIP 21 Phòng</i>) sẽ <strong>tự động đồng bộ</strong> sang phần tạo chuyến và quản lý hạm đội.
             <br><br>
             Giúp bạn nhập liệu cực nhanh và chuẩn hóa thông số ghế ngồi!
           </p>
@@ -70,32 +70,41 @@
           <div 
             v-for="item in busTypes" 
             :key="item.id"
-            class="bg-white rounded-2xl border border-outline-variant/25 hover:border-primary/50 hover:shadow-[0px_12px_32px_rgba(0,0,0,0.04)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all group"
+            class="group grid min-h-[5.5rem] grid-cols-1 gap-4 rounded-2xl border border-outline-variant/25 bg-white p-4 transition-all hover:border-primary/50 hover:shadow-[0px_12px_32px_rgba(0,0,0,0.04)] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
           >
-            <div class="flex items-center gap-4">
+            <div class="flex min-w-0 items-center gap-4">
               <!-- Hiển thị ảnh thực tế nếu có, ngược lại hiện icon mặc định -->
-              <div v-if="item.imageUrl" class="w-16 h-12 rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm shrink-0 group-hover:scale-105 transition-all">
+              <div v-if="item.imageUrl" class="h-12 w-14 shrink-0 overflow-hidden rounded-xl border border-outline-variant/20 shadow-sm transition-all group-hover:scale-105">
                  <img :src="item.imageUrl" class="w-full h-full object-cover" @error="(e) => e.target.style.display = 'none'" />
               </div>
-              <div v-else class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-on-surface-variant border border-outline-variant/20 flex items-center justify-center group-hover:scale-110 group-hover:from-primary/10 group-hover:to-primary/20 group-hover:text-primary transition-all shrink-0">
+              <div v-else class="flex h-12 w-14 shrink-0 items-center justify-center rounded-xl border border-outline-variant/20 bg-slate-100 text-on-surface-variant transition-all group-hover:scale-105 group-hover:bg-primary/10 group-hover:text-primary">
                 <span class="material-symbols-outlined">airline_seat_recline_extra</span>
               </div>
-              <div>
-                <h4 class="font-black text-headline-sm text-on-surface group-hover:text-primary transition-colors">{{ item.name }}</h4>
-                <div class="flex items-center gap-3 mt-1 text-body-md text-on-surface-variant font-medium">
-                  <span class="bg-secondary-container text-on-secondary-container text-[11px] px-2.5 py-0.5 rounded-full font-black">
-                    {{ item.seatCount || 24 }} GHẾ TIÊU CHUẨN
+              <div class="min-w-0 flex-1">
+                <h4 class="truncate text-headline-sm font-black leading-tight text-on-surface transition-colors group-hover:text-primary">{{ item.name }}</h4>
+                <div class="mt-2 grid min-w-0 grid-cols-2 items-center gap-2 text-on-surface-variant sm:grid-cols-[6.75rem_5.5rem_minmax(0,1fr)]">
+                  <span class="inline-flex h-6 items-center justify-center whitespace-nowrap rounded-lg bg-secondary-container px-2 text-[10px] font-black tabular-nums text-on-secondary-container" title="Số ghế tiêu chuẩn">
+                    {{ item.seatCount || 24 }} GHẾ
                   </span>
-                  <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[11px] px-2.5 py-0.5 rounded-full font-black">
-                    HỆ SỐ GIÁ: {{ item.priceMultiplier || 1.0 }}x
+                  <span class="inline-flex h-6 items-center justify-center whitespace-nowrap rounded-lg border border-emerald-100 bg-emerald-50 px-2 text-[10px] font-black tabular-nums text-emerald-700" title="Hệ số giá">
+                    GIÁ {{ item.priceMultiplier || 1.0 }}x
                   </span>
-                  <span v-if="item.description" class="truncate max-w-[250px] text-[12px]">● {{ item.description }}</span>
+                  <span v-if="item.description" :title="item.description" class="col-span-2 min-w-0 truncate text-[11px] font-medium sm:col-span-1">● {{ item.description }}</span>
+                  <span v-else class="col-span-2 text-[11px] text-slate-400 sm:col-span-1">Chưa có tiện ích</span>
                 </div>
               </div>
             </div>
 
             <!-- Controls -->
             <div class="flex items-center gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-outline-variant/20">
+              <button
+                @click="openSeatLayout(item)"
+                class="flex h-10 items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100 active:scale-95"
+                title="Cấu hình ghế ưu tiên"
+              >
+                <span class="material-symbols-outlined text-[18px]">airline_seat_recline_extra</span>
+                <span class="hidden text-xs font-black xl:inline">SƠ ĐỒ GHẾ</span>
+              </button>
               <button 
                 @click="openEditModal(item)"
                 class="flex items-center justify-center w-10 h-10 border border-outline-variant/50 hover:bg-primary/5 hover:text-primary hover:border-primary rounded-xl transition-all text-on-surface-variant"
@@ -271,6 +280,11 @@
     </Teleport>
     <!-- Hidden File Input for Image Upload -->
     <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleImageUpload" />
+    <BusTypeSeatLayoutModal
+      :open="isSeatLayoutOpen"
+      :bus-type="selectedBusType"
+      @close="closeSeatLayout"
+    />
   </div>
 </template>
 
@@ -278,6 +292,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { useApi } from '@/composables/useApi';
+import BusTypeSeatLayoutModal from './BusTypeSeatLayoutModal.vue';
 
 const api = useApi();
 const fileInput = ref(null);
@@ -285,6 +300,8 @@ const uploading = ref(false);
 
 const busTypes = ref([]);
 const loading = ref(true);
+const isSeatLayoutOpen = ref(false);
+const selectedBusType = ref(null);
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
@@ -339,6 +356,16 @@ const openCreateModal = () => {
   form.value = { id: null, name: '', seatCount: 24, priceMultiplier: 1.0, description: '', imageUrl: '' };
   selectedUtilities.value = [];
   isModalOpen.value = true;
+};
+
+const openSeatLayout = item => {
+  selectedBusType.value = item;
+  isSeatLayoutOpen.value = true;
+};
+
+const closeSeatLayout = () => {
+  isSeatLayoutOpen.value = false;
+  selectedBusType.value = null;
 };
 
 const openEditModal = (item) => {
