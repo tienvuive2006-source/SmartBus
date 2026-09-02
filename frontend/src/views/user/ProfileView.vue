@@ -187,7 +187,7 @@ const fetchTransactions = async () => {
         res.data.forEach(b => {
              history.push({
                  id: b.id + '_buy',
-                 title: `Thanh toán vé #${b.id}`,
+                 title: `Thanh toán vé ${b.ticketCode || `#${b.id}`}`,
                  description: `Chuyến: ${b.trip.departurePoint} - ${b.trip.arrivalPoint}`,
                  date: b.createdAt,
                  amount: -b.totalPrice,
@@ -203,8 +203,8 @@ const fetchTransactions = async () => {
                          id: b.id + '_refund',
                          title: refundRequest?.status === 'COMPLETED' ? 'Hoàn tiền hủy vé' : 'Yêu cầu hoàn tiền',
                          description: refundRequest?.refundMethod === 'BANK_TRANSFER'
-                             ? `Chuyển khoản ngân hàng, mã vé #${b.id}`
-                             : `Ví Trung Nam, mã vé #${b.id}`,
+                             ? `Chuyển khoản ngân hàng, mã vé ${b.ticketCode || `#${b.id}`}`
+                             : `Ví Trung Nam, mã vé ${b.ticketCode || `#${b.id}`}`,
                          date: cancelDate,
                          amount: refundValue,
                          status: ({ PENDING: 'Chờ xử lý', APPROVED: 'Đã duyệt', COMPLETED: 'Thành công', REJECTED: 'Cần liên hệ' }[refundRequest?.status]) || 'Thành công',

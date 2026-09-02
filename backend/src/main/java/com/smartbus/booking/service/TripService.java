@@ -8,6 +8,7 @@ import com.smartbus.booking.repository.BusTypeRepository;
 import com.smartbus.booking.repository.BusRepository;
 import com.smartbus.booking.repository.TripRepository;
 import com.smartbus.booking.repository.VehicleMileageLogRepository;
+import com.smartbus.booking.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,8 @@ public class TripService {
     private final BusRepository busRepository;
     private final VehicleMileageService vehicleMileageService;
     private final VehicleMileageLogRepository vehicleMileageLogRepository;
+    private final BookingRepository bookingRepository;
+    private final com.smartbus.booking.repository.UserRepository userRepository;
 
     public List<Trip> getAllTrips() {
         return tripRepository.findAll();
@@ -94,12 +97,10 @@ public class TripService {
                             ". Không thể gán chuyến trong thời gian này!");
         }
 
-        DateRange range = conflictDateRange(departureDate);
-        List<Trip> nearbyTrips = tripRepository.findTripsForDriverInDateRange(
-                driverUsername, range.fromDate(), range.toDate(), excludeTripId);
-
-        for (Trip c : nearbyTrips) {
-            if (hasOperationalConflict(departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, c)) {
+        List<Trip> nearbyTrips = tripRepository.findTripsForDriverSchedule(driverUsername, excludeTripId);
+        Trip c = findOperationalConflict(
+                departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, nearbyTrips);
+        if (c != null) {
                 throw new IllegalArgumentException(
                         "⚠️ XUNG ĐỘT LỊCH TÀI XẾ: Tài xế "
                                 + (c.getAssignedDriverFullName() != null ? c.getAssignedDriverFullName()
@@ -109,8 +110,7 @@ public class TripService {
                                 + c.getArrivalPoint().split(",")[0] +
                                 " (" + c.getDepartureTime() + " - " + c.getArrivalTime() + ") ngày "
                                 + c.getDepartureDate() +
-                                ". Không đủ thời gian nghỉ hoặc di chuyển giữa hai chuyến!");
-            }
+                                ". Điểm xuất phát chuyến sau phải nối tiếp điểm đến chuyến trước và phải đủ thời gian nghỉ!");
         }
     }
 
@@ -132,20 +132,17 @@ public class TripService {
         if (departureDate == null || departureTime == null || arrivalTime == null)
             return;
 
-        DateRange range = conflictDateRange(departureDate);
-        List<Trip> nearbyTrips = tripRepository.findTripsForBusInDateRange(
-                licensePlate, range.fromDate(), range.toDate(), excludeTripId);
-
-        for (Trip c : nearbyTrips) {
-            if (hasOperationalConflict(departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, c)) {
+        List<Trip> nearbyTrips = tripRepository.findTripsForBusSchedule(licensePlate, excludeTripId);
+        Trip c = findOperationalConflict(
+                departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, nearbyTrips);
+        if (c != null) {
                 throw new IllegalArgumentException(
                         "⚠️ XUNG ĐỘT LỊCH XE: Xe biển số " + licensePlate +
                                 " đã được phân công cho chuyến " + c.getDeparturePoint().split(",")[0] + " ➔ "
                                 + c.getArrivalPoint().split(",")[0] +
                                 " (" + c.getDepartureTime() + " - " + c.getArrivalTime() + ") ngày "
                                 + c.getDepartureDate() +
-                                ". Không đủ thời gian quay đầu hoặc di chuyển giữa hai chuyến!");
-            }
+                                ". Xe phải xuất phát từ nơi chuyến trước kết thúc và phải đủ thời gian quay đầu!");
         }
     }
 
@@ -161,30 +158,20 @@ public class TripService {
         if (departureDate == null || departureTime == null || arrivalTime == null)
             return;
 
-        DateRange range = conflictDateRange(departureDate);
-        List<Trip> nearbyTrips = tripRepository.findTripsForInspectorInDateRange(
-                inspectorId, range.fromDate(), range.toDate(), excludeTripId);
-
-        for (Trip c : nearbyTrips) {
-            if (hasOperationalConflict(departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, c)) {
+        List<Trip> nearbyTrips = tripRepository.findTripsForInspectorSchedule(inspectorId, excludeTripId);
+        Trip c = findOperationalConflict(
+                departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, nearbyTrips);
+        if (c != null) {
                 throw new IllegalArgumentException(
                         "⚠️ XUNG ĐỘT LỊCH LƠ XE: Lơ xe đã được phân công cho chuyến "
                                 + c.getDeparturePoint().split(",")[0] + " ➔ " + c.getArrivalPoint().split(",")[0] +
                                 " (" + c.getDepartureTime() + " - " + c.getArrivalTime() + ") ngày "
                                 + c.getDepartureDate() +
-                                ". Không đủ thời gian nghỉ hoặc di chuyển giữa hai chuyến!");
-            }
+                                ". Lơ xe phải ở đúng điểm xuất phát kế tiếp và phải đủ thời gian nghỉ!");
         }
     }
 
-    private record DateRange(String fromDate, String toDate) {}
-
     private record TripWindow(java.time.LocalDateTime start, java.time.LocalDateTime end) {}
-
-    private DateRange conflictDateRange(String departureDate) {
-        java.time.LocalDate date = java.time.LocalDate.parse(departureDate);
-        return new DateRange(date.minusDays(1).toString(), date.plusDays(1).toString());
-    }
 
     private TripWindow tripWindow(String date, String departureTime, String arrivalTime) {
         java.time.LocalDate departureDate = java.time.LocalDate.parse(date);
@@ -229,10 +216,67 @@ public class TripService {
         String laterDeparture = targetBeforeExisting ? existingTrip.getDeparturePoint() : departurePoint;
         boolean sameStation = !operationalPoint(earlierArrival).isBlank()
                 && operationalPoint(earlierArrival).equals(operationalPoint(laterDeparture));
+        if (!sameStation) return true;
+
         long requiredRestMinutes = sameStation
                 && target.start().toLocalDate().equals(existing.start().toLocalDate()) ? 60 : 720;
         long actualGapMinutes = java.time.Duration.between(earlierEnd, laterStart).toMinutes();
         return actualGapMinutes < requiredRestMinutes;
+    }
+
+    /**
+     * Chỉ so vị trí với chuyến liền trước/liền sau. Nếu so với mọi chuyến cũ,
+     * một chuỗi hợp lệ A→B, B→A, A→C sẽ bị báo sai do A→B không nối thẳng A→C.
+     */
+    private Trip findOperationalConflict(
+            String departureDate,
+            String departureTime,
+            String arrivalTime,
+            String departurePoint,
+            String arrivalPoint,
+            List<Trip> existingTrips) {
+        TripWindow target = tripWindow(departureDate, departureTime, arrivalTime);
+        Trip previous = null;
+        Trip next = null;
+        java.time.LocalDateTime previousEnd = null;
+        java.time.LocalDateTime nextStart = null;
+
+        for (Trip existingTrip : existingTrips) {
+            TripWindow existing = tripWindow(
+                    existingTrip.getDepartureDate(),
+                    existingTrip.getDepartureTime(),
+                    existingTrip.getArrivalTime());
+
+            if (target.start().isBefore(existing.end()) && existing.start().isBefore(target.end())) {
+                return existingTrip;
+            }
+            if (!existing.end().isAfter(target.start())
+                    && (previousEnd == null || existing.end().isAfter(previousEnd))) {
+                previous = existingTrip;
+                previousEnd = existing.end();
+            }
+            if (!target.end().isAfter(existing.start())
+                    && (nextStart == null || existing.start().isBefore(nextStart))) {
+                next = existingTrip;
+                nextStart = existing.start();
+            }
+        }
+
+        if (previous != null && hasOperationalConflict(
+                departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, previous)) {
+            return previous;
+        }
+        if (next != null && hasOperationalConflict(
+                departureDate, departureTime, arrivalTime, departurePoint, arrivalPoint, next)) {
+            return next;
+        }
+        return null;
+    }
+
+    private java.util.Optional<com.smartbus.booking.entity.User> findDriver(String identity) {
+        if (identity == null || identity.isBlank()) return java.util.Optional.empty();
+        java.util.Optional<com.smartbus.booking.entity.User> byPhone = userRepository.findByPhone(identity);
+        return byPhone.isPresent() ? byPhone : userRepository.findByUsernameIgnoreCase(identity);
     }
 
     // ============================================================================
@@ -244,6 +288,7 @@ public class TripService {
     public Trip saveTrip(Trip trip) {
         synchronizeSeatCapacity(trip);
         validateDriverPair(trip);
+        validateSecondaryDriverRequirement(trip);
         // 🛡️ KIỂM TRA XUNG ĐỘT TRƯỚC KHI LƯU
         checkDriverConflict(trip.getAssignedDriverUsername(), trip.getDepartureDate(), trip.getDepartureTime(),
                 trip.getArrivalTime(), trip.getDeparturePoint(), trip.getArrivalPoint(), null);
@@ -268,9 +313,15 @@ public class TripService {
 
     @Transactional
     public Trip updateTrip(Long id, Trip updatedDetails) {
-        validateDriverPair(updatedDetails);
         Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chuyến xe với mã ID: " + id));
+        if ("COMPLETED".equalsIgnoreCase(trip.getStatus())) {
+            throw new IllegalStateException(
+                    "Chuyến xe đã hoàn thành nên chỉ được phép xem, không thể chỉnh sửa.");
+        }
+
+        validateDriverPair(updatedDetails);
+        validateSecondaryDriverRequirement(updatedDetails);
 
         synchronizeSeatCapacity(updatedDetails);
 
@@ -410,6 +461,8 @@ public class TripService {
         Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyến xe với mã ID: " + id));
 
+        ensureTripCanBeDeleted(trip);
+
         // Nhật ký kilomet là lịch sử vận hành độc lập. Giữ lại log và chỉ tháo
         // liên kết đến chuyến trước khi xóa để không vi phạm khóa ngoại.
         vehicleMileageLogRepository.detachTrip(id);
@@ -418,6 +471,45 @@ public class TripService {
         // Ghế và đặt vé thuộc chuyến được xử lý theo cascade trên Trip.
         tripRepository.delete(trip);
         tripRepository.flush();
+    }
+
+    @Transactional
+    public int deleteTrips(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng chọn ít nhất một chuyến xe để xóa.");
+        }
+
+        List<Long> uniqueIds = ids.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (uniqueIds.isEmpty()) {
+            throw new IllegalArgumentException("Danh sách chuyến xe cần xóa không hợp lệ.");
+        }
+
+        List<Trip> selectedTrips = tripRepository.findAllById(uniqueIds);
+        if (selectedTrips.size() != uniqueIds.size()) {
+            throw new IllegalArgumentException("Một hoặc nhiều chuyến xe không còn tồn tại. Vui lòng tải lại danh sách.");
+        }
+
+        // Kiểm tra toàn bộ trước khi thay đổi dữ liệu: xóa tất cả hoặc không xóa gì.
+        selectedTrips.forEach(this::ensureTripCanBeDeleted);
+        uniqueIds.forEach(vehicleMileageLogRepository::detachTrip);
+        vehicleMileageLogRepository.flush();
+        tripRepository.deleteAll(selectedTrips);
+        tripRepository.flush();
+        return selectedTrips.size();
+    }
+
+    private void ensureTripCanBeDeleted(Trip trip) {
+        if ("COMPLETED".equalsIgnoreCase(trip.getStatus())) {
+            throw new IllegalStateException(
+                    "Không thể xóa chuyến xe đã hoàn thành vì đây là dữ liệu lịch sử vận hành.");
+        }
+        if (bookingRepository.existsByTripId(trip.getId())) {
+            throw new IllegalArgumentException(
+                    "Không thể xóa chuyến #" + trip.getId() + " vì chuyến này đã có dữ liệu đặt vé.");
+        }
     }
 
     private final com.smartbus.booking.repository.InspectorRepository inspectorRepository;
@@ -452,8 +544,34 @@ public class TripService {
             });
         }
 
+        if ("IN_PROGRESS".equals(normalizedStatus)) {
+            updateDriverOperationalState(trip.getAssignedDriverUsername(), trip.getDeparturePoint(), "DRIVING");
+            updateDriverOperationalState(trip.getSecondaryDriverUsername(), trip.getDeparturePoint(), "DRIVING");
+            updateInspectorStation(trip, trip.getDeparturePoint());
+        } else if ("COMPLETED".equals(normalizedStatus)) {
+            updateDriverOperationalState(trip.getAssignedDriverUsername(), trip.getArrivalPoint(), "FREE");
+            updateDriverOperationalState(trip.getSecondaryDriverUsername(), trip.getArrivalPoint(), "FREE");
+            updateInspectorStation(trip, trip.getArrivalPoint());
+        }
+
         vehicleMileageService.recordCompletedTrip(savedTrip);
         return savedTrip;
+    }
+
+    private void updateDriverOperationalState(String identity, String station, String driverStatus) {
+        findDriver(identity).ifPresent(driver -> {
+            driver.setCurrentStation(station);
+            driver.setDriverStatus(driverStatus);
+            userRepository.save(driver);
+        });
+    }
+
+    private void updateInspectorStation(Trip trip, String station) {
+        if (trip.getInspector() == null || trip.getInspector().getId() == null) return;
+        inspectorRepository.findById(trip.getInspector().getId()).ifPresent(inspector -> {
+            inspector.setCurrentStation(station);
+            inspectorRepository.save(inspector);
+        });
     }
 
     @Transactional
@@ -488,6 +606,31 @@ public class TripService {
                 && trip.getAssignedDriverUsername().equals(trip.getSecondaryDriverUsername())) {
             throw new IllegalArgumentException("Tài xế chính và tài xế phụ phải là hai người khác nhau.");
         }
+    }
+
+    private void validateSecondaryDriverRequirement(Trip trip) {
+        if (!"ASSIGNED".equalsIgnoreCase(trip.getStatus()) || !requiresSecondaryDriver(trip)) {
+            return;
+        }
+        if (trip.getSecondaryDriverUsername() == null || trip.getSecondaryDriverUsername().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Chuyến có thời lượng từ 6 giờ trở lên bắt buộc phải có tài xế phụ.");
+        }
+    }
+
+    private boolean requiresSecondaryDriver(Trip trip) {
+        if (trip.getDuration() == null || trip.getDuration().isBlank()) {
+            return false;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(\\d+)\\s*h(?:\\s*(\\d+)\\s*m)?", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(trip.getDuration());
+        if (!matcher.find()) {
+            return false;
+        }
+        int hours = Integer.parseInt(matcher.group(1));
+        int minutes = matcher.group(2) == null ? 0 : Integer.parseInt(matcher.group(2));
+        return (hours * 60) + minutes >= 360;
     }
 
     private void synchronizeSeatCapacity(Trip trip) {

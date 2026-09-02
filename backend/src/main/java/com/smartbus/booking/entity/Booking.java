@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Entity
 @Table(name = "bookings")
@@ -20,6 +21,12 @@ public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Mã vé công khai, ngẫu nhiên; không dùng ID tăng dần để tra cứu/hủy vé. */
+    // Cột cho phép tối đa 19 ký tự để tương thích mã đã phát hành trước đây;
+    // mã vé mới vẫn giữ dạng ngắn TN-XXXXXX.
+    @Column(name = "ticket_code", unique = true, length = 19)
+    private String ticketCode;
 
     @Column(nullable = false)
     private String customerName;
@@ -86,4 +93,14 @@ public class Booking {
     /** Loại của từng ghế để hiển thị; chỉ dựng khi trả API, không lưu trùng vào bookings. */
     @Transient
     private Map<String, SeatType> seatTypes;
+
+    @PrePersist
+    void ensureTicketCode() {
+        if (ticketCode == null || ticketCode.isBlank()) {
+            ticketCode = "TN-" + UUID.randomUUID().toString()
+                    .replace("-", "")
+                    .substring(0, 6)
+                    .toUpperCase();
+        }
+    }
 }

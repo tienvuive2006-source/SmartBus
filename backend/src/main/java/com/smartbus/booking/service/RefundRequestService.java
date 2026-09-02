@@ -93,7 +93,7 @@ public class RefundRequestService {
         refund.setProcessedBy(adminName(adminId));
         refund.setAdminNote(clean(request.getNote()));
         RefundRequest saved = repository.save(refund);
-        messagingTemplate.convertAndSend("/topic/refunds/" + saved.getUser().getId(), Map.of(
+        notifyUser(saved, Map.of(
                 "type", "REFUND_APPROVED",
                 "status", "APPROVED",
                 "refundId", saved.getId(),
@@ -129,7 +129,7 @@ public class RefundRequestService {
                 "Hoàn tiền chuyển khoản vé #" + saved.getBooking().getId(),
                 "REFUND-" + saved.getId(), adminName);
 
-        messagingTemplate.convertAndSend("/topic/refunds/" + saved.getUser().getId(), Map.of(
+        notifyUser(saved, Map.of(
                 "type", "REFUND_COMPLETED",
                 "status", "COMPLETED",
                 "refundId", saved.getId(),
@@ -153,7 +153,7 @@ public class RefundRequestService {
         refund.setAdminNote(clean(request.getNote()));
         refund.setProcessedBy(adminName(adminId));
         RefundRequest saved = repository.save(refund);
-        messagingTemplate.convertAndSend("/topic/refunds/" + saved.getUser().getId(), Map.of(
+        notifyUser(saved, Map.of(
                 "type", "REFUND_NEEDS_INFO",
                 "status", "NEEDS_INFO",
                 "refundId", saved.getId(),
@@ -168,7 +168,7 @@ public class RefundRequestService {
     @Transactional
     public RefundRequestResponse resubmit(Long id, Long userId, RefundBankUpdateRequest request) {
         RefundRequest refund = locked(id);
-        if (!refund.getUser().getId().equals(userId)) {
+        if (refund.getUser() == null || !refund.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Bạn không có quyền cập nhật yêu cầu hoàn tiền này.");
         }
         if (!"BANK_TRANSFER".equals(refund.getRefundMethod())) {
@@ -201,7 +201,7 @@ public class RefundRequestService {
                 .booking(RefundRequestResponse.BookingSummary.builder()
                         .id(booking.getId()).customerName(booking.getCustomerName())
                         .customerPhone(booking.getCustomerPhone()).build())
-                .user(RefundRequestResponse.UserSummary.builder()
+                .user(user == null ? null : RefundRequestResponse.UserSummary.builder()
                         .id(user.getId()).fullName(user.getFullName()).phone(user.getPhone()).build())
                 .refundMethod(refund.getRefundMethod()).refundAmount(refund.getRefundAmount())
                 .status(refund.getStatus()).bankName(refund.getBankName())
@@ -215,6 +215,12 @@ public class RefundRequestService {
     private RefundRequest locked(Long id) {
         return repository.findByIdForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy yêu cầu hoàn tiền."));
+    }
+
+    private void notifyUser(RefundRequest refund, Map<String, Object> payload) {
+        if (refund.getUser() != null) {
+            messagingTemplate.convertAndSend("/topic/refunds/" + refund.getUser().getId(), payload);
+        }
     }
 
     private void requireStatus(RefundRequest refund, String status) {

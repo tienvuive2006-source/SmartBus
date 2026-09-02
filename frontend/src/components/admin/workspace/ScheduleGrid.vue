@@ -51,6 +51,28 @@
       @reset="$emit('reset-filters')"
     />
 
+    <!-- ⚠️ Banner cảnh báo khẩn: chưa phân công trong 24h -->
+    <div
+      v-if="urgentCount > 0"
+      class="flex items-center gap-3 px-5 py-2.5 bg-rose-50 border-b-2 border-rose-300 shrink-0 z-10"
+    >
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span
+          class="material-symbols-outlined text-rose-600 text-[18px] animate-pulse"
+          style="font-variation-settings: 'FILL' 1"
+        >warning</span>
+        <span class="text-[10px] font-black text-rose-700 uppercase tracking-wider">Khẩn cấp</span>
+      </div>
+      <p class="text-xs font-bold text-rose-800 flex-1">
+        <b class="text-rose-600">{{ urgentCount }} chuyến</b>
+        sắp khởi hành trong <b>24 giờ tới</b> chưa được phân công tài xế!
+        Hãy click vào thẻ vàng để phân công ngay.
+      </p>
+      <span
+        class="shrink-0 w-7 h-7 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center text-xs font-black"
+      >{{ urgentCount }}</span>
+    </div>
+
     <!-- Grid Body -->
     <div class="flex-1 overflow-y-auto overflow-x-auto relative bg-white custom-scrollbar" ref="gridContainer">
       <div class="min-w-[800px] flex flex-col relative" :style="{ height: gridHeight + 'px' }">
@@ -99,6 +121,7 @@ import { ref, computed } from 'vue';
 import TripBlock from './TripBlock.vue';
 import LeaveBlock from './LeaveBlock.vue';
 import ScheduleFilters from './ScheduleFilters.vue';
+import { toBusinessDateString } from '@/utils/businessDate';
 
 const props = defineProps({
   selectedDriver: { type: Object, default: null },
@@ -106,6 +129,7 @@ const props = defineProps({
   weekLabel: { type: String, required: true },
   loadingSchedule: { type: Boolean, default: false },
   statsTrips: { type: Array, default: () => [] },
+  allTrips: { type: Array, default: () => [] },
   getTripsForDay: { type: Function, required: true },
   getLeavesForDay: { type: Function, required: true },
   filterSearch: { type: String, default: '' },
@@ -152,9 +176,25 @@ const gridHeight = hours.length * hourHeight + 48; // + header
 const gridContainer = ref(null);
 
 const isToday = (dateStr) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = toBusinessDateString();
   return dateStr === today;
 };
+
+// Chưa phân công + khởi hành trong 24h tới
+const urgentCount = computed(() => {
+  const now = Date.now();
+  const in24h = now + 24 * 60 * 60 * 1000;
+  return (props.allTrips || []).filter(trip => {
+    if (trip.assignedDriverUsername) return false;
+    if (!trip.departureDate || !trip.departureTime) return false;
+    try {
+      const [y, m, d] = trip.departureDate.split('T')[0].split('-');
+      const [hh, mm] = trip.departureTime.split(':');
+      const depMs = new Date(y, m - 1, d, hh, mm).getTime();
+      return depMs > now && depMs <= in24h;
+    } catch { return false; }
+  }).length;
+});
 </script>
 
 <style scoped>

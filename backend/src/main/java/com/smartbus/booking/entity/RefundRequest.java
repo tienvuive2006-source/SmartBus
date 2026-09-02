@@ -28,8 +28,8 @@ public class RefundRequest {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "userReview"})
     private Booking booking;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password"})
     private User user;
 

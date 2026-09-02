@@ -35,8 +35,8 @@ public class TicketExchangeEmailService {
         CompletableFuture.runAsync(() -> {
             try {
                 String qrText = String.format(
-                        "Mã đặt vé: #%d\nKhách: %s\nGhế mới: %s\nTrạng thái: ĐÃ ĐỔI VÉ",
-                        booking.getId(),
+                        "Mã đặt vé: %s\nKhách: %s\nGhế mới: %s\nTrạng thái: ĐÃ ĐỔI VÉ",
+                        booking.getTicketCode(),
                         booking.getCustomerName(),
                         String.join(", ", booking.getSeatNumbers()));
                 byte[] qrCode = qrCodeGeneratorService.generateQrCodeImage(qrText, 500, 500);
@@ -45,7 +45,7 @@ public class TicketExchangeEmailService {
                 MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
                 helper.setFrom("tienvuive2006@gmail.com", "Trung Nam Limousine");
                 helper.setTo(booking.getCustomerEmail());
-                helper.setSubject("Đổi vé thành công - Mã vé #" + booking.getId());
+                helper.setSubject("Đổi vé thành công - Mã vé " + booking.getTicketCode());
                 helper.setText(buildHtml(
                         booking, oldTripId, oldSeats, oldPrice, newPrice, priceDifference), true);
                 helper.addInline("exchangeQrCode", new ByteArrayResource(qrCode), "image/png");
@@ -82,7 +82,7 @@ public class TicketExchangeEmailService {
                 + "<p style='margin:0;color:#d1fae5'>Vé điện tử của bạn đã được cập nhật</p></div>"
                 + "<div style='padding:30px'>"
                 + "<p>Xin chào <b>" + escape(booking.getCustomerName()) + "</b>,</p>"
-                + "<p style='color:#475569;line-height:1.6'>Yêu cầu đổi vé <b>#" + booking.getId()
+                + "<p style='color:#475569;line-height:1.6'>Yêu cầu đổi vé <b>" + booking.getTicketCode()
                 + "</b> đã hoàn tất. Mã QR cũ không còn được sử dụng; vui lòng dùng mã QR mới bên dưới.</p>"
                 + "<div style='background:#f8fafc;border:1px dashed #cbd5e1;border-radius:14px;padding:20px'>"
                 + row("Thay đổi", oldTripId.equals(booking.getTrip().getId()) ? "Đổi ghế cùng chuyến" : "Đổi ngày/chuyến")

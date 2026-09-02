@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-[#f2f5f8] font-sans text-slate-800">
+  <div class="history-page min-h-screen bg-[#f2f5f8] font-sans text-slate-800">
 
 
-    <div class="pb-12 px-4 animate-fade-in bg-[#f2f5f8]">
-    <main class="max-w-3xl mx-auto space-y-6 py-6">
-      <div class="bg-gradient-to-r from-[#075955] to-[#05403d] p-6 rounded-3xl shadow-md border border-[#05403d] relative overflow-hidden text-white mb-4">
+    <div class="history-content pb-12 px-4 animate-fade-in bg-[#f2f5f8]">
+    <main class="history-main max-w-3xl mx-auto space-y-6 py-6">
+      <div class="history-heading bg-gradient-to-r from-[#075955] to-[#05403d] p-6 rounded-3xl shadow-md border border-[#05403d] relative overflow-hidden text-white mb-4">
         <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
         <h1 class="text-headline-md font-black flex items-center gap-2">
           <span class="material-symbols-outlined text-yellow-300 text-[32px]">confirmation_number</span>
@@ -13,25 +13,25 @@
         <p class="text-label-md opacity-80 mt-1 tracking-widest font-bold">QUẢN LÝ TOÀN BỘ HÀNH TRÌNH CỦA BẠN</p>
       </div>
 
-      <div class="flex bg-white p-1.5 rounded-2xl border border-gray-200 mb-6 shadow-sm">
+      <div class="history-tabs flex bg-white p-1.5 rounded-2xl border border-gray-200 mb-6 shadow-sm">
         <button 
           @click="activeTab = 'upcoming'"
-          :class="['flex-1 py-3 rounded-xl text-body-md font-black transition-all duration-200 flex items-center justify-center gap-1.5', activeTab === 'upcoming' ? 'bg-[#075955] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']"
+          :class="['history-tab flex-1 py-3 rounded-xl text-body-md font-black transition-all duration-200 flex items-center justify-center gap-1.5', activeTab === 'upcoming' ? 'bg-[#075955] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']"
         >
           <span class="material-symbols-outlined text-[18px]">upcoming</span>
-          ĐANG HOẠT ĐỘNG ({{ upcomingTickets.length }})
+          <span>Đang hoạt động</span><b>{{ upcomingTickets.length }}</b>
         </button>
         <button 
           @click="activeTab = 'completed'"
-          :class="['flex-1 py-3 rounded-xl text-body-md font-black transition-all duration-200 flex items-center justify-center gap-1.5', activeTab === 'completed' ? 'bg-[#075955] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']"
+          :class="['history-tab flex-1 py-3 rounded-xl text-body-md font-black transition-all duration-200 flex items-center justify-center gap-1.5', activeTab === 'completed' ? 'bg-[#075955] text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100']"
         >
           <span class="material-symbols-outlined text-[18px]">done_all</span>
-          ĐÃ HỦY / ĐÃ QUA ({{ completedTickets.length }})
+          <span>Đã hủy / Đã qua</span><b>{{ completedTickets.length }}</b>
         </button>
       </div>
 
-      <div class="flex flex-col gap-6" v-if="activeTab === 'upcoming'">
-        <div v-if="upcomingTickets.length === 0" class="flex flex-col items-center justify-center py-16 bg-white border border-dashed border-gray-300 rounded-3xl shadow-inner text-center px-6">
+      <div class="ticket-list flex flex-col gap-6" v-if="activeTab === 'upcoming'">
+        <div v-if="upcomingTickets.length === 0" class="history-empty flex flex-col items-center justify-center py-16 bg-white border border-dashed border-gray-300 rounded-3xl shadow-inner text-center px-6">
           <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400">
             <span class="material-symbols-outlined text-5xl">search_off</span>
           </div>
@@ -45,13 +45,13 @@
         <div 
           v-for="(ticket, index) in upcomingTickets" 
           :key="ticket.id || index"
-          class="bg-white rounded-3xl shadow-[0px_8px_30px_rgba(0,0,0,0.03)] overflow-hidden border border-gray-200 relative group animate-slide-up hover:shadow-md transition-all duration-300"
+          class="ticket-card bg-white rounded-3xl shadow-[0px_8px_30px_rgba(0,0,0,0.03)] overflow-hidden border border-gray-200 relative group animate-slide-up hover:shadow-md transition-all duration-300"
           :style="`animation-delay: ${index * 0.1}s`"
         >
           <div class="h-1.5 w-full bg-emerald-500"></div>
 
-          <div class="p-6 relative">
-            <div class="flex justify-between items-start mb-5">
+          <div class="ticket-card-body p-6 relative">
+            <div class="ticket-card-header flex justify-between items-start mb-5">
               <div class="flex flex-col">
                 <div class="flex items-center gap-2 mb-3">
                   <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-emerald-100/50 shadow-sm" v-if="ticket.status === 'PAID'">
@@ -70,7 +70,7 @@
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                     ĐÃ LÊN XE
                   </span>
-                  <span class="text-[11px] font-bold text-gray-400">#{{ ticket.id }}</span>
+                  <span class="text-[11px] font-bold text-gray-400">{{ ticketReference(ticket) }}</span>
                 </div>
                 <h2 class="text-headline-sm font-black text-gray-800 flex items-center gap-2 leading-tight">
                   {{ ticket.from }} 
@@ -86,7 +86,7 @@
                 </div>
               </div>
 
-              <div class="flex gap-2">
+              <div class="ticket-actions flex gap-2">
                 <button
                   v-if="ticket.status === 'PAID' && !ticket.exchange"
                   @click="$router.push(`/booking/exchange/${ticket.id}`)"
@@ -127,8 +127,8 @@
               <div class="absolute -right-[34px] top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-50 rounded-full border border-gray-200 shadow-inner"></div>
             </div>
 
-            <div class="flex justify-between items-end">
-              <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+            <div class="ticket-summary flex justify-between items-end">
+              <div class="ticket-details grid grid-cols-2 gap-x-8 gap-y-2">
                 <div>
                   <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Giờ khởi hành</p>
                   <p class="text-body-md font-black text-gray-800 flex items-center gap-1">
@@ -144,7 +144,7 @@
                   </p>
                 </div>
               </div>
-              <div class="text-right border-l border-gray-100 pl-4">
+              <div class="ticket-price text-right border-l border-gray-100 pl-4">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Đã trả qua {{ ticket.method || 'Ví MoMo' }}</p>
                 <p class="text-headline-sm font-black text-[#075955] tracking-tight">{{ parseFloat(ticket.total).toLocaleString('vi-VN') }}đ</p>
               </div>
@@ -205,8 +205,8 @@
         </div>
       </div>
 
-      <div class="flex flex-col gap-6" v-else-if="activeTab === 'completed'">
-        <div v-if="completedTickets.length === 0" class="flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm text-center px-6 animate-fade-in">
+      <div class="ticket-list flex flex-col gap-6" v-else-if="activeTab === 'completed'">
+        <div v-if="completedTickets.length === 0" class="history-empty flex flex-col items-center justify-center py-20 bg-white border border-gray-200 rounded-3xl shadow-sm text-center px-6 animate-fade-in">
           <span class="material-symbols-outlined text-6xl text-gray-300 mb-4 animate-pulse">history_toggle_off</span>
           <h3 class="text-headline-sm font-black text-gray-800">Không có dữ liệu quá khứ</h3>
           <p class="text-body-md text-gray-500 mt-1">Các chuyến đi sau khi hoàn thành lộ trình sẽ tự động lưu tại đây.</p>
@@ -214,13 +214,13 @@
         <div 
           v-for="(ticket, index) in completedTickets" 
           :key="ticket.id || index"
-          class="bg-white/80 rounded-3xl shadow-sm overflow-hidden border border-gray-200 relative group animate-slide-up transition-all duration-300 opacity-90 hover:opacity-100"
+          class="ticket-card bg-white/80 rounded-3xl shadow-sm overflow-hidden border border-gray-200 relative group animate-slide-up transition-all duration-300 opacity-90 hover:opacity-100"
           :style="`animation-delay: ${index * 0.1}s`"
         >
           <div class="h-1.5 w-full bg-gray-400"></div>
 
-          <div class="p-6 relative">
-            <div class="flex justify-between items-start mb-5">
+          <div class="ticket-card-body p-6 relative">
+            <div class="ticket-card-header flex justify-between items-start mb-5">
               <div class="flex flex-col">
                 <div class="flex items-center gap-2 mb-3">
                   <span class="inline-flex items-center gap-1 bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border border-rose-100/50 shadow-sm" v-if="ticket.status === 'CANCELLED'">
@@ -235,7 +235,7 @@
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     HOÀN THÀNH
                   </span>
-                  <span class="text-[11px] font-bold text-gray-400">#{{ ticket.id }}</span>
+                  <span class="text-[11px] font-bold text-gray-400">{{ ticketReference(ticket) }}</span>
                   <span v-if="ticket.status === 'CANCELLED' && ticket.refundRequest" class="refund-status" :class="refundStatusClass(ticket.refundRequest.status)">
                     {{ ticket.refundRequest.refundMethod === 'BANK_TRANSFER' ? 'Ngân hàng' : 'Ví' }} · {{ refundStatusText(ticket.refundRequest.status) }}
                   </span>
@@ -247,7 +247,7 @@
                 </h2>
               </div>
 
-              <div class="flex gap-2">
+              <div class="ticket-actions flex gap-2">
                 <button 
                   v-if="!ticket.isReviewed && (ticket.status === 'COMPLETED' || ticket.status === 'CHECKED_IN')"
                   @click="openReviewModal(ticket)"
@@ -268,8 +268,8 @@
 
             <div class="border-t border-dashed border-gray-300 my-4"></div>
 
-            <div class="flex justify-between items-end">
-              <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+            <div class="ticket-summary flex justify-between items-end">
+              <div class="ticket-details grid grid-cols-2 gap-x-8 gap-y-2">
                 <div>
                   <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Giờ khởi hành</p>
                   <p class="text-body-md font-black text-gray-800 flex items-center gap-1">
@@ -285,7 +285,7 @@
                   </p>
                 </div>
               </div>
-              <div class="text-right border-l border-gray-100 pl-4">
+              <div class="ticket-price text-right border-l border-gray-100 pl-4">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-0.5">Đã trả qua {{ ticket.method || 'Ví MoMo' }}</p>
                 <p class="text-headline-sm font-black text-gray-600 tracking-tight" :class="{'line-through text-gray-400': ticket.status === 'CANCELLED'}">{{ parseFloat(ticket.total).toLocaleString('vi-VN') }}đ</p>
               </div>
@@ -333,11 +333,11 @@
 
         <div class="p-6 w-full text-center">
           <h3 class="text-headline-sm font-black text-gray-900 mb-1">Mã Lên Xe Chi Nhánh</h3>
-          <p class="text-[11px] font-bold text-[#075955] uppercase tracking-widest mb-6">{{ selectedTicket.id }}</p>
+          <p class="text-[11px] font-bold text-[#075955] uppercase tracking-widest mb-6">{{ ticketReference(selectedTicket) }}</p>
           
           <div class="bg-gray-50 p-5 rounded-3xl border border-gray-200 mb-4 inline-block shadow-inner relative group">
             <img 
-              :src="`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent('Mã đặt vé: #' + selectedTicket.id + '\nKhách: ' + (authStore.currentUser?.fullName || 'Quý khách') + '\nGhế: ' + selectedTicket.seats + '\nTrạng thái: ' + (selectedTicket.method === 'CASH' ? 'CHƯA THANH TOÁN (THU TIỀN MẶT)' : 'ĐÃ THANH TOÁN'))}&color=075955&bgcolor=f8fafc`" 
+              :src="`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent('Mã đặt vé: ' + ticketReference(selectedTicket) + '\nKhách: ' + (authStore.currentUser?.fullName || 'Quý khách') + '\nGhế: ' + selectedTicket.seats + '\nTrạng thái: ' + (selectedTicket.method === 'CASH' ? 'CHƯA THANH TOÁN (THU TIỀN MẶT)' : 'ĐÃ THANH TOÁN'))}&color=075955&bgcolor=f8fafc`"
               alt="Modal QR" 
               class="w-44 h-44 group-hover:scale-105 transition-transform duration-300 mix-blend-multiply"
             />
@@ -428,13 +428,13 @@
           <p class="text-xs text-rose-600 leading-relaxed">
             Chuyến xe của bạn sẽ khởi hành trong vòng chưa tới 12 tiếng nữa. 
             Theo quy định, hệ thống không hỗ trợ hoàn tiền khi hủy vé sát giờ khởi hành.
-            <br/><br/>Mã vé của bạn: <b>#{{ selectedTicket.id }}</b>. Vui lòng liên hệ tổng đài 1900 1234 nếu cần hỗ trợ khẩn cấp.
+            <br/><br/>Mã vé của bạn: <b>{{ ticketReference(selectedTicket) }}</b>. Vui lòng liên hệ tổng đài 1900 1234 nếu cần hỗ trợ khẩn cấp.
           </p>
         </div>
         
         <template v-else>
           <p class="text-xs text-gray-500 font-medium mb-6 leading-relaxed">
-            Mã vé: <b>#{{ selectedTicket.id }}</b>.<br/>
+            Mã vé: <b>{{ ticketReference(selectedTicket) }}</b>.<br/>
             <span v-if="selectedTicket.status === 'PAID' && selectedTicket.method !== 'CASH'">
               <span v-if="hoursToDeparture >= 12 && hoursToDeparture < 24">
                 Bạn hủy vé trước giờ khởi hành 12-24 tiếng. Phí hủy là 30%, số tiền còn lại được hoàn theo phương thức bạn chọn.
@@ -445,6 +445,17 @@
             </span>
             <span v-else>Thao tác này không thể hoàn tác.</span>
           </p>
+
+          <label v-if="!authStore.isLoggedIn" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Số điện thoại đã đặt vé</label>
+          <input
+            v-if="!authStore.isLoggedIn"
+            v-model.trim="guestCancellationPhone"
+            type="tel"
+            inputmode="numeric"
+            maxlength="11"
+            placeholder="Nhập số điện thoại để xác minh vé"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700 outline-none focus:border-[#075955] mb-4"
+          />
 
           <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Lý do hủy vé (Bắt buộc)</label>
           <select v-model="cancelReason" class="w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700 outline-none focus:border-[#075955] mb-4">
@@ -471,7 +482,7 @@
           <div v-if="refundEligible" class="mb-6">
             <p class="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">Nhận tiền hoàn bằng</p>
             <div class="grid grid-cols-2 gap-3">
-              <button type="button" class="refund-method" :class="{ active: refundMethod === 'WALLET' }" @click="refundMethod = 'WALLET'">
+              <button v-if="authStore.isLoggedIn" type="button" class="refund-method" :class="{ active: refundMethod === 'WALLET' }" @click="refundMethod = 'WALLET'">
                 <span class="material-symbols-outlined">account_balance_wallet</span>
                 <span><b>Ví Trung Nam</b><small>Nhận tiền ngay</small></span>
               </button>
@@ -597,6 +608,7 @@ const allBuses = ref([]);
 
 const authStore = useAuthStore();
 const api = useApi();
+const ticketReference = ticket => ticket?.ticketCode || ticket?.id || '';
 const vietnameseBanks = [
   { code: 'VCB', name: 'Vietcombank' },
   { code: 'BIDV', name: 'BIDV' },
@@ -664,6 +676,7 @@ const loadHistory = async () => {
           const bus = allBuses.value.find(bus => bus.licensePlate === b.trip.assignedLicensePlate);
           return {
             id: b.id,
+            ticketCode: b.ticketCode,
             from: b.trip.departurePoint,
             to: b.trip.arrivalPoint,
             busType: b.trip.busType,
@@ -795,6 +808,7 @@ const refundUpdateForm = ref({ bankName: '', bankAccountNumber: '', bankAccountN
 const refundUpdateError = ref('');
 const refundUpdateSubmitting = ref(false);
 const cancelReason = ref('');
+const guestCancellationPhone = ref('');
 const isCancelling = ref(false);
 const hoursToDeparture = ref(24);
 const refundMethod = ref('WALLET');
@@ -804,19 +818,17 @@ const cancelError = ref('');
 const refundEligible = computed(() => selectedTicket.value?.status === 'PAID' && selectedTicket.value?.method !== 'CASH');
 const canSubmitCancellation = computed(() => {
   if (!cancelReason.value) return false;
+  if (!authStore.isLoggedIn && !/^\d{10,11}$/.test(guestCancellationPhone.value.replace(/\s+/g, ''))) return false;
   if (!refundEligible.value || refundMethod.value === 'WALLET') return true;
   const accountNumber = bankInfo.value.accountNumber.replace(/\s+/g, '');
   return Boolean(bankInfo.value.bankName && bankInfo.value.accountName && /^\d{6,30}$/.test(accountNumber));
 });
 
 const openCancelModal = (ticket) => {
-  if (!authStore.isLoggedIn) {
-    alert("Vui lòng đăng nhập để hủy vé trực tuyến! Khách vãng lai vui lòng gọi Hotline 1900 1234 để được hỗ trợ hủy vé.");
-    return;
-  }
   selectedTicket.value = ticket;
   cancelReason.value = '';
-  refundMethod.value = 'WALLET';
+  guestCancellationPhone.value = ticket.customerPhone || '';
+  refundMethod.value = authStore.isLoggedIn ? 'WALLET' : 'BANK_TRANSFER';
   bankInfo.value = { bankName: '', accountNumber: '', accountName: '' };
   cancelError.value = '';
   
@@ -893,7 +905,11 @@ const confirmCancel = async () => {
   isCancelling.value = true;
   cancelError.value = '';
   try {
-    const res = await api.post(`/auth/me/bookings/${selectedTicket.value.id}/cancel`, {
+    const cancellationReference = authStore.isLoggedIn
+      ? selectedTicket.value.id
+      : ticketReference(selectedTicket.value);
+    const res = await api.post(`/auth/me/bookings/${encodeURIComponent(cancellationReference)}/cancel`, {
+      customerPhone: authStore.isLoggedIn ? null : guestCancellationPhone.value,
       reason: cancelReason.value,
       refundMethod: refundEligible.value ? refundMethod.value : 'NONE',
       bankName: refundMethod.value === 'BANK_TRANSFER' ? bankInfo.value.bankName : null,
@@ -922,6 +938,16 @@ const confirmCancel = async () => {
       amount: Number(res.data.refundAmount || 0),
       method: res.data.refundMethod
     };
+    if (!authStore.isLoggedIn) {
+      const historyKey = localStorage.getItem('trungnam_history') !== null
+        ? 'trungnam_history'
+        : (localStorage.getItem('saomaifly_history') !== null ? 'saomaifly_history' : 'skybus_history');
+      const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+      history.forEach(ticket => {
+        if (String(ticket.id) === String(selectedTicket.value.id)) ticket.status = 'CANCELLED';
+      });
+      localStorage.setItem(historyKey, JSON.stringify(history));
+    }
     loadHistory(); // Tải lại danh sách
   } catch (err) {
     cancelError.value = err.response?.data?.message || err.response?.data || err.message || 'Không thể hủy vé.';
@@ -997,5 +1023,203 @@ onUnmounted(() => {
 }
 .animate-slide-up {
   animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 767px) {
+  .history-content {
+    padding: 0 0.75rem 6rem !important;
+  }
+
+  .history-main {
+    padding-block: 0.75rem !important;
+    row-gap: 0.85rem !important;
+  }
+
+  .history-heading {
+    margin-bottom: 0 !important;
+    padding: 1rem !important;
+    border-radius: 1rem !important;
+    background: #075955 !important;
+    box-shadow: 0 0.55rem 1.4rem rgb(7 89 85 / 0.16) !important;
+  }
+
+  .history-heading > div:first-child {
+    display: none;
+  }
+
+  .history-heading h1 {
+    gap: 0.45rem !important;
+    font-size: 1.1rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .history-heading h1 .material-symbols-outlined {
+    font-size: 1.4rem !important;
+  }
+
+  .history-heading p {
+    margin-top: 0.25rem !important;
+    font-size: 0.58rem !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0.09em !important;
+  }
+
+  .history-tabs {
+    position: sticky;
+    top: 4.5rem;
+    z-index: 30;
+    gap: 0.3rem;
+    margin-bottom: 0 !important;
+    padding: 0.3rem !important;
+    border-radius: 0.9rem !important;
+    box-shadow: 0 0.35rem 1rem rgb(15 23 42 / 0.08) !important;
+  }
+
+  .history-tab {
+    min-width: 0;
+    min-height: 2.75rem;
+    gap: 0.35rem !important;
+    padding: 0.55rem 0.35rem !important;
+    border-radius: 0.68rem !important;
+    font-size: 0.64rem !important;
+    line-height: 1.15 !important;
+    white-space: nowrap;
+  }
+
+  .history-tab .material-symbols-outlined {
+    display: none;
+  }
+
+  .history-tab b {
+    display: grid;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    place-items: center;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.18);
+    font-size: 0.58rem;
+  }
+
+  .history-tab:not(.text-white) b {
+    background: #f1f5f9;
+  }
+
+  .ticket-list {
+    gap: 0.85rem !important;
+  }
+
+  .history-empty {
+    min-height: clamp(18rem, 44dvh, 25rem);
+    padding: 2.75rem 1.25rem !important;
+    border-style: solid !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 0.5rem 1.5rem rgb(15 23 42 / 0.04) !important;
+  }
+
+  .history-empty > div:first-child {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    margin-bottom: 0.85rem !important;
+  }
+
+  .history-empty > div:first-child .material-symbols-outlined,
+  .history-empty > .material-symbols-outlined {
+    margin-bottom: 0.85rem !important;
+    font-size: 2.4rem !important;
+  }
+
+  .history-empty h3 {
+    font-size: 1rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .history-empty p {
+    max-width: 17rem;
+    font-size: 0.72rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .history-empty button {
+    width: 100%;
+    max-width: 12rem;
+    min-height: 2.75rem;
+    margin-top: 1.25rem !important;
+    border-radius: 0.75rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .ticket-card {
+    border-radius: 1rem !important;
+  }
+
+  .ticket-card-body {
+    padding: 1rem !important;
+  }
+
+  .ticket-card-header {
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .ticket-card-header > div:first-child {
+    width: 100%;
+  }
+
+  .ticket-card-header h2 {
+    font-size: 1rem !important;
+  }
+
+  .ticket-actions {
+    display: grid !important;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem !important;
+  }
+
+  .ticket-actions > * {
+    min-width: 0;
+    min-height: 2.75rem;
+    flex-direction: row !important;
+    justify-content: center;
+    gap: 0.3rem !important;
+    padding: 0.45rem !important;
+    border-radius: 0.7rem !important;
+  }
+
+  .ticket-actions .material-symbols-outlined {
+    font-size: 1.15rem !important;
+  }
+
+  .ticket-actions span:last-child {
+    font-size: 0.52rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .ticket-summary {
+    display: grid !important;
+    gap: 0.85rem;
+  }
+
+  .ticket-details {
+    width: 100%;
+    gap: 0.75rem !important;
+  }
+
+  .ticket-price {
+    width: 100%;
+    padding: 0.75rem 0 0 !important;
+    border-top: 1px solid #f1f5f9;
+    border-left: 0 !important;
+    text-align: left !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-scale-up,
+  .animate-slide-up {
+    animation: none !important;
+  }
 }
 </style>

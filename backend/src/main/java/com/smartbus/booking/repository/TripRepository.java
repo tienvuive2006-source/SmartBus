@@ -56,7 +56,7 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
         "SELECT t FROM Trip t WHERE (t.assignedDriverUsername = :driverUsername " +
         "OR t.secondaryDriverUsername = :driverUsername) " +
         "AND t.departureDate = :departureDate " +
-        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND t.status != 'CANCELLED' " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
     )
     List<Trip> findTripsForDriverOnDate(
@@ -69,7 +69,7 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
         "SELECT t FROM Trip t WHERE (t.assignedDriverUsername = :driverUsername " +
         "OR t.secondaryDriverUsername = :driverUsername) " +
         "AND t.departureDate BETWEEN :fromDate AND :toDate " +
-        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND t.status != 'CANCELLED' " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
     )
     List<Trip> findTripsForDriverInDateRange(
@@ -79,13 +79,24 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
         @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
     );
 
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE (t.assignedDriverUsername = :driverUsername " +
+        "OR t.secondaryDriverUsername = :driverUsername) " +
+        "AND t.status != 'CANCELLED' " +
+        "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
+    )
+    List<Trip> findTripsForDriverSchedule(
+        @org.springframework.data.repository.query.Param("driverUsername") String driverUsername,
+        @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
+    );
+
     /**
      * Tìm tất cả chuyến xe của 1 phương tiện (biển số) trong cùng 1 ngày.
      */
     @org.springframework.data.jpa.repository.Query(
         "SELECT t FROM Trip t WHERE t.assignedLicensePlate = :licensePlate " +
         "AND t.departureDate = :departureDate " +
-        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND t.status != 'CANCELLED' " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
     )
     List<Trip> findTripsForBusOnDate(
@@ -97,7 +108,7 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     @org.springframework.data.jpa.repository.Query(
         "SELECT t FROM Trip t WHERE t.assignedLicensePlate = :licensePlate " +
         "AND t.departureDate BETWEEN :fromDate AND :toDate " +
-        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND t.status != 'CANCELLED' " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
     )
     List<Trip> findTripsForBusInDateRange(
@@ -107,13 +118,23 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
         @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
     );
 
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE t.assignedLicensePlate = :licensePlate " +
+        "AND t.status != 'CANCELLED' " +
+        "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
+    )
+    List<Trip> findTripsForBusSchedule(
+        @org.springframework.data.repository.query.Param("licensePlate") String licensePlate,
+        @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
+    );
+
     /**
      * Tìm tất cả chuyến xe của 1 lơ xe trong cùng 1 ngày.
      */
     @org.springframework.data.jpa.repository.Query(
         "SELECT t FROM Trip t WHERE t.inspector.id = :inspectorId " +
         "AND t.departureDate = :departureDate " +
-        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND t.status != 'CANCELLED' " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
     )
     List<Trip> findTripsForInspectorOnDate(
@@ -125,13 +146,23 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
     @org.springframework.data.jpa.repository.Query(
         "SELECT t FROM Trip t WHERE t.inspector.id = :inspectorId " +
         "AND t.departureDate BETWEEN :fromDate AND :toDate " +
-        "AND t.status NOT IN ('CANCELLED', 'COMPLETED') " +
+        "AND t.status != 'CANCELLED' " +
         "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
     )
     List<Trip> findTripsForInspectorInDateRange(
         @org.springframework.data.repository.query.Param("inspectorId") Long inspectorId,
         @org.springframework.data.repository.query.Param("fromDate") String fromDate,
         @org.springframework.data.repository.query.Param("toDate") String toDate,
+        @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
+    );
+
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT t FROM Trip t WHERE t.inspector.id = :inspectorId " +
+        "AND t.status != 'CANCELLED' " +
+        "AND (:excludeTripId IS NULL OR t.id != :excludeTripId)"
+    )
+    List<Trip> findTripsForInspectorSchedule(
+        @org.springframework.data.repository.query.Param("inspectorId") Long inspectorId,
         @org.springframework.data.repository.query.Param("excludeTripId") Long excludeTripId
     );
 

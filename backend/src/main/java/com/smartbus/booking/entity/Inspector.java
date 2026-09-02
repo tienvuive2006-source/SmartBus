@@ -24,6 +24,9 @@ public class Inspector {
     @Column
     private String employeeCode;
 
+    @Column(name = "current_station", length = 500)
+    private String currentStation;
+
     // Liên kết với tài khoản đăng nhập bên bảng Users
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id")

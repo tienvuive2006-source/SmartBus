@@ -28,15 +28,15 @@
           <input
             :value="modelValuePriceMax"
             type="range"
-            min="300000"
-            max="1200000"
-            step="50000"
+            min="0"
+            :max="priceCeiling"
+            step="100000"
             class="price-range mt-4 w-full"
             aria-label="Giá vé tối đa"
             @input="$emit('update:modelValuePriceMax', Number($event.target.value))"
           />
           <div class="mt-1 flex justify-between text-[10px] font-medium text-slate-400">
-            <span>300.000đ</span><span>1.200.000đ</span>
+            <span>0đ</span><span>{{ formatPrice(priceCeiling) }}</span>
           </div>
         </section>
 
@@ -115,7 +115,8 @@ const props = defineProps({
   sortOptions: { type: Array, required: true },
   busTypeOptions: { type: Array, default: () => [] },
   seatClassOptions: { type: Array, default: () => [] },
-  utilityOptions: { type: Array, default: () => [] }
+  utilityOptions: { type: Array, default: () => [] },
+  priceCeiling: { type: Number, default: 1200000 }
 });
 
 const emit = defineEmits([

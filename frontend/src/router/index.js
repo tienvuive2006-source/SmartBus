@@ -12,7 +12,6 @@ const PaymentSuccessView = () => import('../views/booking/PaymentSuccessView.vue
 const TicketExchangeView = () => import('../views/booking/TicketExchangeView.vue')
 const ProfileView = () => import('../views/user/ProfileView.vue')
 const HistoryView = () => import('../views/user/HistoryView.vue')
-const AiAssistantView = () => import('../views/user/AiAssistantView.vue')
 const NotificationsView = () => import('../views/user/NotificationsView.vue')
 const AdminDashboardView = () => import('../views/admin/AdminDashboardView.vue')
 const AdminFundManagerView = () => import('../views/admin/AdminFundManagerView.vue')
@@ -21,6 +20,7 @@ const AdminFleetStatusView = () => import('../views/admin/AdminFleetStatusView.v
 
 const LoginView = () => import('../views/auth/LoginView.vue')
 const RegisterView = () => import('../views/auth/RegisterView.vue')
+const ForgotPasswordView = () => import('../views/auth/ForgotPasswordView.vue')
 const CompletePhoneView = () => import('../views/auth/CompletePhoneView.vue')
 const AdminUserManagerView = () => import('../views/admin/AdminUserManagerView.vue')
 const AdminBookingManagerView = () => import('../views/admin/AdminBookingManagerView.vue')
@@ -107,12 +107,6 @@ const router = createRouter({
           meta: { title: 'Lịch sử đặt vé', showBack: false }
         },
         {
-          path: 'ai-assistant',
-          name: 'ai-assistant',
-          component: AiAssistantView,
-          meta: { title: 'Trợ lý AI', showBack: false }
-        },
-        {
           path: 'notifications',
           name: 'notifications',
           component: NotificationsView,
@@ -140,6 +134,12 @@ const router = createRouter({
           path: 'auth/register',
           name: 'register',
           component: RegisterView,
+          meta: { hideHeader: true, hideFooter: true }
+        },
+        {
+          path: 'auth/forgot-password',
+          name: 'forgot-password',
+          component: ForgotPasswordView,
           meta: { hideHeader: true, hideFooter: true }
         },
         {
@@ -265,7 +265,7 @@ const router = createRouter({
           path: 'vouchers',
           name: 'admin-vouchers',
           component: AdminVoucherManagerView,
-          meta: { title: 'Quản lý Voucher', showBack: true }
+          meta: { title: 'Quản lý Voucher', showBack: true, compactContent: true, hideAdminHeader: true }
         }
       ]
     },

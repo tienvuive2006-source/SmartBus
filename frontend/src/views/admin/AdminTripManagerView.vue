@@ -84,14 +84,17 @@
     <!-- 2. Main List -->
     <TripTable 
       :trips="paginatedTrips"
+      :selectable-trips="filteredTrips"
       :total-count="filteredTrips.length"
       :page="currentPage"
       :total-pages="totalPages"
       :page-size="pageSize"
+      :bulk-deleting="bulkDeleting"
       @update:page="currentPage = $event"
       @edit="openEditModal"
       @report="openReportModal"
       @delete="deleteTrip"
+      @bulk-delete="bulkDeleteTrips"
     />
 
     <!-- 3. Edit Modal -->
@@ -121,6 +124,7 @@ import TripStats from '@/components/admin/trip/TripStats.vue';
 import TripTable from '@/components/admin/trip/TripTable.vue';
 import TripModal from '@/components/admin/trip/TripModal.vue';
 import TripReportModal from '@/components/admin/trip/TripReportModal.vue';
+import { toBusinessDateString } from '@/utils/businessDate';
 
 const api = useApi();
 const trips = ref([]);
@@ -130,6 +134,7 @@ const inspectors = ref([]);
 const drivers = ref([]);
 
 const tripModal = ref(null);
+const bulkDeleting = ref(false);
 
 // --- FILTERING LOGIC ---
 const filterRoute = ref('');
@@ -236,8 +241,8 @@ watch(totalPages, (pages) => {
 // --- Stats Logic ---
 const totalTrips = computed(() => trips.value.length);
 const todayTrips = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
-  return trips.value.filter(t => t.departureDate.startsWith(today)).length;
+  const today = toBusinessDateString();
+  return trips.value.filter(t => String(t.departureDate || '').split('T')[0] === today).length;
 });
 const totalEmptySeats = computed(() => {
   return trips.value.reduce((acc, t) => acc + (t.availableSeats || 0), 0);
@@ -310,6 +315,43 @@ const deleteTrip = async (id) => {
       const message = err.response?.data?.error || err.response?.data?.message || 'Không thể xóa chuyến xe.'
       alert(message)
     }
+  }
+};
+
+const bulkDeleteTrips = async (ids) => {
+  if (!Array.isArray(ids) || ids.length === 0 || bulkDeleting.value) return;
+
+  const accepted = confirm(
+    `Bạn sắp xóa vĩnh viễn ${ids.length} chuyến xe chưa có khách đặt.\n\n` +
+    'Thao tác này không thể hoàn tác. Bạn có chắc muốn tiếp tục?'
+  );
+  if (!accepted) return;
+
+  bulkDeleting.value = true;
+  try {
+    // Xóa nhiều chuyến kéo theo sơ đồ ghế nên có thể lâu hơn timeout mặc định 15 giây.
+    const response = await api.delete('/trips/bulk', {
+      data: { ids },
+      timeout: 120000
+    });
+    await fetchTrips();
+    alert(response.data?.message || `Đã xóa ${ids.length} chuyến xe.`);
+  } catch (err) {
+    // Nếu client mất kết nối/timeout, backend vẫn có thể đã hoàn tất giao dịch.
+    // Tải lại trước khi kết luận để tránh báo thất bại trong khi dữ liệu đã được xóa.
+    await fetchTrips();
+    const remainingIds = new Set(trips.value.map(trip => trip.id));
+    const deletedCount = ids.filter(id => !remainingIds.has(id)).length;
+    if (deletedCount === ids.length) {
+      alert(`Đã xóa ${deletedCount} chuyến xe.`);
+      return;
+    }
+
+    const message = err.response?.data?.error || err.response?.data?.message
+      || `Đã xóa ${deletedCount}/${ids.length} chuyến. Vui lòng kiểm tra lại danh sách.`;
+    alert(message);
+  } finally {
+    bulkDeleting.value = false;
   }
 };
 

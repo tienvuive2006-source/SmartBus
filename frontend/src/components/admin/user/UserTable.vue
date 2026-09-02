@@ -66,12 +66,12 @@
         <td class="center">
           <div class="actions" @click.stop>
             <button type="button" title="Xem lịch sử đặt vé" @click="$emit('history', user)"><span class="material-symbols-outlined">visibility</span></button>
-            <button type="button" title="Chỉnh sửa thông tin" @click="$emit('edit', user)"><span class="material-symbols-outlined">edit</span></button>
-            <details v-if="user.role !== 'ADMIN'" class="action-menu">
+            <button type="button" :title="user.role === 'USER' ? 'Điều chỉnh số dư ví' : 'Chỉnh sửa thông tin'" @click="$emit('edit', user)"><span class="material-symbols-outlined">{{ user.role === 'USER' ? 'account_balance_wallet' : 'edit' }}</span></button>
+            <details v-if="user.role !== 'ADMIN' || canDeleteUser(user)" class="action-menu">
               <summary title="Thao tác khác"><span class="material-symbols-outlined">more_vert</span></summary>
               <div class="action-popover">
-                <button type="button" @click="$emit('toggle-lock', user)"><span class="material-symbols-outlined">{{ user.isLocked ? 'lock_open' : 'lock' }}</span>{{ user.isLocked ? 'Mở khóa' : 'Khóa tài khoản' }}</button>
-                <button v-if="!user.ticketCount" type="button" class="danger" @click="$emit('delete', user.id)"><span class="material-symbols-outlined">delete</span>Xóa tài khoản</button>
+                <button v-if="user.role !== 'ADMIN'" type="button" @click="$emit('toggle-lock', user)"><span class="material-symbols-outlined">{{ user.isLocked ? 'lock_open' : 'lock' }}</span>{{ user.isLocked ? 'Mở khóa' : 'Khóa tài khoản' }}</button>
+                <button v-if="canDeleteUser(user)" type="button" class="danger" @click="$emit('delete', user.id)"><span class="material-symbols-outlined">delete</span>Xóa tài khoản</button>
               </div>
             </details>
             <span v-else class="action-placeholder" aria-hidden="true"></span>
@@ -85,12 +85,17 @@
 <script setup>
 import { createAvatarFallback, handleAvatarError } from '@/utils/avatar'
 
-defineProps({ users: { type: Array, required: true }, selectedUserId: { type: Number, default: null } })
+const props = defineProps({
+  users: { type: Array, required: true },
+  selectedUserId: { type: Number, default: null },
+  currentUserId: { type: [Number, String], default: null }
+})
 defineEmits(['select', 'history', 'edit', 'toggle-lock', 'delete'])
 
 const formatMoney = value => `${Number(value || 0).toLocaleString('vi-VN')}đ`
 const displayPhone = phone => phone || 'Chưa cập nhật'
 const isGoogleIdentifier = phone => phone?.startsWith('GG_')
+const canDeleteUser = user => !user.ticketCount && Number(user.id) !== Number(props.currentUserId)
 const roleLabel = role => ({ USER: 'USER', ADMIN: 'ADMIN', DRIVER: 'TÀI XẾ', INSPECTOR: 'LƠ XE' }[role] || role)
 </script>
 

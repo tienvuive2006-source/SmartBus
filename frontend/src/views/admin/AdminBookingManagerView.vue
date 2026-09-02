@@ -181,6 +181,7 @@ const fetchBookings = async () => {
         );
         const matchesSearch = !query
           || String(booking.id).includes(query)
+          || String(booking.ticketCode || '').toLowerCase().includes(query)
           || String(booking.customerName || '').toLowerCase().includes(query)
           || String(booking.customerPhone || '').includes(query);
         return matchesStatus && matchesPayment && matchesDateFrom && matchesDateTo && matchesRoute && matchesSearch;
@@ -277,7 +278,7 @@ const viewDetail = (booking) => {
   const seatDescription = booking.seats
     .map(seatNumber => formatSeatWithType(seatNumber, booking.seatTypes))
     .join(', ');
-  let msg = `CHI TIẾT VÉ #${booking.id}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${seatDescription}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`;
+  let msg = `CHI TIẾT VÉ ${booking.ticketCode || `#${booking.id}`}\n------------------\nKhách: ${booking.customerName}\nSĐT: ${booking.customerPhone}\nTuyến: ${booking.route}\nGhế: ${seatDescription}\nTổng tiền: ${booking.totalPrice.toLocaleString()}đ`;
   if (booking.discountAmount > 0) {
     msg += `\nĐã giảm giá: -${booking.discountAmount.toLocaleString()}đ (Mã Voucher)`;
   }

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/ai")
@@ -23,10 +24,17 @@ public class AiController {
             @RequestBody Map<String, String> payload,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         String message = payload.get("message");
-        String sessionId = payload.getOrDefault("sessionId", "default_session");
+        String sessionId = payload.get("sessionId");
         
         if (message == null || message.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Message is required"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Nội dung tin nhắn không được để trống"));
+        }
+        message = message.trim();
+        if (message.length() > 1000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Tin nhắn không được vượt quá 1000 ký tự"));
+        }
+        if (sessionId == null || sessionId.isBlank() || sessionId.length() > 128) {
+            sessionId = UUID.randomUUID().toString();
         }
         
         Map<String, Object> response = aiService.processMessage(message, sessionId, authHeader);

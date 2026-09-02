@@ -32,7 +32,7 @@
         <tbody class="divide-y divide-slate-50">
           <tr v-for="booking in paginatedBookings" :key="booking.id" class="group hover:bg-[#075955]/[0.02] transition-all duration-200">
             <td class="px-5 py-5 border-b border-slate-50 align-top">
-              <div class="font-bold text-slate-800 text-sm group-hover:text-[#075955] transition-colors">#{{ booking.id }}</div>
+              <div class="font-bold text-slate-800 text-sm group-hover:text-[#075955] transition-colors">{{ booking.ticketCode || `#${booking.id}` }}</div>
               <div class="text-[10px] font-semibold text-slate-400 uppercase mt-0.5 tracking-tighter">{{ formatDate(booking.createdAt) }}</div>
               <span v-if="booking.exchange" class="mt-2 inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-violet-100 bg-violet-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-violet-600" :title="booking.exchange.exchangeType === 'SEAT' ? 'Vé đã đổi ghế' : 'Vé đã đổi chuyến hoặc ngày đi'">
                 <span class="material-symbols-outlined text-[11px]">swap_horiz</span>

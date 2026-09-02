@@ -70,6 +70,16 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data
   }
 
+  const requestPasswordReset = async (email) => {
+    const response = await axios.post(`${API_BASE}/auth/password/forgot`, { email })
+    return response.data
+  }
+
+  const resetPassword = async (email, code, newPassword) => {
+    const response = await axios.post(`${API_BASE}/auth/password/reset`, { email, code, newPassword })
+    return response.data
+  }
+
   const register = async (fullName, phone, password, email, verificationCode) => {
     const response = await axios.post(`${API_BASE}/auth/register`, { fullName, phone, password, email, verificationCode })
     _saveSession(response.data)
@@ -342,6 +352,8 @@ export const useAuthStore = defineStore('auth', () => {
     googleLogin,
     completeGooglePhone,
     sendRegistrationCode,
+    requestPasswordReset,
+    resetPassword,
     register,
     logout,
     fetchMe,

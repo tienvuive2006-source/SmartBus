@@ -58,8 +58,8 @@
             </span>
           </div>
 
-          <span class="status-chip" :class="bus.conflict ? 'maintenance' : 'free'">
-            {{ bus.conflict ? (bus.conflictReason || 'BẢO DƯỠNG') : 'RẢNH' }}
+          <span class="status-chip" :class="bus.conflict ? 'maintenance' : (bus.needsRelocation ? 'relocate' : 'free')" :title="bus.needsRelocation ? `Phải chạy rỗng từ ${bus.assignmentLocation || 'nơi khác'} đến bến xuất phát` : ''">
+            {{ bus.conflict ? (bus.conflictReason || 'BẢO DƯỠNG') : (bus.needsRelocation ? 'CHẠY RỖNG' : 'RẢNH') }}
           </span>
         </div>
 
@@ -91,6 +91,11 @@
               {{ bus.conflict ? 'cancel' : 'check_circle' }}
             </span>
             <span>{{ bus.conflict ? (bus.conflictReason || 'KHÔNG KHẢ DỤNG') : 'ĐÚNG DÒNG CỦA CHUYẾN' }}</span>
+          </span>
+
+          <span v-if="bus.needsRelocation && !bus.conflict" class="relocate-pill" :title="`Phải chạy rỗng từ ${bus.assignmentLocation || 'Nơi khác'}`">
+            <span class="material-symbols-outlined">directions_car</span>
+            <span class="relocate-text">Từ {{ bus.assignmentLocation || 'Nơi khác' }}</span>
           </span>
         </div>
       </div>
@@ -373,6 +378,11 @@ const inspectionTone = bus => {
   color: #b45309;
 }
 
+.status-chip.relocate {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
 /* Metrics Grid */
 .metrics-grid {
   display: grid;
@@ -408,6 +418,10 @@ const inspectionTone = bus => {
 /* Eligibility Row */
 .eligibility-row {
   margin-top: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
 .eligibility-pill {
@@ -418,6 +432,7 @@ const inspectionTone = bus => {
   border-radius: 0.35rem;
   font-size: 0.6rem;
   font-weight: 850;
+  flex-shrink: 0;
 }
 
 .eligibility-pill.fit {
@@ -434,6 +449,30 @@ const inspectionTone = bus => {
 
 .pill-icon {
   font-size: 0.75rem;
+}
+
+.relocate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  background: #e0e7ff;
+  color: #4338ca;
+  max-width: 50%;
+}
+
+.relocate-pill .material-symbols-outlined {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.relocate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* List Footer Bar */

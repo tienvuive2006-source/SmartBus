@@ -26,6 +26,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                     "(:arrivalPoint = '' OR LOWER(b.trip.arrivalPoint) = LOWER(:arrivalPoint)) AND " +
                     "(:search = '' OR LOWER(COALESCE(b.customerName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR COALESCE(b.customerPhone, '') LIKE CONCAT('%', :search, '%') " +
+                    "OR LOWER(COALESCE(b.ticketCode, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR STR(b.id) LIKE CONCAT('%', :search, '%'))",
             countQuery = "SELECT COUNT(b) FROM Booking b WHERE " +
                     "(:status = '' OR UPPER(b.status) = :status) AND " +
@@ -35,6 +36,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                     "(:arrivalPoint = '' OR LOWER(b.trip.arrivalPoint) = LOWER(:arrivalPoint)) AND " +
                     "(:search = '' OR LOWER(COALESCE(b.customerName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR COALESCE(b.customerPhone, '') LIKE CONCAT('%', :search, '%') " +
+                    "OR LOWER(COALESCE(b.ticketCode, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
                     "OR STR(b.id) LIKE CONCAT('%', :search, '%'))")
     Page<Booking> searchAdminBookings(
             @Param("search") String search,
@@ -55,6 +57,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByUserIdOrderByCreatedAtDesc(Long userId);
     
     List<Booking> findByTripId(Long tripId);
+
+    boolean existsByTripId(Long tripId);
 
     @org.springframework.data.jpa.repository.Query("SELECT b.user.id, SUM(SIZE(b.seatNumbers)) FROM Booking b WHERE b.status != 'CANCELLED' AND b.user IS NOT NULL GROUP BY b.user.id")
     List<Object[]> countTicketsPerUser();
@@ -78,4 +82,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @EntityGraph(attributePaths = {"trip", "seatNumbers", "trip.busType"})
     Optional<Booking> findByIdAndCustomerPhone(Long id, String customerPhone);
+
+    @EntityGraph(attributePaths = {"trip", "seatNumbers", "trip.busType"})
+    Optional<Booking> findByTicketCodeIgnoreCaseAndCustomerPhone(String ticketCode, String customerPhone);
+
+    Optional<Booking> findByTicketCodeIgnoreCase(String ticketCode);
+
+    @EntityGraph(attributePaths = {"trip", "seatNumbers", "trip.busType"})
+    List<Booking> findByRoundTripGroupIdAndCustomerPhone(String roundTripGroupId, String customerPhone);
 }

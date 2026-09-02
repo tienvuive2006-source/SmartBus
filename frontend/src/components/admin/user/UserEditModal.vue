@@ -8,8 +8,8 @@
             <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-700"><span class="material-symbols-outlined text-[28px]">{{ isInspector ? 'badge' : 'manage_accounts' }}</span></span>
             <div>
               <p class="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">{{ isInspector ? 'Hồ sơ nhân viên vận hành' : 'Quản lý tài khoản' }}</p>
-              <h3 id="user-form-title" class="mt-1 text-xl font-black text-slate-900 sm:text-2xl">{{ isCreateMode ? (isInspector ? 'Thêm lơ xe mới' : 'Thêm tài khoản mới') : (isInspector ? 'Thông tin lơ xe' : 'Thông tin tài khoản') }}</h3>
-              <p v-if="form.id" class="mt-1 text-xs font-bold text-slate-400">Mã nhân viên: {{ employeeCode }} · ID #{{ form.id }}</p>
+              <h3 id="user-form-title" class="mt-1 text-xl font-black text-slate-900 sm:text-2xl">{{ modalTitle }}</h3>
+              <p v-if="form.id" class="mt-1 text-xs font-bold text-slate-400">{{ form.role === 'USER' ? 'Mã khách hàng' : 'Mã nhân viên' }}: {{ profileCode }} · ID #{{ form.id }}</p>
             </div>
           </div>
           <button type="button" class="grid h-10 w-10 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" @click="$emit('close')"><span class="material-symbols-outlined">close</span></button>
@@ -89,6 +89,20 @@
             </aside>
           </div>
 
+          <div v-else-if="isCustomerWalletEdit" class="space-y-5">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Khách hàng</p>
+              <strong class="mt-1 block text-base font-black text-slate-900">{{ form.fullName }}</strong>
+              <p class="mt-1 text-xs font-bold text-slate-500">{{ form.phone }}<span v-if="form.email"> · {{ form.email }}</span></p>
+            </div>
+            <FormField label="Số dư ví (đ)" required>
+              <input v-model.number="form.walletBalance" type="number" min="0" step="1" required class="form-control text-lg" />
+            </FormField>
+            <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
+              Quản trị viên chỉ được điều chỉnh số dư ví. Thông tin cá nhân do khách hàng tự cập nhật trong hồ sơ của họ.
+            </p>
+          </div>
+
           <div v-else class="space-y-4">
             <FormField :label="`Họ và tên ${form.role === 'USER' ? 'khách hàng' : 'nhân viên'}`" required><input v-model.trim="form.fullName" type="text" required class="form-control" /></FormField>
             <FormField label="Tên đăng nhập" :required="form.role !== 'USER'"><input v-model.trim="form.username" type="text" :required="form.role !== 'USER'" class="form-control" /></FormField>
@@ -104,7 +118,7 @@
           <p v-if="serverError" class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{{ serverError }}</p>
           <footer class="sticky bottom-0 -mx-6 mt-6 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-6 py-4 backdrop-blur sm:-mx-8 sm:px-8">
             <button type="button" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50" @click="$emit('close')">Hủy bỏ</button>
-            <button type="submit" :disabled="submitting || uploading" class="rounded-xl bg-teal-700 px-6 py-3 text-sm font-black text-white shadow-lg shadow-teal-900/10 transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50">{{ submitting ? 'Đang lưu...' : (isCreateMode ? 'Tạo hồ sơ' : 'Lưu thay đổi') }}</button>
+            <button type="submit" :disabled="submitting || uploading" class="rounded-xl bg-teal-700 px-6 py-3 text-sm font-black text-white shadow-lg shadow-teal-900/10 transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50">{{ submitting ? 'Đang lưu...' : (isCreateMode ? 'Tạo hồ sơ' : (isCustomerWalletEdit ? 'Cập nhật số dư' : 'Lưu thay đổi')) }}</button>
           </footer>
         </form>
       </section>
@@ -132,7 +146,17 @@ const imageUploadError = ref('')
 const routes = ref([])
 const loadingRoutes = ref(false)
 const isInspector = computed(() => props.form.role === 'INSPECTOR')
+const isCustomerWalletEdit = computed(() => !props.isCreateMode && props.form.role === 'USER')
+const modalTitle = computed(() => {
+  if (props.isCreateMode) return isInspector.value ? 'Thêm lơ xe mới' : 'Thêm tài khoản mới'
+  if (isInspector.value) return 'Thông tin lơ xe'
+  if (isCustomerWalletEdit.value) return 'Điều chỉnh số dư ví'
+  return 'Thông tin tài khoản'
+})
 const employeeCode = computed(() => props.form.id ? `NV${String(props.form.id).padStart(3, '0')}` : 'Tự động sau khi tạo')
+const profileCode = computed(() => props.form.role === 'USER' && props.form.id
+  ? `KH${String(props.form.id).padStart(3, '0')}`
+  : employeeCode.value)
 const handleSubmit = () => emit('submit')
 
 const loadRouteAssignments = async () => {

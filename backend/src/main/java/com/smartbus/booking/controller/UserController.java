@@ -181,6 +181,11 @@ public class UserController {
             return ResponseEntity.status(403).body("Không có quyền cập nhật tài khoản của người khác!");
         }
 
+        if (isAdmin && "USER".equalsIgnoreCase(existingUser.getRole()) && !existingUser.getId().equals(currentUserId)) {
+            return ResponseEntity.status(403).body(java.util.Map.of(
+                    "message", "Quản trị viên chỉ được điều chỉnh số dư ví của khách hàng qua chức năng quản lý ví."));
+        }
+
         // Check if phone already exists
         if (userUpdates.getPhone() != null && !userUpdates.getPhone().equals(existingUser.getPhone())) {
             String normalizedPhone = userUpdates.getPhone().replaceAll("[\\s.-]", "");
@@ -264,6 +269,62 @@ public class UserController {
         return ResponseEntity.ok(savedUser);
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "UPDATE_USER_WALLET", entityName = "User")
+    @PutMapping("/{id}/wallet")
+    public ResponseEntity<?> updateUserWallet(
+            @PathVariable("id") Long id,
+            @RequestBody java.util.Map<String, Object> payload) {
+        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication().getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            return ResponseEntity.status(403).body(java.util.Map.of(
+                    "message", "Chỉ quản trị viên mới được điều chỉnh số dư ví."));
+        }
+
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User user = userOpt.get();
+        if (!"USER".equalsIgnoreCase(user.getRole())) {
+            return ResponseEntity.status(400).body(java.util.Map.of(
+                    "message", "Chỉ được điều chỉnh ví của tài khoản khách hàng."));
+        }
+
+        Object rawBalance = payload.get("walletBalance");
+        if (rawBalance == null) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "message", "Vui lòng nhập số dư ví."));
+        }
+
+        final java.math.BigDecimal walletBalance;
+        try {
+            walletBalance = new java.math.BigDecimal(String.valueOf(rawBalance)).stripTrailingZeros();
+        } catch (NumberFormatException exception) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "message", "Số dư ví không hợp lệ."));
+        }
+        if (walletBalance.signum() < 0 || walletBalance.scale() > 0) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "message", "Số dư ví phải là số nguyên không âm."));
+        }
+
+        double walletBalanceValue = walletBalance.doubleValue();
+        if (!Double.isFinite(walletBalanceValue)) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "message", "Số dư ví vượt quá giới hạn cho phép."));
+        }
+
+        user.setWalletBalance(walletBalanceValue);
+        User savedUser = userRepository.save(user);
+        messagingTemplate.convertAndSend("/topic/wallet/" + savedUser.getId(), "UPDATE");
+        return ResponseEntity.ok(java.util.Map.of(
+                "id", savedUser.getId(),
+                "walletBalance", savedUser.getWalletBalance()));
+    }
+
     // 2.5. Khóa/Mở khóa tài khoản
     @com.smartbus.booking.annotation.AuditAction(action = "TOGGLE_USER_LOCK", entityName = "User")
     @PutMapping("/{id}/lock")
@@ -292,9 +353,18 @@ public class UserController {
         
         User targetUser = userOpt.get();
 
-        // Không cho phép xoá ADMIN
-        if ("ADMIN".equals(targetUser.getRole())) {
-            return ResponseEntity.status(400).body(java.util.Map.of("message", "Không thể xoá tài khoản Quản trị viên (ADMIN)!"));
+        if ("ADMIN".equalsIgnoreCase(targetUser.getRole())) {
+            String currentUserIdValue = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                    .getAuthentication().getName();
+            Long currentUserId = Long.parseLong(currentUserIdValue);
+            if (targetUser.getId().equals(currentUserId)) {
+                return ResponseEntity.status(400).body(java.util.Map.of(
+                        "message", "Không thể xoá tài khoản quản trị viên đang đăng nhập."));
+            }
+            if (userRepository.countByRoleIgnoreCase("ADMIN") <= 1) {
+                return ResponseEntity.status(400).body(java.util.Map.of(
+                        "message", "Hệ thống phải còn ít nhất một tài khoản quản trị viên."));
+            }
         }
 
         // Kiểm tra xem khách hàng đã mua vé chưa, nếu có vé thì cấm xoá
@@ -392,6 +462,7 @@ public class UserController {
             driverInfo.put("phone", driver.getPhone());
             driverInfo.put("fullName", driver.getFullName());
             driverInfo.put("avatarUrl", driver.getAvatarUrl());
+            driverInfo.put("currentStation", driver.getCurrentStation() != null ? driver.getCurrentStation() : "");
             
             // Xác định trạng thái
             String status;

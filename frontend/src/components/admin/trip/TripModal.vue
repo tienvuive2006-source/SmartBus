@@ -4,8 +4,8 @@
       <div class="bg-white rounded-3xl w-full max-w-6xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
         <div class="p-6 bg-[#075955] text-white flex justify-between items-center shrink-0">
           <div class="flex items-center gap-3">
-             <span class="material-symbols-outlined">{{ isEditMode ? 'edit_square' : 'add_circle' }}</span>
-             <h3 class="text-sm font-black uppercase tracking-widest">{{ isEditMode ? 'Cập nhật lộ trình' : 'Tạo lộ trình mới' }}</h3>
+             <span class="material-symbols-outlined">{{ isReadOnly ? 'visibility' : (isEditMode ? 'edit_square' : 'add_circle') }}</span>
+             <h3 class="text-sm font-black uppercase tracking-widest">{{ isReadOnly ? 'Chi tiết chuyến đã hoàn thành' : (isEditMode ? 'Cập nhật lộ trình' : 'Tạo lộ trình mới') }}</h3>
           </div>
           <button @click="closeModal" class="hover:rotate-90 transition-transform bg-white/10 p-1.5 rounded-full flex items-center justify-center">
             <span class="material-symbols-outlined text-sm">close</span>
@@ -15,6 +15,15 @@
         <div class="flex-1 flex overflow-hidden">
           <!-- Left: Form Column -->
           <form @submit.prevent="handleFormSubmit" class="w-1/2 p-8 space-y-6 overflow-y-auto border-r border-slate-100 bg-white">
+            <div v-if="isReadOnly" class="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-800">
+              <span class="material-symbols-outlined mt-0.5 text-xl">lock</span>
+              <div>
+                <p class="text-xs font-black uppercase tracking-wider">Chuyến xe đã hoàn thành</p>
+                <p class="mt-1 text-xs font-semibold leading-5 text-blue-700">Thông tin vận hành, ngày giờ và giá vé đã được khóa. Admin chỉ có thể xem lại dữ liệu.</p>
+              </div>
+            </div>
+
+            <fieldset :disabled="isReadOnly" class="contents">
             
             <div class="space-y-1.5 mb-6 relative">
               <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider ml-1 flex items-center justify-between">
@@ -210,9 +219,12 @@
               </div>
             </div>
 
+            </fieldset>
+
             <div class="pt-8 flex justify-end gap-3 shrink-0">
-              <button type="button" @click="closeModal" :disabled="isSubmitting" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Hủy bỏ</button>
+              <button type="button" @click="closeModal" :disabled="isSubmitting" class="px-8 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{{ isReadOnly ? 'Đóng' : 'Hủy bỏ' }}</button>
               <button
+                v-if="!isReadOnly"
                 type="submit"
                 :disabled="isSubmitting"
                 class="bg-[#075955] text-white px-12 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:shadow-[#075955]/20 active:scale-95 transition-all disabled:opacity-70 disabled:cursor-wait disabled:active:scale-100"
@@ -271,6 +283,7 @@ import { computed, ref, watch, nextTick } from 'vue';
 import { useApi } from '@/composables/useApi';
 import { decodePolyline, fetchPolylineFromCloudinary } from '@/utils/polyline';
 import { useRouteBusTypeApi } from '@/services/routeBusTypeApi';
+import { businessDateAfterDays } from '@/utils/businessDate';
 
 const props = defineProps({
   busTypes: Array,
@@ -286,14 +299,14 @@ const routeBusTypeApi = useRouteBusTypeApi();
 const isOpen = ref(false);
 const isEditMode = ref(false);
 const isSubmitting = ref(false);
+const isReadOnly = computed(() => isEditMode.value
+  && String(form.value?.status || '').toUpperCase() === 'COMPLETED');
 const mapLoading = ref(false);
 const leafletMap = ref(null);
 const savedRoutes = ref([]);
 const routeBusTypeConfig = ref({ unrestricted: true, busTypes: [], defaultBusTypeId: null });
 
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
-const tomorrowStr = tomorrow.toISOString().split('T')[0];
+const tomorrowStr = businessDateAfterDays(1);
 
 const defaultForm = {
   id: null, routeId: null, companyName: 'Trung - Nam', busType: 'Luxury', departurePoint: '', arrivalPoint: '',
@@ -568,7 +581,7 @@ const updateMap = async () => {
 };
 
 const handleFormSubmit = async () => {
-  if (isSubmitting.value) return;
+  if (isSubmitting.value || isReadOnly.value) return;
   isSubmitting.value = true;
 
   try {
@@ -654,4 +667,8 @@ defineExpose({ openModal, closeModal });
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fade-in-up { animation: fadeIn 0.4s ease-out forwards; }
+fieldset:disabled :is(input, select, textarea) {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
 </style>

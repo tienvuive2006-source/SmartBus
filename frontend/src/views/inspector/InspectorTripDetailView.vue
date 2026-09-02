@@ -333,31 +333,30 @@ const onScanSuccess = async (decodedText) => {
   isProcessingQR = true;
 
   try {
-    const idMatch = decodedText.match(/Mã đặt vé: #(\d+)/);
-    let qrBookingId = null;
-    
-    if (idMatch && idMatch[1]) {
-      qrBookingId = parseInt(idMatch[1]);
+    // Ưu tiên parse ticketCode dạng TN-XXXXXX từ QR email
+    const ticketMatch = decodedText.match(/Mã đặt vé:\s*(TN-[A-Z0-9]+)/i);
+    let booking = null;
+
+    if (ticketMatch && ticketMatch[1]) {
+      const ticketCode = ticketMatch[1].toUpperCase();
+      booking = bookings.value.find(b => b.ticketCode?.toUpperCase() === ticketCode);
     } else {
-      const num = parseInt(decodedText);
-      if (!isNaN(num)) qrBookingId = num;
+      // Fallback: thử parse số ID thuần (quét trực tiếp ID)
+      const num = parseInt(decodedText.trim());
+      if (!isNaN(num)) {
+        booking = bookings.value.find(b => b.id === num);
+      }
     }
 
-    if (!qrBookingId) {
-      qrFeedback.value = { type: 'error', message: '❌ Mã QR không hợp lệ hoặc không phải vé xe!' };
-      return;
-    }
-
-    const booking = bookings.value.find(b => b.id === qrBookingId);
-    
     if (!booking) {
-      qrFeedback.value = { type: 'error', message: `❌ Vé #${qrBookingId} KHÔNG HỢP LỆ (Không đúng chuyến hoặc ĐÃ BỊ HỦY)!` };
+      qrFeedback.value = { type: 'error', message: '❌ Mã QR không hợp lệ hoặc không thuộc chuyến này!' };
       playBeep(false);
       return;
     }
 
+
     if (booking.status === 'CHECKED_IN') {
-      qrFeedback.value = { type: 'error', message: `⚠️ CẢNH BÁO: Vé #${qrBookingId} ĐÃ ĐƯỢC QUÉT TRƯỚC ĐÓ!` };
+      qrFeedback.value = { type: 'error', message: `⚠️ CẢNH BÁO: Vé ${booking.ticketCode} ĐÃ ĐƯỢC QUÉT TRƯỚC ĐÓ!` };
       playBeep(false);
       return;
     }

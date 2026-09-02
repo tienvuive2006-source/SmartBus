@@ -25,11 +25,14 @@
       <div class="summary-card">
         <div class="card-icon-title">
           <span class="material-symbols-outlined icon-orange">person_add</span>
-          <span class="card-label">Tài xế phụ</span>
+          <span class="card-label">
+            Tài xế phụ
+            <em v-if="secondaryRequired" class="required-badge">Bắt buộc</em>
+          </span>
         </div>
         <div class="card-value-block">
           <strong v-if="secondaryDriver" class="val-name">{{ secondaryDriver.fullName }}</strong>
-          <span v-else class="val-empty">Không bố trí</span>
+          <span v-else class="val-empty">{{ secondaryRequired ? 'Chưa chọn — bắt buộc với chuyến dài' : 'Không bố trí' }}</span>
           <small v-if="secondaryDriver" class="val-sub">SĐT: {{ secondaryDriver.phone }}<template v-if="secondaryDriver.driverLicenseClass"> • GPLX hạng {{ secondaryDriver.driverLicenseClass }}</template></small>
         </div>
       </div>
@@ -60,6 +63,9 @@
         </div>
       </div>
 
+      <!-- Chỉ hiện khi hệ thống tìm thấy chuyến về phù hợp -->
+      <slot name="return-trip"></slot>
+
       <!-- Checklist Section -->
       <div class="checklist-section">
         <h5 class="checklist-title">Kiểm tra điều kiện vận hành</h5>
@@ -69,6 +75,12 @@
               {{ driver && !driver.conflict ? 'check_circle' : 'cancel' }}
             </span>
             <span>Tài xế chính rảnh & đủ giờ nghỉ</span>
+          </li>
+          <li v-if="secondaryRequired" :class="{ check: secondaryDriver && !secondaryDriver.conflict }">
+            <span class="material-symbols-outlined list-icon">
+              {{ secondaryDriver && !secondaryDriver.conflict ? 'check_circle' : 'cancel' }}
+            </span>
+            <span>Đã bố trí tài xế phụ cho chuyến dài</span>
           </li>
           <li :class="{ check: bus && !bus.conflict }">
             <span class="material-symbols-outlined list-icon">
@@ -92,7 +104,7 @@
         </span>
         <div class="banner-text">
           <strong>{{ isReady ? 'ĐỦ ĐIỀU KIỆN KÍCH HOẠT CHUYẾN' : 'CHƯA ĐỦ ĐIỀU KIỆN PHÂN CÔNG' }}</strong>
-          <p>{{ isReady ? 'Tất cả tài nguyên đã sẵn sàng xuất bến đúng giờ' : 'Vui lòng chọn đủ Tài xế chính và Phương tiện' }}</p>
+          <p>{{ readinessMessage }}</p>
         </div>
       </div>
     </div>
@@ -108,11 +120,21 @@ const props = defineProps({
   bus: { type: Object, default: null },
   inspector: { type: Object, default: null },
   conflictFree: { type: Boolean, default: true },
+  secondaryRequired: { type: Boolean, default: false },
   trip: Object
 })
 
 const isReady = computed(() => {
-  return !!props.driver && !props.driver.conflict && !!props.bus && !props.bus.conflict
+  return !!props.driver && !props.driver.conflict
+    && !!props.bus && !props.bus.conflict
+    && props.conflictFree
+    && (!props.secondaryRequired || (!!props.secondaryDriver && !props.secondaryDriver.conflict))
+})
+
+const readinessMessage = computed(() => {
+  if (isReady.value) return 'Tất cả tài nguyên đã sẵn sàng xuất bến đúng giờ'
+  if (props.secondaryRequired && !props.secondaryDriver) return 'Chuyến dài bắt buộc phải chọn thêm tài xế phụ'
+  return 'Vui lòng chọn đủ tài xế chính và phương tiện'
 })
 </script>
 
@@ -194,6 +216,19 @@ const isReady = computed(() => {
   color: #64748b;
   font-size: 0.65rem;
   font-weight: 750;
+}
+
+.required-badge {
+  display: inline-flex;
+  margin-left: 0.25rem;
+  padding: 0.08rem 0.28rem;
+  border-radius: 0.25rem;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 0.55rem;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .card-value-block {

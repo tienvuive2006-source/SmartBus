@@ -39,7 +39,6 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
 ### Tích hợp Dịch vụ Bên ngoài (3rd Party Services)
 - **Thanh toán tự động:** SePay API (Tự động nhận diện biến động số dư và trạng thái chuyển khoản ngân hàng theo thời gian thực)
 - **Lưu trữ đám mây:** Cloudinary (Tối ưu hóa không gian lưu trữ hình ảnh xe, tuyến đường và thông tin hệ thống)
-- **Trợ lý ảo AI Chatbot:** Cung cấp trải nghiệm hỗ trợ khách hàng thông minh, tư vấn lịch trình nhanh chóng
 - **Email Service:** JavaMailSender (Hệ thống tự động gửi vé điện tử chứa mã QR, thông báo đặt/hủy vé tới email khách)
 
 ---
@@ -79,8 +78,6 @@ Dự án được xây dựng với kiến trúc Client-Server, API RESTful hi�
   - **Tự động hoàn tiền (Auto-Refund):** Cho phép khách hàng tự hủy vé (trước giờ khởi hành). Hệ thống tự động giải phóng ghế và hoàn trả 90% giá trị vé vào Ví điện tử của khách.
 - **Đánh giá & Phản hồi (Reviews):**
   - Cho phép khách hàng chấm điểm (Rating) và để lại bình luận cho các chuyến xe đã hoàn thành.
-- **Trợ lý ảo AI (Chatbot AI):**
-  - Tích hợp khung chat AI hỗ trợ tư vấn lịch trình, chính sách nhà xe và giải đáp câu hỏi tự động.
 - **Tích điểm & Khuyến mãi (Loyalty & Vouchers):**
   - Tích điểm tự động (Loyalty Points) ngay khi thanh toán thành công (1.000đ = 1 điểm). Hỗ trợ dùng điểm đổi lấy mã Voucher giảm giá.
   - Tự động thu hồi điểm và hoàn lại (kích hoạt lại) mã Voucher nếu khách hàng thực hiện hủy vé.
@@ -212,4 +209,3 @@ Dự án đã được triển khai (Deploy) thành công lên môi trường Cl
 ## 📞 LIÊN HỆ
 Dự án được xây dựng và phát triển với tâm huyết phục vụ báo cáo Đồ án Tốt nghiệp.
 Mọi góp ý, thắc mắc về luồng nghiệp vụ hoặc kiến trúc hệ thống, xin vui lòng tạo Issue trên kho lưu trữ GitHub này.
-

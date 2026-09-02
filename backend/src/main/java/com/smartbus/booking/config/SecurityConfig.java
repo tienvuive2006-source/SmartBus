@@ -41,7 +41,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // ✅ Public endpoints - không cần token
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/ai/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/ai/chat").permitAll()
+                .requestMatchers(HttpMethod.POST, "/ai/generate-article").hasRole("ADMIN")
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/health/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/trips/**").permitAll()

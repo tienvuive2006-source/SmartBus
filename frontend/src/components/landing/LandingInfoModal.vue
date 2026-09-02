@@ -1,33 +1,33 @@
 <template>
-  <div class="fixed inset-0 z-[1000] overflow-y-auto">
+  <div class="fixed inset-0 z-[1000] overflow-y-auto" role="dialog" aria-modal="true">
     <!-- Backdrop with smooth blur -->
     <div @click="$emit('close')" class="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300"></div>
     
-    <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+    <div class="flex min-h-full items-center justify-center p-3 text-center sm:p-6">
       <!-- Modal Box -->
-      <div class="relative bg-white/95 backdrop-blur-lg rounded-[32px] shadow-2xl border border-slate-100 max-w-2xl w-full text-left overflow-hidden z-10 transform transition-all duration-300 scale-100 p-6 sm:p-8 flex flex-col gap-4 sm:gap-6 my-8">
+      <div class="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[920px] scale-100 transform flex-col overflow-hidden rounded-[28px] border border-white/70 bg-[#f8faf9]/95 text-left shadow-[0_32px_100px_rgba(6,43,41,0.34)] backdrop-blur-xl transition-all duration-300 sm:max-h-[calc(100dvh-3rem)]">
       <!-- Close Button -->
-      <button @click="$emit('close')" class="absolute top-6 right-6 w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all bg-transparent border-none cursor-pointer">
-        <span class="material-symbols-outlined text-slate-500">close</span>
+      <button @click="$emit('close')" aria-label="Đóng cửa sổ" class="absolute right-5 top-5 z-20 flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-500 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/20 sm:right-7 sm:top-7">
+        <span class="material-symbols-outlined text-[24px]">close</span>
       </button>
 
       <!-- Modal Header -->
-      <div class="flex items-center gap-4 border-b border-slate-100 pb-4">
-        <div class="w-12 h-12 bg-[#075955]/10 text-[#075955] rounded-2xl flex items-center justify-center">
-          <span class="material-symbols-outlined text-2xl">
+      <div class="flex shrink-0 items-center gap-4 border-b border-slate-200/80 bg-white/80 px-5 py-5 pr-20 sm:gap-5 sm:px-8 sm:py-7 sm:pr-24">
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#075955] text-white shadow-[0_10px_24px_rgba(7,89,85,0.2)] sm:h-16 sm:w-16">
+          <span class="material-symbols-outlined text-[28px] sm:text-[32px]">
             {{ activeModalType === 'benxe' ? 'map' : (activeModalType === 'nhaxe' ? 'directions_bus' : (activeModalType === 'diemden' ? 'explore' : 'newspaper')) }}
           </span>
         </div>
         <div class="text-left">
-          <h3 class="text-xl font-black text-slate-800 tracking-tight uppercase">
-            {{ activeModalType === 'benxe' ? 'Hệ Thống Bến Xe (Admin đăng)' : (activeModalType === 'nhaxe' ? 'Danh Sách Nhà Xe (Admin đăng)' : (activeModalType === 'diemden' ? 'Các Điểm Đến Phổ Biến' : 'Thông Tin Ngành Vận Tải')) }}
+          <h3 class="text-xl font-black leading-tight tracking-[-0.03em] text-slate-900 sm:text-[28px]">
+            {{ activeModalType === 'benxe' ? 'Hệ thống bến xe' : (activeModalType === 'nhaxe' ? 'Các nhà xe đang hoạt động' : (activeModalType === 'diemden' ? 'Điểm đến phổ biến' : 'Thông tin ngành vận tải')) }}
           </h3>
-          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Dữ liệu đồng bộ trực tiếp từ hệ thống</p>
+          <p class="mt-1.5 text-xs font-semibold tracking-wide text-slate-500 sm:text-sm">Dữ liệu được cập nhật trực tiếp từ hệ thống</p>
         </div>
       </div>
 
       <!-- Modal Body Content -->
-      <div class="text-slate-600 text-sm leading-relaxed overflow-y-auto pr-2 space-y-4 text-left flex-1 min-h-0">
+      <div class="modal-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 text-left text-[15px] leading-7 text-slate-600 sm:px-8 sm:py-7">
         
         <!-- BẾN XE DYNAMIC LIST -->
         <div v-if="activeModalType === 'benxe'" class="space-y-4">
@@ -126,17 +126,23 @@
 
         <!-- THONG TIN DYNAMIC LIST -->
         <div v-if="activeModalType === 'thongtin'" class="space-y-4">
-          <p class="font-semibold text-slate-800">Cập nhật các quy định, thông tin an toàn đường bộ và cẩm nang đi xe mới nhất:</p>
+          <div class="max-w-3xl">
+            <p class="text-base font-semibold leading-7 text-slate-700 sm:text-lg">Những thông tin quan trọng giúp bạn chuẩn bị tốt hơn trước mỗi hành trình.</p>
+            <p class="mt-1 text-sm text-slate-500 sm:text-[15px]">Vui lòng đọc kỹ các quy định bên dưới trước khi đặt vé và lên xe.</p>
+          </div>
           <div v-if="loadingInfo" class="flex justify-center py-4">
             <span class="material-symbols-outlined animate-spin text-[#075955]">sync</span>
           </div>
-          <ul v-else class="space-y-3">
-            <li v-if="transportInfos.length === 0" class="p-4 bg-[#075955]/5 rounded-2xl border border-[#075955]/10 text-left text-center">
-              <p class="text-xs text-slate-500 italic">Chưa có thông tin được cập nhật.</p>
+          <ul v-else class="space-y-4">
+            <li v-if="transportInfos.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+              <p class="text-sm font-medium text-slate-500">Chưa có thông tin được cập nhật.</p>
             </li>
-            <li v-for="(info, index) in transportInfos" :key="index" class="p-4 bg-[#075955]/5 rounded-2xl border border-[#075955]/10 text-left">
-              <strong class="text-[#075955] text-xs uppercase tracking-wider block mb-1">{{ info.title }}</strong>
-              <p class="text-xs text-slate-600 whitespace-pre-line">{{ info.content }}</p>
+            <li v-for="(info, index) in transportInfos" :key="index" class="group grid grid-cols-[44px_minmax(0,1fr)] gap-4 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-[0_8px_28px_rgba(15,55,52,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-700/25 hover:shadow-[0_12px_34px_rgba(15,55,52,0.09)] sm:grid-cols-[52px_minmax(0,1fr)] sm:gap-5 sm:p-5">
+              <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 font-mono text-sm font-bold tabular-nums text-[#075955] transition-colors group-hover:bg-[#075955] group-hover:text-white sm:h-13 sm:w-13">{{ String(index + 1).padStart(2, '0') }}</span>
+              <div class="min-w-0 pt-0.5">
+                <strong class="block text-[14px] font-extrabold leading-5 tracking-wide text-[#075955] sm:text-[15px]">{{ info.title }}</strong>
+                <p class="mt-1.5 max-w-[72ch] whitespace-pre-line text-[14px] leading-6 text-slate-600 sm:text-base sm:leading-7">{{ info.content }}</p>
+              </div>
             </li>
           </ul>
         </div>
@@ -144,12 +150,12 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="flex justify-end gap-3 border-t border-slate-100 pt-4">
-        <button @click="$emit('close')" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors border-none cursor-pointer">
+      <div class="flex shrink-0 flex-col-reverse gap-3 border-t border-slate-200/80 bg-white/85 px-5 py-4 sm:flex-row sm:justify-end sm:px-8 sm:py-5">
+        <button @click="$emit('close')" class="min-h-12 cursor-pointer rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-300/50 active:translate-y-px">
           Đóng lại
         </button>
-        <button @click="$emit('book-now')" class="px-6 py-2.5 bg-[#075955] hover:bg-[#05403d] text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors flex items-center gap-2 border-none cursor-pointer">
-          <span class="material-symbols-outlined text-sm">directions_bus</span> Đặt vé ngay
+        <button @click="$emit('book-now')" class="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-transparent bg-[#075955] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_24px_rgba(7,89,85,0.2)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#064b48] hover:shadow-[0_14px_30px_rgba(7,89,85,0.26)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/25 active:translate-y-px">
+          <span class="material-symbols-outlined text-[19px]">directions_bus</span> Đặt vé ngay
         </button>
       </div>
       </div>
@@ -215,3 +221,30 @@ watch(() => props.activeModalType, () => {
   fetchTransportInfo();
 });
 </script>
+
+<style scoped>
+.modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(7, 89, 85, 0.35) transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(7, 89, 85, 0.3);
+  background-clip: padding-box;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(7, 89, 85, 0.5);
+  background-clip: padding-box;
+}
+</style>

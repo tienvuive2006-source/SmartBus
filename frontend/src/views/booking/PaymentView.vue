@@ -359,11 +359,11 @@ const currentUser = authStore.currentUser;
 
 const paymentMethods = computed(() => {
   const methods = [
-    { id: 'QR', name: 'Quét mã QR', icon: 'qr_code_scanner' },
-    { id: 'CASH', name: 'Thanh toán khi lên xe', icon: 'payments' }
+    { id: 'QR', name: 'Quét mã QR', icon: 'qr_code_scanner' }
   ];
   if (authStore.isLoggedIn) {
     methods.unshift({ id: 'WALLET', name: 'Ví Trung - Nam (Khuyên dùng)', icon: 'account_balance_wallet' });
+    methods.push({ id: 'CASH', name: 'Thanh toán khi lên xe', icon: 'payments' });
   }
   return methods;
 });
@@ -472,9 +472,12 @@ const processPayment = async () => {
 
     const res = await api.post('/admin/bookings/confirm-roundtrip', confirmData);
     if (res.status === 200 || res.status === 201) {
+      const publicBookingReference = returnTripId ? res.data.groupId : res.data.bookingCode;
       // 💾 LƯU VÀO LỊCH SỬ LOCAL
       const newTicket = {
-        id: res.data.groupId || Math.random().toString(), // fallback if groupId isn't returned
+        id: publicBookingReference,
+        ticketCode: res.data.bookingCode,
+        ticketCodes: res.data.ticketCodes || [],
         from: trip.value.departurePoint,
         to: returnTripId ? `${trip.value.arrivalPoint} (Khứ hồi)` : trip.value.arrivalPoint,
         time: trip.value.departureTime,
@@ -482,6 +485,8 @@ const processPayment = async () => {
         seats: seatNames.value + (returnTripId ? ` (+${returnSeatNames.value})` : ''),
         total: totalAmount.value,
         method: selectedMethod.value,
+        customerName: customerName.value,
+        customerPhone: customerPhone.value,
         busType: trip.value.busType,
         status: selectedMethod.value === 'CASH' ? 'PENDING' : 'PAID'
       };
@@ -499,7 +504,7 @@ const processPayment = async () => {
           path: '/booking/payment-success', 
           query: { 
             groupId: res.data.groupId,
-            bookingId: res.data.groupId, 
+            bookingId: publicBookingReference,
             from: trip.value.departurePoint, 
             to: returnTripId ? `${trip.value.arrivalPoint} (Khứ hồi)` : trip.value.arrivalPoint, 
             time: trip.value.departureTime, 

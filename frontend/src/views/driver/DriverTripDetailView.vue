@@ -178,6 +178,9 @@
                 <button v-if="booking.status === 'CHECKED_IN'" disabled class="px-4 py-1.5 bg-primary/10 text-primary font-bold text-body-sm rounded-xl flex items-center gap-1">
                   <span class="material-symbols-outlined text-[18px]">check_circle</span> Hoàn tất
                 </button>
+                <button v-else @click="checkinBooking(booking.id)" class="px-4 py-1.5 bg-amber-500 text-white font-bold text-body-sm rounded-xl flex items-center gap-1 hover:bg-amber-600 active:scale-95 transition-all shadow-sm">
+                  <span class="material-symbols-outlined text-[18px]">how_to_reg</span> Check-in
+                </button>
               </div>
             </div>
           </div>
@@ -547,8 +550,19 @@ const updateStatus = async (newStatus) => {
   }
 };
 
-
-
+const checkinBooking = async (bookingId) => {
+  if (!confirm("Xác nhận khách đã lên xe?")) return;
+  try {
+    await axios.put(`${import.meta.env.VITE_API_BASE_URL}/inspector/bookings/${bookingId}/checkin`, {}, authStore.authHeader);
+    const index = bookings.value.findIndex(b => b.id === bookingId);
+    if (index !== -1) {
+      bookings.value[index].status = 'CHECKED_IN';
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Check-in thất bại!");
+  }
+};
 
 
 // Utils

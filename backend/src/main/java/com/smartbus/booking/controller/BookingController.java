@@ -10,6 +10,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import com.smartbus.booking.repository.TripRepository;
 import com.smartbus.booking.repository.UserRepository;
 import com.smartbus.booking.service.LoyaltyPointPolicy;
@@ -342,7 +343,9 @@ public class BookingController {
             }
 
             booking.setTotalPrice(serverCalculatedPrice);
-            booking.setPaymentMethod((String) payload.get("paymentMethod"));
+            String paymentMethod = (String) payload.get("paymentMethod");
+            rejectGuestCashPayment(paymentMethod);
+            booking.setPaymentMethod(paymentMethod);
             booking.setStatus((String) payload.get("status"));
             booking.setCreatedAt(LocalDateTime.now());
             booking.setTrip(trip);
@@ -538,6 +541,7 @@ public class BookingController {
             }
             
             String paymentMethod = (String) payload.get("paymentMethod");
+            rejectGuestCashPayment(paymentMethod);
             
             // Nếu là WALLET thì trừ tiền
             if ("WALLET".equals(paymentMethod) && po.getCustomerId() != null) {
@@ -552,7 +556,8 @@ public class BookingController {
             
             // Tạo RoundTripGroup
             com.smartbus.booking.entity.RoundTripGroup rtg = new com.smartbus.booking.entity.RoundTripGroup();
-            rtg.setGroupId("GRP" + po.getPaymentCode());
+            rtg.setGroupId("GRP-" + java.util.UUID.randomUUID().toString()
+                    .replace("-", "").substring(0, 16).toUpperCase());
             rtg.setCustomerId(po.getCustomerId());
             rtg.setCreatedAt(LocalDateTime.now());
             roundTripGroupRepository.save(rtg);
@@ -586,21 +591,29 @@ public class BookingController {
                 retDiscount = voucherDiscountAmount / 2;
             }
             
-            createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId(), userVoucherId, outDiscount,
+            Booking outboundBooking = createSingleBookingFromPayload(outboundTripId, outboundSeats, customerInfo, paymentMethod, "OUTBOUND", rtg.getGroupId(), po.getCustomerId(), userVoucherId, outDiscount,
                     payload.get("outboundPickupStopId"), payload.get("outboundDropoffStopId"));
             
             // Tạo vé RETURN
+            Booking returnBooking = null;
             if (payload.containsKey("returnTripId") && payload.get("returnTripId") != null) {
                 Long returnTripId = Long.valueOf(payload.get("returnTripId").toString());
                 List<String> returnSeats = (List<String>) payload.get("returnSeats");
-                createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId(), userVoucherId, retDiscount,
+                returnBooking = createSingleBookingFromPayload(returnTripId, returnSeats, customerInfo, paymentMethod, "RETURN", rtg.getGroupId(), po.getCustomerId(), userVoucherId, retDiscount,
                         payload.get("returnPickupStopId"), payload.get("returnDropoffStopId"));
             }
             
             po.setStatus("COMPLETED");
             paymentOrderRepository.save(po);
             
-            return ResponseEntity.ok(Map.of("success", true, "groupId", rtg.getGroupId()));
+            java.util.List<String> ticketCodes = new java.util.ArrayList<>();
+            ticketCodes.add(outboundBooking.getTicketCode());
+            if (returnBooking != null) ticketCodes.add(returnBooking.getTicketCode());
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "groupId", rtg.getGroupId(),
+                    "bookingCode", outboundBooking.getTicketCode(),
+                    "ticketCodes", ticketCodes));
             
         } catch (Exception e) {
              e.printStackTrace();
@@ -628,6 +641,19 @@ public class BookingController {
         }
     }
 
+    private void rejectGuestCashPayment(String paymentMethod) {
+        if (!"CASH".equalsIgnoreCase(paymentMethod)) return;
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean guest = authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getName());
+        if (guest) {
+            throw new IllegalArgumentException(
+                    "Khách vãng lai không được thanh toán khi lên xe. Vui lòng đăng nhập hoặc thanh toán bằng QR.");
+        }
+    }
+
     private com.smartbus.booking.entity.User requireCompletedBookingPhone(Long userId) {
         com.smartbus.booking.entity.User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
@@ -638,7 +664,7 @@ public class BookingController {
         return user;
     }
     
-    private void createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId, Long userVoucherId, Double discountAmount, Object pickupStopId, Object dropoffStopId) {
+    private Booking createSingleBookingFromPayload(Long tripId, List<String> seats, Map<String, Object> cust, String pm, String tripType, String groupId, Long customerId, Long userVoucherId, Double discountAmount, Object pickupStopId, Object dropoffStopId) {
         com.smartbus.booking.entity.Trip trip = tripRepository.findById(tripId).orElseThrow();
         Booking b = new Booking();
         b.setCustomerName((String) cust.get("customerName"));
@@ -717,6 +743,7 @@ public class BookingController {
                 emailService.sendBookingConfirmation(saved);
             }
         } catch (Exception e) {}
+        return saved;
     }
 
     @org.springframework.beans.factory.annotation.Value("${sepay.token}")
@@ -810,9 +837,21 @@ public class BookingController {
     }
 
     @GetMapping("/track")
-    public ResponseEntity<?> trackBooking(@RequestParam("code") Long code, @RequestParam("phone") String phone) {
-        return bookingRepository.findByIdAndCustomerPhone(code, phone)
-                .map(booking -> ResponseEntity.ok(booking))
+    public ResponseEntity<?> trackBooking(@RequestParam("code") String code, @RequestParam("phone") String phone) {
+        String normalizedCode = code == null ? "" : code.trim().toUpperCase();
+        String normalizedPhone = phone == null ? "" : phone.replaceAll("\\s+", "");
+        if (normalizedCode.isBlank() || !normalizedPhone.matches("\\d{10,11}")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Mã vé hoặc số điện thoại không hợp lệ."));
+        }
+
+        Optional<Booking> booking = bookingRepository
+                .findByTicketCodeIgnoreCaseAndCustomerPhone(normalizedCode, normalizedPhone);
+        if (booking.isEmpty() && normalizedCode.startsWith("GRP-")) {
+            booking = bookingRepository
+                    .findByRoundTripGroupIdAndCustomerPhone(normalizedCode, normalizedPhone)
+                    .stream().findFirst();
+        }
+        return booking.<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 
 @Component
 @Order(3)
@@ -25,8 +26,15 @@ public class BookingIntentHandler implements AiIntentHandler {
     }
 
     @Override
+    public boolean usesBookingContext() {
+        return true;
+    }
+
+    @Override
     public Map<String, Object> handle(String nonAccentMsg, String authHeader, ChatContext ctx, String sessionId) {
         Map<String, Object> response = new HashMap<>();
+
+        detectAndRememberFilters(nonAccentMsg, ctx);
         
         if (ctx.from == null && ctx.to == null) {
             response.put("text", "Bạn cần tìm vé xe đi đâu? (Ví dụ: 'Tôi muốn đi từ Hà Nội đến Đà Nẵng')");
@@ -43,7 +51,7 @@ public class BookingIntentHandler implements AiIntentHandler {
         }
 
         String searchDate = (ctx.date != null) ? ctx.date : "";
-        boolean isClosestDate = nonAccentMsg.contains("gan nhat") || nonAccentMsg.contains("som nhat") || nonAccentMsg.contains("nhanh nhat");
+        boolean isClosestDate = nonAccentMsg.contains("gan nhat");
         
         List<Trip> trips = tripService.searchTrips(ctx.from, ctx.to, searchDate);
         LocalDate now = LocalDate.now();
@@ -73,40 +81,20 @@ public class BookingIntentHandler implements AiIntentHandler {
             }
         }
 
-        String sort = "default";
+        String sort = ctx.sort;
         if (nonAccentMsg.contains("re nhat") || nonAccentMsg.contains("gia re") || nonAccentMsg.contains("thap nhat") || nonAccentMsg.contains("beo nhat") || nonAccentMsg.contains("tiet kiem")) {
             sort = "price_asc";
         } else if (nonAccentMsg.contains("dat nhat") || nonAccentMsg.contains("vip nhat") || nonAccentMsg.contains("sang nhat") || nonAccentMsg.contains("mac nhat") || nonAccentMsg.contains("cao nhat") || nonAccentMsg.contains("xin nhat")) {
             sort = "price_desc";
+        } else if (nonAccentMsg.contains("som nhat")) {
+            sort = "time_asc";
+        } else if (nonAccentMsg.contains("nhanh nhat")) {
+            sort = "duration_asc";
         }
+        ctx.sort = sort;
 
-        String detectedCompany = "all";
-        String detectedBusType = "all";
-        String normalizedMsg = nonAccentMsg.replace("-", "").replace(" ", "");
-        
-        for (Trip t : trips) {
-            String normalizedCompanyName = entityService.removeAccents(t.getCompanyName().toLowerCase()).replace("-", "").replace(" ", "");
-            if (normalizedMsg.contains(normalizedCompanyName)) {
-                detectedCompany = t.getCompanyName();
-            }
-            
-            if (t.getBusType() != null) {
-                String[] typeWords = entityService.removeAccents(t.getBusType().toLowerCase()).split("\\s+");
-                for (String word : typeWords) {
-                    if (!word.equals("cho") && !word.equals("phong") && !word.equals("xe") && !word.matches("\\d+")) {
-                        String safeWord = word;
-                        if (word.equals("premium")) safeWord = "prenium"; 
-                        if (word.equals("luxury")) safeWord = "luxyry";
-                        
-                        if (word.length() > 2 && (nonAccentMsg.contains(word) || nonAccentMsg.contains(safeWord))) {
-                            detectedBusType = word; 
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (nonAccentMsg.contains("giuong nam") || nonAccentMsg.contains("giuong")) detectedBusType = "giuong";
+        String detectedCompany = ctx.company;
+        String detectedBusType = ctx.busType;
 
         if (!detectedCompany.equals("all") || !detectedBusType.equals("all")) {
             List<Trip> filteredTrips = new java.util.ArrayList<>();
@@ -130,7 +118,8 @@ public class BookingIntentHandler implements AiIntentHandler {
             response.put("text", "Rất tiếc! Tôi vừa tra cứu toàn bộ kho dữ liệu nhưng **không có chuyến xe nào** từ " + ctx.from + " đến " + ctx.to + filterMsg + (ctx.date != null ? " vào ngày " + ctx.date : " sắp tới") + ".\n\nNhưng tôi vẫn sẽ đưa bạn đến trang kết quả để bạn dễ dàng tìm kiếm lịch trình khác nhé!");
         } else {
             String dateText = (ctx.date != null) ? "vào ngày " + ctx.date : "sắp tới";
-            double minPrice = trips.stream().mapToDouble(t -> t.getPrice() != null ? t.getPrice() : 0.0).min().orElse(0.0);
+            double minPrice = trips.stream().map(Trip::getPrice).filter(p -> p != null && p > 0)
+                    .mapToDouble(Double::doubleValue).min().orElse(0.0);
             
             String filterMsg = "";
             if (!detectedCompany.equals("all")) filterMsg += " của nhà xe " + detectedCompany;
@@ -144,8 +133,11 @@ public class BookingIntentHandler implements AiIntentHandler {
             else if (sort.equals("price_desc")) {
                 sortText = " và đã tự động **chọn những vé VIP Cao Cấp nhất** cho bạn";
                 trips.sort(java.util.Comparator.comparingDouble((Trip t) -> t.getPrice() != null ? t.getPrice() : 0.0).reversed());
+            } else if (sort.equals("duration_asc")) {
+                sortText = " và đã ưu tiên **chuyến có thời gian di chuyển ngắn nhất**";
+                trips.sort(Comparator.comparingInt(this::durationMinutes));
             } else {
-                trips.sort(java.util.Comparator.comparing((Trip t) -> t.getDepartureDate() != null ? t.getDepartureDate() : ""));
+                trips.sort(Comparator.comparing(this::departureSortValue));
             }
 
             List<Map<String, Object>> tripsPreview = new java.util.ArrayList<>();
@@ -172,5 +164,48 @@ public class BookingIntentHandler implements AiIntentHandler {
         ));
         
         return response;
+    }
+
+    private void detectAndRememberFilters(String message, ChatContext ctx) {
+        String normalizedMsg = compact(message);
+        for (Trip trip : tripService.getAllTrips()) {
+            if (trip.getCompanyName() != null && !trip.getCompanyName().isBlank()
+                    && normalizedMsg.contains(compact(entityService.removeAccents(trip.getCompanyName().toLowerCase())))) {
+                ctx.company = trip.getCompanyName();
+            }
+            if (trip.getBusType() != null) {
+                String normalizedType = entityService.removeAccents(trip.getBusType().toLowerCase());
+                for (String word : normalizedType.split("\\s+")) {
+                    if (word.length() > 2 && !word.matches("\\d+")
+                            && !java.util.Set.of("cho", "phong", "dong", "loai", "xe", "trung", "nam", "smartbus").contains(word)
+                            && message.contains(word)) {
+                        ctx.busType = word;
+                    }
+                }
+            }
+        }
+        if (message.contains("giuong nam") || message.contains("xe giuong")) ctx.busType = "giuong";
+        if (message.contains("limousine")) ctx.busType = "limousine";
+        if (message.contains("tat ca nha xe") || message.contains("bo loc nha xe")) ctx.company = "all";
+        if (message.contains("tat ca loai xe") || message.contains("bo loc loai xe")) ctx.busType = "all";
+    }
+
+    private String compact(String value) {
+        return value == null ? "" : value.replace("-", "").replaceAll("\\s+", "");
+    }
+
+    private String departureSortValue(Trip trip) {
+        return (trip.getDepartureDate() == null ? "9999-12-31" : trip.getDepartureDate()) + " "
+                + (trip.getDepartureTime() == null ? "23:59" : trip.getDepartureTime());
+    }
+
+    private int durationMinutes(Trip trip) {
+        String duration = entityService.removeAccents(trip.getDuration() == null ? "" : trip.getDuration().toLowerCase());
+        java.util.regex.Matcher hours = java.util.regex.Pattern.compile("(\\d+)\\s*(?:gio|h)").matcher(duration);
+        java.util.regex.Matcher minutes = java.util.regex.Pattern.compile("(\\d+)\\s*(?:phut|p)").matcher(duration);
+        int total = 0;
+        if (hours.find()) total += Integer.parseInt(hours.group(1)) * 60;
+        if (minutes.find()) total += Integer.parseInt(minutes.group(1));
+        return total > 0 ? total : Integer.MAX_VALUE;
     }
 }

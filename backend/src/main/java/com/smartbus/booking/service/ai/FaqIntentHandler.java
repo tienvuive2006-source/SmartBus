@@ -1,19 +1,18 @@
 package com.smartbus.booking.service.ai;
 
-import com.smartbus.booking.service.TripService;
+import com.smartbus.booking.repository.BusTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Component
 @Order(1) // Priority 1
 @RequiredArgsConstructor
 public class FaqIntentHandler implements AiIntentHandler {
-    private final TripService tripService;
+    private final BusTypeRepository busTypeRepository;
 
     @Override
     public boolean canHandle(String nonAccentMsg) {
@@ -28,13 +27,10 @@ public class FaqIntentHandler implements AiIntentHandler {
         Map<String, Object> response = new HashMap<>();
         
         if (nonAccentMsg.contains("cac loai xe") || nonAccentMsg.contains("nhung loai xe") || nonAccentMsg.contains("co loai xe nao") || nonAccentMsg.contains("nhung dong xe")) {
-            List<com.smartbus.booking.entity.Trip> allTrips = tripService.getAllTrips();
-            java.util.Set<String> busTypes = new java.util.HashSet<>();
-            for (com.smartbus.booking.entity.Trip t : allTrips) {
-                if (t.getBusType() != null && !t.getBusType().trim().isEmpty()) {
-                    busTypes.add(t.getBusType());
-                }
-            }
+            java.util.Set<String> busTypes = new java.util.TreeSet<>();
+            busTypeRepository.findAll().forEach(type -> {
+                if (type.getName() != null && !type.getName().isBlank()) busTypes.add(type.getName().trim());
+            });
             if (!busTypes.isEmpty()) {
                 response.put("text", "Hiện tại hệ thống nhà xe đang phục vụ các dòng xe chất lượng cao sau:\n\n- **" + String.join("**\n- **", busTypes) + "**\n\nBạn muốn trải nghiệm dòng xe nào cho chuyến đi sắp tới?");
             } else {
@@ -51,7 +47,7 @@ public class FaqIntentHandler implements AiIntentHandler {
         }
 
         if (nonAccentMsg.contains("chinh sach huy") || nonAccentMsg.contains("doi ve") || nonAccentMsg.contains("tra ve") || nonAccentMsg.contains("huy ve ra sao")) {
-            response.put("text", "🔄 **Chính sách Đổi/Hủy vé:**\n\n- Hủy vé trước **24 tiếng**: Hoàn 100% tiền vé.\n- Hủy vé trước **12 tiếng**: Hoàn 50% tiền vé.\n- Dưới 12 tiếng hoặc sau khi xe chạy: Không hỗ trợ hoàn tiền.\n\n*Lưu ý: Tiền hoàn sẽ được cộng tự động vào Ví SkyPay của bạn để dùng cho các chuyến sau.*");
+            response.put("text", "🔄 **Chính sách hủy vé:**\n\n- Hủy trước giờ khởi hành từ **24 tiếng trở lên**: hoàn **95%** tiền vé.\n- Hủy trước giờ khởi hành từ **12 đến dưới 24 tiếng**: hoàn **70%** tiền vé.\n- Còn **dưới 12 tiếng** hoặc xe đã chạy: không thể hủy.\n\nMức hoàn áp dụng cho vé đã thanh toán không dùng tiền mặt. Vé tiền mặt chưa thanh toán không phát sinh khoản hoàn.");
             response.put("action", "none");
             return response;
         }

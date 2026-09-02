@@ -76,6 +76,10 @@
               </div>
             </div>
 
+            <div class="form-utility">
+              <button type="button" @click="router.push('/auth/forgot-password')">Quên mật khẩu?</button>
+            </div>
+
             <div v-if="errorMsg" class="error-message" role="alert">
               <span class="material-symbols-outlined" aria-hidden="true">error</span>
               <span>{{ errorMsg }}</span>

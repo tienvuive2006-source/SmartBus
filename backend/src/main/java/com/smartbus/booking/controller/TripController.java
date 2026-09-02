@@ -154,6 +154,16 @@ public class TripController {
         return ResponseEntity.noContent().build();
     }
 
+    @com.smartbus.booking.annotation.AuditAction(action = "BULK_DELETE_TRIPS", entityName = "Trip")
+    @DeleteMapping("/bulk")
+    public ResponseEntity<java.util.Map<String, Object>> deleteTrips(
+            @RequestBody java.util.Map<String, List<Long>> body) {
+        int deletedCount = tripService.deleteTrips(body.get("ids"));
+        return ResponseEntity.ok(java.util.Map.of(
+                "deletedCount", deletedCount,
+                "message", "Đã xóa " + deletedCount + " chuyến xe."));
+    }
+
     // 7. CẬP NHẬT TRẠNG THÁI TÀI XẾ CHẤP NHẬN CHUYẾN
     @com.smartbus.booking.annotation.AuditAction(action = "ACCEPT_TRIP", entityName = "Trip")
     @PatchMapping("/{id}/accept")

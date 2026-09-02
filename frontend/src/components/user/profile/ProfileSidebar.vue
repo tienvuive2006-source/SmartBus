@@ -44,15 +44,6 @@
            <span class="material-symbols-outlined text-gray-400 group-hover:text-[#075955] transition-colors">receipt_long</span>
            <span class="text-sm font-bold text-gray-700 group-hover:text-gray-900">Lịch sử đặt vé</span>
          </button>
-         <button @click="$router.push('/ai-assistant')" class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-gray-50 transition-colors text-left group">
-           <span class="material-symbols-outlined text-gray-400 group-hover:text-[#075955] transition-colors">smart_toy</span>
-           <span class="text-sm font-bold text-gray-700 group-hover:text-gray-900">Trợ lý ảo AI</span>
-         </button>
-         <button class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-gray-50 transition-colors text-left group">
-           <span class="material-symbols-outlined text-gray-400 group-hover:text-[#075955] transition-colors">notifications</span>
-           <span class="text-sm font-bold text-gray-700 group-hover:text-gray-900">Cài đặt thông báo</span>
-         </button>
-         
          <div class="h-[1px] bg-gray-100 my-2"></div>
          
          <button @click="$emit('logout')" class="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-red-50 transition-colors text-left group">

@@ -190,6 +190,29 @@
   gap: 18px;
 }
 
+.form-utility {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+}
+
+.form-utility button {
+  padding: 3px 0;
+  border: 0;
+  color: #075fcc;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.form-utility button:hover,
+.form-utility button:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

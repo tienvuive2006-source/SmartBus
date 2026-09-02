@@ -88,7 +88,7 @@
     ></div>
 
     <div class="flex-1 flex flex-col min-w-0 md:ml-64 relative">
-      <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 lg:px-8 z-10 shrink-0 sticky top-0">
+      <header v-if="!$route.meta.hideAdminHeader" class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 lg:px-8 z-10 shrink-0 sticky top-0">
         <div class="flex items-center gap-4">
           <button
             @click="isSidebarOpen = !isSidebarOpen"

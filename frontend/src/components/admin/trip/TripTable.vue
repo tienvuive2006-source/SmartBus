@@ -1,14 +1,42 @@
 <template>
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <!-- Toolbar -->
-    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div class="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3 bg-slate-50/50">
       <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
          <span class="material-symbols-outlined text-[#075955] text-[20px]">list_alt</span>
          Danh sách vận hành
       </h3>
-      <div class="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-[10px] font-bold text-emerald-700 uppercase">{{ totalCount }} chuyến</span>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <button
+          v-if="selectedIds.length"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-600 hover:bg-slate-100 transition-colors"
+          @click="clearSelection"
+        >
+          Bỏ chọn
+        </button>
+        <button
+          v-if="eligiblePoolIds.length > eligiblePageIds.length && selectedIds.length < eligiblePoolIds.length"
+          type="button"
+          class="px-3 py-2 rounded-lg border border-[#075955]/20 bg-[#075955]/5 text-[10px] font-black uppercase text-[#075955] hover:bg-[#075955]/10 transition-colors"
+          @click="selectAllFiltered"
+        >
+          Chọn tất cả {{ eligiblePoolIds.length }} chuyến có thể xóa
+        </button>
+        <button
+          v-if="selectedIds.length"
+          type="button"
+          :disabled="bulkDeleting"
+          class="px-3 py-2 rounded-lg bg-rose-600 text-[10px] font-black uppercase text-white hover:bg-rose-700 disabled:opacity-60 disabled:cursor-wait transition-colors flex items-center gap-1.5"
+          @click="requestBulkDelete"
+        >
+          <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+          {{ bulkDeleting ? 'Đang xóa...' : `Xóa đã chọn (${selectedIds.length})` }}
+        </button>
+        <div class="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-lg border border-emerald-100">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-[10px] font-bold text-emerald-700 uppercase">{{ totalCount }} chuyến</span>
+        </div>
       </div>
     </div>
 
@@ -17,6 +45,18 @@
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-slate-50 border-b border-slate-100">
+            <th class="pl-4 pr-1 py-4 w-10 text-center">
+              <input
+                type="checkbox"
+                class="w-4 h-4 accent-[#075955] cursor-pointer"
+                :checked="allPageSelected"
+                :indeterminate.prop="somePageSelected"
+                :disabled="eligiblePageIds.length === 0"
+                aria-label="Chọn các chuyến có thể xóa trong trang này"
+                title="Chọn các chuyến có thể xóa trong trang này"
+                @change="togglePageSelection"
+              />
+            </th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">ID</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Lộ trình & Nhà xe</th>
             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Dòng xe</th>
@@ -32,7 +72,19 @@
             v-for="trip in trips" 
             :key="trip.id" 
             class="group border-b border-slate-50 hover:bg-[#075955]/[0.02] transition-all duration-200"
+            :class="selectedIds.includes(trip.id) ? 'bg-rose-50/60' : ''"
           >
+            <td class="pl-4 pr-1 py-5 text-center">
+              <input
+                v-model="selectedIds"
+                type="checkbox"
+                :value="trip.id"
+                :disabled="!isDeletable(trip)"
+                :aria-label="`Chọn chuyến #${trip.id} để xóa`"
+                :title="isDeletable(trip) ? 'Chọn chuyến này' : (isCompleted(trip) ? 'Chuyến đã hoàn thành chỉ được phép xem' : 'Chuyến đã có khách đặt nên không thể xóa')"
+                class="w-4 h-4 accent-[#075955] cursor-pointer disabled:cursor-not-allowed disabled:opacity-30"
+              />
+            </td>
             <td class="px-6 py-5 font-mono text-[11px] font-black text-slate-300 group-hover:text-[#075955]">#{{ trip.id }}</td>
             <td class="px-6 py-5">
               <div class="flex items-start gap-3">
@@ -58,7 +110,6 @@
                 <div class="flex gap-1 mb-1">
                    <span v-for="i in 3" :key="i" class="w-1.5 h-1.5 rounded-full bg-emerald-400/30"></span>
                 </div>
-
               </div>
             </td>
             <td class="px-6 py-5">
@@ -111,13 +162,16 @@
                 </button>
                 <button 
                   @click="$emit('edit', trip)" 
-                  class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 hover:bg-[#075955] hover:text-white transition-all shadow-sm border border-slate-100"
-                  title="Sửa chuyến xe"
+                  class="w-9 h-9 flex items-center justify-center rounded-xl transition-all shadow-sm border"
+                  :class="isCompleted(trip)
+                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border-blue-100'
+                    : 'bg-slate-50 text-slate-600 hover:bg-[#075955] hover:text-white border-slate-100'"
+                  :title="isCompleted(trip) ? 'Xem chuyến xe đã hoàn thành' : 'Sửa chuyến xe'"
                 >
-                  <span class="material-symbols-outlined text-lg">edit_note</span>
+                  <span class="material-symbols-outlined text-lg">{{ isCompleted(trip) ? 'visibility' : 'edit_note' }}</span>
                 </button>
                 <button 
-                  v-if="!trip.totalSeats || trip.availableSeats === trip.totalSeats"
+                  v-if="isDeletable(trip)"
                   @click="$emit('delete', trip.id)" 
                   class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-slate-100"
                   title="Xoá lộ trình này"
@@ -127,7 +181,7 @@
                 <button 
                   v-else
                   class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-300 cursor-not-allowed shadow-sm border border-slate-200 opacity-50"
-                  title="Không thể xoá chuyến xe đã có khách mua vé"
+                  :title="isCompleted(trip) ? 'Chuyến đã hoàn thành chỉ được phép xem' : 'Không thể xoá chuyến xe đã có khách mua vé'"
                 >
                   <span class="material-symbols-outlined text-lg">delete_sweep</span>
                 </button>
@@ -137,7 +191,7 @@
         </tbody>
         <tbody v-else>
           <tr>
-            <td colspan="8" class="py-20 text-center">
+            <td colspan="9" class="py-20 text-center">
               <div class="flex flex-col items-center">
                 <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                   <span class="material-symbols-outlined text-4xl text-slate-300">search_off</span>
@@ -162,20 +216,59 @@
 </template>
 
 <script setup>
+import { computed, ref, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
 import AdminPagination from '@/components/admin/common/AdminPagination.vue';
 
 const api = useApi();
 
-defineProps({
+const props = defineProps({
   trips: { type: Array, default: () => [] },
+  selectableTrips: { type: Array, default: () => [] },
   totalCount: { type: Number, default: 0 },
   page: { type: Number, default: 0 },
   totalPages: { type: Number, default: 0 },
-  pageSize: { type: Number, default: 10 }
+  pageSize: { type: Number, default: 10 },
+  bulkDeleting: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['edit', 'delete', 'report', 'update:page']);
+const emit = defineEmits(['edit', 'delete', 'report', 'bulk-delete', 'update:page']);
+const selectedIds = ref([]);
+
+const isCompleted = trip => String(trip?.status || '').toUpperCase() === 'COMPLETED';
+const isDeletable = (trip) => !isCompleted(trip)
+  && (!trip.totalSeats || trip.availableSeats === trip.totalSeats);
+const eligiblePageIds = computed(() => props.trips.filter(isDeletable).map(trip => trip.id));
+const selectionPool = computed(() => props.selectableTrips.length ? props.selectableTrips : props.trips);
+const eligiblePoolIds = computed(() => selectionPool.value.filter(isDeletable).map(trip => trip.id));
+const allPageSelected = computed(() => eligiblePageIds.value.length > 0
+  && eligiblePageIds.value.every(id => selectedIds.value.includes(id)));
+const somePageSelected = computed(() => !allPageSelected.value
+  && eligiblePageIds.value.some(id => selectedIds.value.includes(id)));
+
+const togglePageSelection = () => {
+  if (allPageSelected.value) {
+    selectedIds.value = selectedIds.value.filter(id => !eligiblePageIds.value.includes(id));
+  } else {
+    selectedIds.value = [...new Set([...selectedIds.value, ...eligiblePageIds.value])];
+  }
+};
+
+const selectAllFiltered = () => {
+  selectedIds.value = [...eligiblePoolIds.value];
+};
+
+const clearSelection = () => {
+  selectedIds.value = [];
+};
+
+const requestBulkDelete = () => {
+  emit('bulk-delete', [...selectedIds.value]);
+};
+
+watch(eligiblePoolIds, (validIds) => {
+  selectedIds.value = selectedIds.value.filter(id => validIds.includes(id));
+});
 
 const toggleVisibility = async (trip) => {
   try {
@@ -206,20 +299,38 @@ const formatDate = (d) => {
   }
 };
 
-const isTripPassed = (trip) => {
-  if (!trip || !trip.departureDate || !trip.departureTime) return false;
+const getTripDepartureTime = (trip) => {
+  if (!trip?.departureDate || !trip?.departureTime) return null;
   try {
     const dateParts = trip.departureDate.split('T')[0].split('-');
-    if (dateParts.length !== 3) return false;
+    if (dateParts.length !== 3) return null;
     const [year, month, day] = dateParts;
     const timeParts = trip.departureTime.split(':');
-    if (timeParts.length < 2) return false;
+    if (timeParts.length < 2) return null;
     const [hour, minute] = timeParts;
-    const depTime = new Date(year, month - 1, day, hour, minute);
-    return new Date() > depTime;
+    return new Date(year, month - 1, day, hour, minute);
   } catch (e) {
-    console.error("Lỗi parse ngày tháng trip:", trip.id, e);
-    return false;
+    return null;
   }
 };
+
+const isTripPassed = (trip) => {
+  const depTime = getTripDepartureTime(trip);
+  return depTime ? new Date() > depTime : false;
+};
+
+// Chuyến trong vòng 24h tới mà chưa phân công tài xế
+const isUnassignedUrgent = (trip) => {
+  if (isTripPassed(trip)) return false;
+  const hasDriver = trip.assignedDriverUsername && trip.assignedDriverUsername.trim() !== '';
+  if (hasDriver) return false;
+  const depTime = getTripDepartureTime(trip);
+  if (!depTime) return false;
+  const msUntilDeparture = depTime.getTime() - Date.now();
+  return msUntilDeparture > 0 && msUntilDeparture <= 24 * 60 * 60 * 1000;
+};
+
+const urgentUnassignedTrips = computed(() =>
+  props.trips.filter(isUnassignedUrgent)
+);
 </script>

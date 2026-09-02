@@ -1,9 +1,9 @@
 <template>
-  <div class="fixed bottom-6 right-6 z-[9999] font-sans">
+  <div class="chat-dock fixed bottom-6 right-6 z-[9999] font-sans">
     <!-- Chat Window -->
     <div 
       v-if="isOpen" 
-      class="absolute bottom-16 right-0 w-[350px] sm:w-[400px] h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-slide-up"
+      class="chat-window absolute bottom-16 right-0 w-[350px] sm:w-[400px] h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-slide-up"
     >
       <!-- Header -->
       <div class="bg-gradient-to-r from-[#075955] to-[#0a7a75] p-4 text-white flex justify-between items-center shrink-0">
@@ -50,7 +50,7 @@
                >
                   <div class="flex justify-between items-start mb-1">
                      <span class="font-bold text-gray-800 text-[13px] group-hover:text-[#075955] transition-colors">{{ trip.companyName }}</span>
-                     <span class="font-bold text-[#f03a17] text-[13px]">{{ trip.price.toLocaleString() }}đ</span>
+                     <span class="font-bold text-[#f03a17] text-[13px]">{{ Number(trip.price || 0).toLocaleString('vi-VN') }}đ</span>
                   </div>
                   <div class="flex items-center gap-3 text-[11px] text-gray-500">
                      <span class="flex items-center gap-1 font-semibold"><span class="material-symbols-outlined text-[12px]">schedule</span> {{ trip.departureTime }}</span>
@@ -65,6 +65,14 @@
                  Xem tất cả chuyến xe & Đặt vé
                </button>
             </div>
+
+            <button
+              v-if="msg.action === 'search' && (!msg.tripsPreview || msg.tripsPreview.length === 0)"
+              @click="navigateToBooking(msg.params)"
+              class="w-full mt-2 py-2 bg-[#075955]/10 text-[#075955] text-xs font-bold rounded-lg hover:bg-[#075955] hover:text-white transition-colors"
+            >
+              Mở trang tìm chuyến
+            </button>
 
             <!-- Nếu có action tùy chỉnh -->
             <button 
@@ -102,6 +110,7 @@
           <input 
             v-model="inputText" 
             type="text" 
+            maxlength="1000"
             placeholder="Nhập yêu cầu tìm vé..." 
             class="flex-1 bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400"
             :disabled="isWaiting"
@@ -118,16 +127,17 @@
     </div>
 
     <!-- Floating Buttons Container -->
-    <div class="flex items-center gap-4">
+    <div class="chat-actions flex items-center gap-4">
       <!-- Live Chat Zalo Button -->
       <div class="relative group">
         <a 
           href="https://zalo.me/0367093771" 
           target="_blank"
-          class="w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 z-50 hover:bg-gray-50 border border-gray-100"
+          rel="noopener noreferrer"
+          class="chat-action w-14 h-14 bg-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 z-50 hover:bg-gray-50 border border-gray-100"
         >
           <!-- Logo Zalo CSS (Không bao giờ bị lỗi ảnh) -->
-          <div class="w-10 h-10 bg-[#0068ff] rounded-full flex items-center justify-center shadow-inner">
+            <div class="zalo-mark w-10 h-10 bg-[#0068ff] rounded-full flex items-center justify-center shadow-inner">
             <span class="text-white font-bold text-[13px] tracking-tight">Zalo</span>
           </div>
           <!-- Notification dot -->
@@ -143,7 +153,7 @@
       <div class="relative group">
         <button 
           @click="toggleChat"
-          :class="['w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 z-50', isOpen ? 'bg-white text-[#075955] rotate-90 border border-gray-200' : 'bg-[#075955] text-white hover:bg-[#0a7a75]']"
+          :class="['chat-action w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 z-50', isOpen ? 'bg-white text-[#075955] rotate-90 border border-gray-200' : 'bg-[#075955] text-white hover:bg-[#0a7a75]']"
         >
           <span class="material-symbols-outlined text-3xl transition-transform duration-300">{{ isOpen ? 'expand_more' : 'smart_toy' }}</span>
           <!-- Notification dot -->
@@ -206,11 +216,13 @@ onMounted(async () => {
 
 const formatText = (text) => {
   if (!text) return '';
-  // Format bold
-  let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  // Format image: ![alt](url)
-  html = html.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="w-44 h-44 mx-auto my-2 rounded-xl shadow-sm border border-gray-200" />');
-  return html;
+  const escaped = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+  return escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 };
 
 const resetToWelcome = () => {
@@ -304,6 +316,10 @@ const loadSuggestions = async () => {
         messages.value[0].suggestions = allSuggestions;
         saveMessages();
       }
+    } else if (messages.value.length === 1 && messages.value[0].isBot) {
+      messages.value[0].text = 'Xin chào! Tôi là trợ lý AI của SmartBus Trung Nam. Hiện chưa có chuyến mở bán, nhưng tôi vẫn có thể hỗ trợ thông tin cho bạn.';
+      messages.value[0].suggestions = ['Chính sách hủy vé ra sao?', 'Quy định hành lý tối đa', 'Nhà xe có các loại xe nào?', 'Hướng dẫn thanh toán'];
+      saveMessages();
     }
     suggestionsLoaded.value = true;
   } catch (error) {
@@ -427,7 +443,7 @@ const sendMessage = async () => {
     messages.value.pop();
     messages.value.push({ 
       isBot: true, 
-      text: 'Xin lỗi, hệ thống AI đang quá tải. Bạn vui lòng thử lại sau giây lát nhé!' 
+      text: error.response?.data?.error || 'Xin lỗi, hệ thống AI đang quá tải. Bạn vui lòng thử lại sau giây lát nhé!'
     });
     saveMessages();
   } finally {
@@ -444,5 +460,40 @@ const sendMessage = async () => {
 }
 .animate-slide-up {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 639px) {
+  .chat-dock {
+    right: 1rem !important;
+    bottom: calc(5.15rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .chat-actions {
+    gap: 0.55rem !important;
+  }
+
+  .chat-action {
+    width: 2.85rem !important;
+    height: 2.85rem !important;
+  }
+
+  .zalo-mark {
+    width: 2.15rem !important;
+    height: 2.15rem !important;
+  }
+
+  .chat-window {
+    right: 0 !important;
+    bottom: 3.55rem !important;
+    width: calc(100vw - 2rem) !important;
+    height: min(70dvh, 32rem) !important;
+    border-radius: 1rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up {
+    animation: none;
+  }
 }
 </style>

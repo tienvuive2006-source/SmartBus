@@ -7,6 +7,7 @@ import com.smartbus.booking.service.LoyaltyPointPolicy;
 import com.smartbus.booking.dto.BookingCancellationRequest;
 import com.smartbus.booking.dto.RegistrationRequest;
 import com.smartbus.booking.service.RegistrationVerificationService;
+import com.smartbus.booking.service.PasswordResetService;
 import com.smartbus.booking.service.RefundRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -37,16 +38,44 @@ public class AuthController {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final RegistrationVerificationService registrationVerificationService;
+    private final PasswordResetService passwordResetService;
 
     @Value("${google.client.id}")
     private String googleClientId;
 
     public AuthController(UserRepository userRepository, JwtService jwtService, PasswordEncoder passwordEncoder,
-                          RegistrationVerificationService registrationVerificationService) {
+                          RegistrationVerificationService registrationVerificationService,
+                          PasswordResetService passwordResetService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.registrationVerificationService = registrationVerificationService;
+        this.passwordResetService = passwordResetService;
+    }
+
+    @PostMapping("/password/forgot")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        try {
+            passwordResetService.sendCode(request.get("email"));
+            return ResponseEntity.ok(Map.of(
+                    "message", "Nếu email đã đăng ký, mã xác nhận đã được gửi.",
+                    "expiresInSeconds", 600,
+                    "resendAfterSeconds", 60
+            ));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(Map.of("message", exception.getMessage()));
+        }
+    }
+
+    @PostMapping("/password/reset")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        try {
+            passwordResetService.resetPassword(
+                    request.get("email"), request.get("code"), request.get("newPassword"));
+            return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công."));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of("message", exception.getMessage()));
+        }
     }
 
     // ============================================================
@@ -455,31 +484,44 @@ public class AuthController {
     @com.smartbus.booking.annotation.AuditAction(action = "CANCEL_BOOKING", entityName = "Booking")
     @PostMapping("/me/bookings/{id}/cancel")
     @Transactional
-    public ResponseEntity<?> cancelMyBooking(@PathVariable("id") String idStr, @RequestBody BookingCancellationRequest payload, @RequestHeader("Authorization") String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body("Token không hợp lệ!");
-        }
-
+    public ResponseEntity<?> cancelMyBooking(@PathVariable("id") String idStr, @RequestBody BookingCancellationRequest payload,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             if (payload == null || payload.getReason() == null || payload.getReason().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Vui lòng nhập lý do hủy vé.");
             }
-            String token = authHeader.substring(7);
-            Long userId = jwtService.extractUserId(token);
-            Optional<User> userOpt = userRepository.findById(userId);
-
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.status(404).body("Không tìm thấy người dùng!");
+            boolean guestCancellation = authHeader == null || !authHeader.startsWith("Bearer ");
+            User user = null;
+            String guestPhone = payload.getCustomerPhone() == null
+                    ? ""
+                    : payload.getCustomerPhone().replaceAll("\\s+", "");
+            if (guestCancellation) {
+                if (!guestPhone.matches("\\d{10,11}")) {
+                    return ResponseEntity.badRequest().body("Vui lòng nhập đúng số điện thoại đã dùng để đặt vé.");
+                }
+            } else {
+                String token = authHeader.substring(7);
+                Long userId = jwtService.extractUserId(token);
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isEmpty()) {
+                    return ResponseEntity.status(404).body("Không tìm thấy người dùng!");
+                }
+                user = userOpt.get();
             }
-
-            User user = userOpt.get();
             List<com.smartbus.booking.entity.Booking> bookingsToCancel = new java.util.ArrayList<>();
             
-            if (idStr.startsWith("GRP")) {
-                bookingsToCancel = bookingRepository.findByRoundTripGroupId(idStr);
+            String bookingReference = idStr == null ? "" : idStr.trim().toUpperCase();
+            if (bookingReference.startsWith("GRP")) {
+                bookingsToCancel = bookingRepository.findByRoundTripGroupId(bookingReference);
+            } else if (bookingReference.startsWith("TN-")) {
+                bookingRepository.findByTicketCodeIgnoreCase(bookingReference).ifPresent(bookingsToCancel::add);
             } else {
+                // ID tăng dần chỉ dành cho luồng nội bộ của người dùng đã đăng nhập.
+                if (guestCancellation) {
+                    return ResponseEntity.badRequest().body("Mã vé không hợp lệ!");
+                }
                 try {
-                    Long id = Long.parseLong(idStr);
+                    Long id = Long.parseLong(bookingReference);
                     bookingRepository.findById(id).ifPresent(bookingsToCancel::add);
                 } catch (NumberFormatException e) {
                     return ResponseEntity.badRequest().body("Mã vé không hợp lệ!");
@@ -492,7 +534,12 @@ public class AuthController {
             
             Map<Long, Double> refundByBooking = new java.util.HashMap<>();
             for (com.smartbus.booking.entity.Booking booking : bookingsToCancel) {
-                if (booking.getUser() == null || !booking.getUser().getId().equals(user.getId())) {
+                boolean ownsBooking = guestCancellation
+                        ? booking.getUser() == null
+                            && booking.getCustomerPhone() != null
+                            && booking.getCustomerPhone().replaceAll("\\s+", "").equals(guestPhone)
+                        : booking.getUser() != null && booking.getUser().getId().equals(user.getId());
+                if (!ownsBooking) {
                     return ResponseEntity.status(403).body("Bạn không có quyền hủy vé này!");
                 }
                 if (!"PAID".equals(booking.getStatus()) && !"PENDING".equals(booking.getStatus())) {
@@ -527,12 +574,16 @@ public class AuthController {
 
             boolean hasRefund = refundByBooking.values().stream().anyMatch(amount -> amount > 0);
             String refundMethod = refundRequestService.validateMethod(payload, hasRefund);
+            if (guestCancellation && hasRefund && !"BANK_TRANSFER".equals(refundMethod)) {
+                return ResponseEntity.badRequest().body(
+                        "Khách vãng lai chỉ có thể nhận tiền hoàn qua tài khoản ngân hàng.");
+            }
             double totalRefundAmount = refundByBooking.values().stream().mapToDouble(Double::doubleValue).sum();
 
             for (com.smartbus.booking.entity.Booking booking : bookingsToCancel) {
                 double refundAmount = refundByBooking.getOrDefault(booking.getId(), 0.0);
 
-                if ("PAID".equals(booking.getStatus())) {
+                if (user != null && "PAID".equals(booking.getStatus())) {
                     int earnedPoints = LoyaltyPointPolicy.pointsFor(booking.getTotalPrice());
                     user.setLoyaltyPoints(Math.max(0, (user.getLoyaltyPoints() != null ? user.getLoyaltyPoints() : 0) - earnedPoints));
                 }
@@ -570,11 +621,11 @@ public class AuthController {
                 });
             }
 
-            if (totalRefundAmount > 0 && "WALLET".equals(refundMethod)) {
+            if (user != null && totalRefundAmount > 0 && "WALLET".equals(refundMethod)) {
                 double currentBalance = user.getWalletBalance() == null ? 0.0 : user.getWalletBalance();
                 user.setWalletBalance(currentBalance + totalRefundAmount);
             }
-            userRepository.save(user);
+            if (user != null) userRepository.save(user);
 
             return ResponseEntity.ok(Map.of(
                     "message", "BANK_TRANSFER".equals(refundMethod)
@@ -583,7 +634,7 @@ public class AuthController {
                     "refundAmount", totalRefundAmount,
                     "refundMethod", refundMethod,
                     "refundStatus", "BANK_TRANSFER".equals(refundMethod) ? "PENDING" : "COMPLETED",
-                    "walletBalance", user.getWalletBalance() == null ? 0.0 : user.getWalletBalance()
+                    "walletBalance", user == null || user.getWalletBalance() == null ? 0.0 : user.getWalletBalance()
             ));
         } catch (IllegalArgumentException e) {
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();

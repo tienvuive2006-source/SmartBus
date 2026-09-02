@@ -23,7 +23,12 @@
           :class="{ active: activeRole === 'SECONDARY' }"
           @click="$emit('update:activeRole', 'SECONDARY')"
         >
-          <span class="tab-title">Tài xế phụ <small class="text-slate-400 font-normal">(tùy chọn)</small></span>
+          <span class="tab-title">
+            Tài xế phụ
+            <small :class="secondaryRequired ? 'required-label' : 'text-slate-400 font-normal'">
+              {{ secondaryRequired ? '(bắt buộc)' : '(tùy chọn)' }}
+            </small>
+          </span>
         </button>
       </nav>
 
@@ -82,9 +87,14 @@
 
     <!-- Driver Cards List -->
     <div class="driver-list">
+      <div v-if="activeRole === 'SECONDARY' && secondaryRequired" class="required-notice">
+        <span class="material-symbols-outlined">warning</span>
+        <span>Chuyến từ 6 giờ trở lên phải bố trí tài xế phụ.</span>
+      </div>
+
       <!-- Clear Option for Secondary Driver -->
       <button
-        v-if="activeRole === 'SECONDARY'"
+        v-if="activeRole === 'SECONDARY' && !secondaryRequired"
         type="button"
         class="empty-choice"
         :class="{ selected: !secondarySelected }"
@@ -142,13 +152,25 @@
           </div>
 
           <div class="status-rating-col">
-            <span class="status-chip" :class="driver.conflict ? 'busy' : 'free'">
-              {{ driver.conflict ? (driver.conflictReason || 'ĐANG CHẠY') : 'RẢNH' }}
+            <span class="status-chip" :class="driver.conflict ? 'busy' : (driver.needsRelocation ? 'relocate' : 'free')" :title="driver.needsRelocation ? `Phải chạy rỗng từ ${driver.lastKnownLocation || 'nơi khác'} đến bến xuất phát` : ''">
+              {{ driver.conflict ? (driver.conflictReason || 'ĐANG CHẠY') : (driver.needsRelocation ? 'CHẠY RỖNG' : 'RẢNH') }}
             </span>
             <div v-if="driver.rating != null" class="rating-box">
               <span class="star-icon">★</span>
               <span class="rating-val">{{ driver.rating }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Middle Grid: Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-item">
+            <span class="metric-label">Vị trí hiện tại</span>
+            <strong class="metric-val">{{ driver.lastKnownLocation || 'Chưa xác định' }}</strong>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Thời điểm ghi nhận</span>
+            <strong class="metric-val">{{ driver.lastKnownAt || 'Chưa có dữ liệu' }}</strong>
           </div>
         </div>
 
@@ -162,6 +184,11 @@
               {{ driver.conflict ? 'cancel' : 'check_circle' }}
             </span>
             <span>{{ driver.conflict ? 'ĐANG TRÙNG LỊCH' : 'KHÔNG TRÙNG LỊCH' }}</span>
+          </span>
+
+          <span v-if="driver.needsRelocation && !driver.conflict" class="relocate-pill" :title="`Phải chạy rỗng từ ${driver.lastKnownLocation || 'Nơi khác'}`">
+            <span class="material-symbols-outlined">directions_car</span>
+            <span class="relocate-text">Từ {{ driver.lastKnownLocation || 'Nơi khác' }}</span>
           </span>
         </div>
       </div>
@@ -187,7 +214,8 @@ const props = defineProps({
   primarySearch: { type: String, default: '' },
   secondarySearch: { type: String, default: '' },
   allowOutside: Boolean,
-  showOutside: Boolean
+  showOutside: Boolean,
+  secondaryRequired: Boolean
 })
 
 const emit = defineEmits([
@@ -319,6 +347,34 @@ const filteredDriverList = computed(() => {
   background: #ea580c;
   color: #ffffff;
   box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+}
+
+.required-label {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.tab-btn.active .required-label {
+  color: #fff7ed;
+}
+
+.required-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.65rem 0.65rem 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #fed7aa;
+  border-radius: 0.55rem;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.67rem;
+  font-weight: 750;
+}
+
+.required-notice .material-symbols-outlined {
+  flex: none;
+  font-size: 1rem;
 }
 
 /* Search & Filter Bar */
@@ -599,6 +655,11 @@ const filteredDriverList = computed(() => {
   color: #b91c1c;
 }
 
+.status-chip.relocate {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
 .rating-box {
   display: flex;
   align-items: center;
@@ -619,7 +680,7 @@ const filteredDriverList = computed(() => {
 /* Metrics Grid */
 .metrics-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.3rem;
   margin-top: 0.55rem;
   padding: 0.45rem;
@@ -651,6 +712,10 @@ const filteredDriverList = computed(() => {
 /* Eligibility Row */
 .eligibility-row {
   margin-top: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
 .eligibility-pill {
@@ -661,6 +726,7 @@ const filteredDriverList = computed(() => {
   border-radius: 0.35rem;
   font-size: 0.6rem;
   font-weight: 850;
+  flex-shrink: 0;
 }
 
 .eligibility-pill.eligible {
@@ -677,6 +743,30 @@ const filteredDriverList = computed(() => {
 
 .pill-icon {
   font-size: 0.75rem;
+}
+
+.relocate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  background: #e0e7ff;
+  color: #4338ca;
+  max-width: 50%;
+}
+
+.relocate-pill .material-symbols-outlined {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.relocate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* List Footer Bar */

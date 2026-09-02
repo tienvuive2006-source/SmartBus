@@ -1,6 +1,16 @@
 <template>
   <header class="booking-search-header sticky top-0 z-50">
     <div class="mx-auto max-w-[1600px] px-4 py-4 xl:px-8">
+      <div class="mobile-header-row lg:hidden">
+        <button type="button" class="mobile-back-button" aria-label="Quay lại trang trước" @click="goBack">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <div>
+          <p>Kết quả tìm chuyến</p>
+          <span>Chọn hành trình phù hợp với bạn</span>
+        </div>
+      </div>
+
       <div class="flex items-center gap-5">
         <button
           type="button"
@@ -143,6 +153,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { toBusinessDateString } from '@/utils/businessDate';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -180,7 +191,7 @@ const formatSuggestionDate = (value) => {
 
 const departureDateInput = ref(null);
 const returnDateInput = ref(null);
-const todayDate = new Date().toISOString().split('T')[0];
+const todayDate = toBusinessDateString();
 const formattedLoyaltyPoints = computed(() => Number(authStore.currentUser?.loyaltyPoints || 0).toLocaleString('vi-VN'));
 
 const goToProfile = (query) => {
@@ -193,6 +204,13 @@ const goToProfile = (query) => {
 
 const openVoucherStore = () => goToProfile({ open: 'voucher-store' });
 const openMyVouchers = () => goToProfile({ section: 'my-vouchers' });
+const goBack = () => {
+  if (window.history.state?.back) {
+    router.back();
+    return;
+  }
+  router.push('/');
+};
 
 onMounted(() => {
   if (authStore.isLoggedIn) authStore.fetchMe();
@@ -306,6 +324,55 @@ const openReturnDatePicker = (departureDate) => {
 .return-availability.unavailable { color: #ffd2c8; }
 .return-availability.unavailable .status-dot { background: #ff876f; box-shadow: 0 0 0 3px rgba(255,135,111,.14); }
 @media (max-width: 767px) {
+  .booking-search-header > div {
+    padding-block: 0.65rem !important;
+  }
+
+  .mobile-header-row {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.55rem;
+    color: white;
+  }
+
+  .mobile-back-button {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 0.24);
+    border-radius: 0.75rem;
+    background: rgb(255 255 255 / 0.12);
+    color: white;
+    transition: background-color 160ms ease, transform 160ms ease;
+  }
+
+  .mobile-back-button:active {
+    transform: scale(0.96);
+    background: rgb(255 255 255 / 0.2);
+  }
+
+  .mobile-back-button .material-symbols-outlined {
+    font-size: 1.25rem;
+  }
+
+  .mobile-header-row p {
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .mobile-header-row span:not(.material-symbols-outlined) {
+    display: block;
+    margin-top: 0.15rem;
+    color: rgb(255 255 255 / 0.68);
+    font-size: 0.62rem;
+    font-weight: 600;
+  }
+
   .search-panel { overflow: visible; }
   .search-field { min-height: 62px; padding: .6rem .75rem; }
   .search-field:nth-child(2) { border-right: 0; }

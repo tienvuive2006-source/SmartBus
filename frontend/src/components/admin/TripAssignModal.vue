@@ -16,6 +16,7 @@
               :secondary-drivers="filteredSecondaryDrivers"
               :primary-selected="selectedDriver"
               :secondary-selected="selectedSecondaryDriver"
+              :secondary-required="requiresSecondaryDriver"
               v-model:primary-search="driverSearch"
               v-model:secondary-search="secondaryDriverSearch"
               :allow-outside="!routeDriverConfig.unrestricted"
@@ -50,10 +51,23 @@
               :bus="selectedBus"
               :inspector="selectedInspector"
               :conflict-free="assignmentConflictFree"
+              :secondary-required="requiresSecondaryDriver"
               :has-return="Boolean(suggestedReturnTrip)"
               :trip="trip"
               :score="assignmentScore"
-            />
+            >
+              <template #return-trip>
+                <ReturnTripSuggestion
+                  v-if="suggestedReturnTrip"
+                  v-model="assignSuggestedReturn"
+                  compact
+                  :outbound-trip="trip"
+                  :return-trip="suggestedReturnTrip"
+                  :driver-name="selectedDriver?.fullName || 'Chưa chọn tài xế'"
+                  :license-plate="selectedBus?.licensePlate || 'Chưa chọn xe'"
+                />
+              </template>
+            </AssignmentSummaryPanel>
           </div>
         </div>
 
@@ -64,21 +78,12 @@
           @suggest="applyAutomaticSuggestion"
         />
 
-        <ReturnTripSuggestion
-          v-if="suggestedReturnTrip"
-          v-model="assignSuggestedReturn"
-          :outbound-trip="trip"
-          :return-trip="suggestedReturnTrip"
-          :driver-name="selectedDriver?.fullName || 'Chưa chọn tài xế'"
-          :license-plate="selectedBus?.licensePlate || 'Chưa chọn xe'"
-        />
-
         <AssignmentModalFooter
           v-model:note="assignmentNote"
           :has-assignment="hasAssignment"
           :confirming-unassign="confirmingUnassign"
           :submitting="submitting"
-          :can-submit="Boolean(selectedDriver && selectedBus && assignmentConflictFree)"
+          :can-submit="canSubmitAssignment"
           :read-only="readOnly"
           @close="close"
           @submit="submit"
@@ -272,6 +277,15 @@ const close = () => emit('close');
 
 const suggestedReturnTrip = computed(() => findSuggestedReturnTrip(props.trip, props.allTrips));
 
+const tripDurationMinutes = computed(() => {
+  const duration = String(props.trip?.duration || '');
+  const match = duration.match(/(\d+)\s*h(?:\s*(\d+)\s*m)?/i);
+  if (!match) return 0;
+  return (Number(match[1]) * 60) + Number(match[2] || 0);
+});
+
+const requiresSecondaryDriver = computed(() => tripDurationMinutes.value >= 360);
+
 const hasAssignment = computed(() => Boolean(
   props.trip?.assignedDriverUsername ||
   props.trip?.secondaryDriverUsername ||
@@ -287,6 +301,10 @@ const unassign = () => {
 
 const submit = () => {
   if (!selectedDriver.value || !selectedBus.value) return;
+  if (requiresSecondaryDriver.value && !selectedSecondaryDriver.value) {
+    activeDriverRole.value = 'SECONDARY';
+    return;
+  }
   submitting.value = true;
   emit('submit', {
     driverUsername: selectedDriver.value.phone,
@@ -337,15 +355,45 @@ const getDriverLeaveStatus = (driverUsername, targetDate) => {
 // Inspector list
 const processedInspectors = computed(() => {
   if (!props.trip) return [];
+  const targetStart = parseAbsoluteMinutes(props.trip.departureDate, props.trip.departureTime);
+
   return (props.allInspectors || []).map(inspector => {
     let conflict = false;
     let conflictReason = '';
     let isCurrentAssignee = false;
     let leaveWarning = '';
+    let lastKnownLocation = '';
+    let needsRelocation = false;
 
     const leaveStatus = getDriverLeaveStatus(inspector.phone, props.trip.departureDate);
     if (leaveStatus === 'PENDING') leaveWarning = 'Xin nghỉ';
     else if (leaveStatus === 'APPROVED') leaveWarning = 'Nghỉ phép';
+
+    const inspectorTrips = (props.allTrips || []).filter(t =>
+      t.inspector?.id === inspector.id && t.status !== 'CANCELLED'
+    );
+
+    let closestTripBefore = null;
+    let minDiff = Infinity;
+    
+    for (const t of inspectorTrips) {
+       if (t.id === props.trip.id) continue;
+       const tEnd = getTripArrivalMinutes(t);
+       if (tEnd <= targetStart) {
+          const diff = targetStart - tEnd;
+          if (diff < minDiff) {
+             minDiff = diff;
+             closestTripBefore = t;
+          }
+       }
+    }
+    
+    if (closestTripBefore && closestTripBefore.arrivalPoint) {
+       lastKnownLocation = closestTripBefore.arrivalPoint.split(',').pop().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
+       if (operationalPoint(closestTripBefore.arrivalPoint) !== operationalPoint(props.trip.departurePoint)) {
+           needsRelocation = true;
+       }
+    }
 
     if (props.trip.inspector?.id === inspector.id) {
         isCurrentAssignee = true;
@@ -354,18 +402,15 @@ const processedInspectors = computed(() => {
             conflict = true;
             conflictReason = leaveWarning;
         } else {
-            const conflictingTrip = (props.allTrips || []).find(t => 
-              t.inspector?.id === inspector.id && 
-              checkConflict(props.trip, t)
-            );
+            const conflictingTrip = findOperationalConflict(props.trip, inspectorTrips);
             if (conflictingTrip) {
               conflict = true;
-              conflictReason = `Kẹt chuyến ${conflictingTrip.departureTime}`;
+              conflictReason = `Kẹt chuyến ${conflictingTrip.departureTime}${formatConflictDate(conflictingTrip.departureDate)}`;
             }
         }
     }
 
-    return { ...inspector, conflict, conflictReason, isCurrentAssignee, leaveWarning };
+    return { ...inspector, conflict, conflictReason, isCurrentAssignee, leaveWarning, lastKnownLocation, needsRelocation };
   });
 });
 
@@ -438,6 +483,20 @@ const formatTripArrival = trip => {
   return `${pad(value.getHours())}:${pad(value.getMinutes())} ngày ${pad(value.getDate())}/${pad(value.getMonth() + 1)}/${value.getFullYear()}`;
 };
 
+const formatConflictDate = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('T')[0].split('-');
+  return parts.length === 3 ? ` ${parts[2]}/${parts[1]}` : '';
+};
+
+const operationalPoint = point => String(point || '')
+  .split(',')
+  .pop()
+  .replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLocaleLowerCase('vi-VN');
+
 const checkConflict = (targetTrip, testTrip) => {
   if (!targetTrip || !testTrip) return false;
   if (targetTrip.id === testTrip.id) return false;
@@ -448,32 +507,51 @@ const checkConflict = (targetTrip, testTrip) => {
   const testStart = parseAbsoluteMinutes(testTrip.departureDate, testTrip.departureTime);
   const testEnd = getTripArrivalMinutes(testTrip);
 
-  // Lấy tên tỉnh/thành phố ngắn gọn để so sánh (VD: "Đà Nẵng", "Cà Mau")
-  const getCity = (point) => {
-    if (!point) return '';
-    return point.split(',').pop().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim().toLowerCase();
-  };
-  
-  // Xác định thứ tự thời gian để kiểm tra khớp tuyến (Khứ hồi / Nối chuyến)
-  let isLocationMatch = false;
-  if (testStart >= targetEnd) {
-      // testTrip chạy SAU targetTrip -> Điểm xuất phát của testTrip phải trùng điểm đến của targetTrip
-      isLocationMatch = getCity(testTrip.departurePoint) === getCity(targetTrip.arrivalPoint);
-  } else if (targetStart >= testEnd) {
-      // targetTrip chạy SAU testTrip -> Điểm xuất phát của targetTrip phải trùng điểm đến của testTrip
-      isLocationMatch = getCity(targetTrip.departurePoint) === getCity(testTrip.arrivalPoint);
-  } else {
-      // Bị trùng giờ thẳng vào nhau
-      isLocationMatch = false; 
-  }
+  if (targetStart < testEnd && testStart < targetEnd) return true;
 
+  const targetBeforeTest = targetEnd <= testStart;
+  const earlierArrival = targetBeforeTest ? targetTrip.arrivalPoint : testTrip.arrivalPoint;
+  const laterDeparture = targetBeforeTest ? testTrip.departurePoint : targetTrip.departurePoint;
+  const isLocationMatch = operationalPoint(earlierArrival) !== ''
+    && operationalPoint(earlierArrival) === operationalPoint(laterDeparture);
+
+  const isSameDay = targetTrip.departureDate === testTrip.departureDate;
+  
   // Buffer thông minh kết hợp KHÔNG GIAN & THỜI GIAN:
   // - Nếu nối chuyến đúng bến (Khứ hồi) trong cùng ngày: chỉ cần nghỉ 60 phút
-  // - Nếu sai bến (Phải chạy xe rỗng đến tỉnh khác) HOẶC khác ngày: Ép nghỉ 12 tiếng (720 phút)
-  const isSameDay = targetTrip.departureDate === testTrip.departureDate;
+  // - Nếu khác ngày hoặc sai bến: yêu cầu khoảng trống 12 tiếng (720 phút) để di chuyển/nghỉ ngơi
   const buffer = (isLocationMatch && isSameDay) ? 60 : 720;
 
   return (testStart - buffer) < targetEnd && (testEnd + buffer) > targetStart;
+};
+
+const findOperationalConflict = (targetTrip, trips) => {
+  if (!targetTrip) return null;
+  const targetStart = parseAbsoluteMinutes(targetTrip.departureDate, targetTrip.departureTime);
+  const targetEnd = getTripArrivalMinutes(targetTrip);
+  let previous = null;
+  let previousEnd = -Infinity;
+  let next = null;
+  let nextStart = Infinity;
+
+  for (const trip of trips || []) {
+    if (!trip || trip.id === targetTrip.id || trip.status === 'CANCELLED') continue;
+    const start = parseAbsoluteMinutes(trip.departureDate, trip.departureTime);
+    const end = getTripArrivalMinutes(trip);
+    if (targetStart < end && start < targetEnd) return trip;
+    if (end <= targetStart && end > previousEnd) {
+      previous = trip;
+      previousEnd = end;
+    }
+    if (targetEnd <= start && start < nextStart) {
+      next = trip;
+      nextStart = start;
+    }
+  }
+
+  if (previous && checkConflict(targetTrip, previous)) return previous;
+  if (next && checkConflict(targetTrip, next)) return next;
+  return null;
 };
 
 const processedDrivers = computed(() => {
@@ -501,6 +579,7 @@ const processedDrivers = computed(() => {
     let closestTripBefore = null;
     let minDiff = Infinity;
     let isLocationProjected = false;
+    let needsRelocation = false;
     
     for (const t of driverTrips) {
        if (t.id === props.trip.id) continue;
@@ -518,6 +597,9 @@ const processedDrivers = computed(() => {
        lastKnownLocation = closestTripBefore.arrivalPoint.split(',').pop().replace(/\b(Thành phố|TP|Tỉnh)\b/gi, '').trim();
        lastKnownAt = formatTripArrival(closestTripBefore);
        isLocationProjected = closestTripBefore.status !== 'COMPLETED';
+       if (operationalPoint(closestTripBefore.arrivalPoint) !== operationalPoint(props.trip.departurePoint)) {
+           needsRelocation = true;
+       }
     }
 
     if (props.trip.assignedDriverUsername === driver.phone || props.trip.secondaryDriverUsername === driver.phone) {
@@ -527,15 +609,15 @@ const processedDrivers = computed(() => {
            conflict = true;
            conflictReason = leaveWarning;
         } else {
-          const conflictingTrip = driverTrips.find(t => checkConflict(props.trip, t));
+          const conflictingTrip = findOperationalConflict(props.trip, driverTrips);
           if (conflictingTrip) {
             conflict = true;
-            conflictReason = `Kẹt chuyến ${conflictingTrip.departureTime}`;
+            conflictReason = `Kẹt chuyến ${conflictingTrip.departureTime}${formatConflictDate(conflictingTrip.departureDate)}`;
           }
         }
     }
 
-    return { ...driver, conflict, conflictReason, isCurrentAssignee, leaveWarning, lastKnownLocation, lastKnownAt, isLocationProjected };
+    return { ...driver, conflict, conflictReason, isCurrentAssignee, leaveWarning, lastKnownLocation, lastKnownAt, isLocationProjected, needsRelocation };
   });
 });
 
@@ -591,6 +673,13 @@ const assignmentConflictFree = computed(() =>
   !selectedInspector.value?.conflict
 );
 
+const canSubmitAssignment = computed(() => Boolean(
+  selectedDriver.value &&
+  selectedBus.value &&
+  assignmentConflictFree.value &&
+  (!requiresSecondaryDriver.value || selectedSecondaryDriver.value)
+));
+
 const assignmentScore = computed(() => {
   let score = 20;
   if (selectedDriver.value) score += 35;
@@ -604,6 +693,12 @@ const applyAutomaticSuggestion = () => {
   const suggestedDriver = filteredDrivers.value.find(driver => !driver.conflict);
   const suggestedBus = filteredBuses.value.find(bus => !bus.conflict);
   if (suggestedDriver) selectPrimaryDriver(suggestedDriver);
+  if (requiresSecondaryDriver.value) {
+    const suggestedSecondaryDriver = filteredSecondaryDrivers.value.find(driver =>
+      driver.id !== suggestedDriver?.id && !driver.conflict
+    );
+    if (suggestedSecondaryDriver) selectSecondaryDriver(suggestedSecondaryDriver);
+  }
   if (suggestedBus) selectedBus.value = suggestedBus;
 };
 
@@ -659,6 +754,10 @@ const processedBuses = computed(() => {
     let conflictReason = '';
     let isCurrentAssignee = false;
     const assignmentLocation = operationalBusLocation(bus);
+    let needsRelocation = false;
+    if (assignmentLocation !== 'Chưa xác định' && operationalPoint(assignmentLocation) !== operationalPoint(props.trip.departurePoint)) {
+        needsRelocation = true;
+    }
 
     if (bus.status === 'BẢO TRÌ') {
       conflict = true;
@@ -666,13 +765,13 @@ const processedBuses = computed(() => {
     } else if (props.trip.assignedLicensePlate === bus.licensePlate) {
         isCurrentAssignee = true;
     } else {
-        const conflictingTrip = (props.allTrips || []).find(t => 
-          t.assignedLicensePlate === bus.licensePlate && 
-          checkConflict(props.trip, t)
+        const busTrips = (props.allTrips || []).filter(t =>
+          t.assignedLicensePlate === bus.licensePlate && t.status !== 'CANCELLED'
         );
+        const conflictingTrip = findOperationalConflict(props.trip, busTrips);
         if (conflictingTrip) {
           conflict = true;
-          conflictReason = `Kẹt chuyến ${conflictingTrip.departureTime}`;
+          conflictReason = `Kẹt chuyến ${conflictingTrip.departureTime}${formatConflictDate(conflictingTrip.departureDate)}`;
         }
     }
 
@@ -686,7 +785,8 @@ const processedBuses = computed(() => {
       conflictReason,
       isCurrentAssignee,
       routeRole,
-      assignmentLocation
+      assignmentLocation,
+      needsRelocation
     };
   });
 });

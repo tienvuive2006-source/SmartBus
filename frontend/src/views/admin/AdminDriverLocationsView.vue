@@ -51,6 +51,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
 import { useApi } from '@/composables/useApi';
+import { toBusinessDateString } from '@/utils/businessDate';
 
 const api = useApi();
 const loading = ref(true);
@@ -94,7 +95,7 @@ onUnmounted(() => {
   if (pollingInterval) clearInterval(pollingInterval);
 });
 
-const todayStr = new Date().toISOString().split('T')[0];
+const todayStr = toBusinessDateString();
 
 const activeDrivers = computed(() => {
   const result = [];

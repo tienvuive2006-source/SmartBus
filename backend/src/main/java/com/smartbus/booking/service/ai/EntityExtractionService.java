@@ -24,7 +24,9 @@ public class EntityExtractionService {
 
     private final TripService tripService;
     private final java.util.Set<String> cachedCities = new java.util.concurrent.CopyOnWriteArraySet<>();
-    private boolean isCitiesCached = false;
+    private volatile boolean isCitiesCached = false;
+    private volatile long citiesCacheUpdatedAt = 0L;
+    private static final long CITIES_CACHE_TTL_MS = 5 * 60 * 1000L;
 
     public String removeAccents(String text) {
         if (text == null) return "";
@@ -52,7 +54,8 @@ public class EntityExtractionService {
     }
 
     private synchronized void ensureCitiesCached() {
-        if (!isCitiesCached) {
+        if (!isCitiesCached || System.currentTimeMillis() - citiesCacheUpdatedAt > CITIES_CACHE_TTL_MS) {
+            cachedCities.clear();
             try {
                 List<Trip> allTrips = tripService.getAllTrips();
                 for (Trip t : allTrips) {
@@ -83,6 +86,7 @@ public class EntityExtractionService {
             ));
 
             isCitiesCached = true;
+            citiesCacheUpdatedAt = System.currentTimeMillis();
         }
     }
 
@@ -114,12 +118,9 @@ public class EntityExtractionService {
                     }
                 }
                 if (!isOverlapped) {
-                    foundCities.put(city, index);
+                    String canonicalCity = city.equals("Sài Gòn") ? "Hồ Chí Minh" : city;
+                    foundCities.put(canonicalCity, index);
                 }
-            }
-            
-            if ((city.equals("Hồ Chí Minh") || city.equals("Sài Gòn")) && nonAccentMsg.contains("sai gon")) {
-                foundCities.put("Hồ Chí Minh", nonAccentMsg.indexOf("sai gon"));
             }
         }
 
@@ -144,38 +145,7 @@ public class EntityExtractionService {
             }
         }
 
-        LocalDate targetDate = null;
-        LocalDate now = LocalDate.now();
-        if (nonAccentMsg.contains("ngay mai") || nonAccentMsg.contains("sang mai") || nonAccentMsg.contains("toi mai")) {
-            targetDate = now.plusDays(1);
-        } else if (nonAccentMsg.contains("hom nay") || nonAccentMsg.contains("chieu nay") || nonAccentMsg.contains("toi nay") || nonAccentMsg.contains("di luon")) {
-            targetDate = now;
-        } else if (nonAccentMsg.contains("ngay mot") || nonAccentMsg.contains("kia")) {
-            targetDate = now.plusDays(2);
-        } else if (nonAccentMsg.contains("cuoi tuan")) {
-            targetDate = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
-        } else if (nonAccentMsg.contains("tuan sau")) {
-            targetDate = now.plusWeeks(1);
-        } else {
-            try {
-                Pattern pFull = Pattern.compile("ngay\\s+(\\d{1,2})\\s+thang\\s+(\\d{1,2})");
-                Matcher mFull = pFull.matcher(nonAccentMsg);
-                if (mFull.find()) {
-                    int day = Integer.parseInt(mFull.group(1));
-                    int month = Integer.parseInt(mFull.group(2));
-                    targetDate = now.withMonth(month).withDayOfMonth(day);
-                    if (targetDate.isBefore(now)) targetDate = targetDate.plusYears(1);
-                } else {
-                    Pattern p = Pattern.compile("ngay\\s+(\\d{1,2})");
-                    Matcher m = p.matcher(nonAccentMsg);
-                    if (m.find()) {
-                        int day = Integer.parseInt(m.group(1));
-                        if (day >= now.getDayOfMonth()) targetDate = now.withDayOfMonth(day);
-                        else targetDate = now.plusMonths(1).withDayOfMonth(day);
-                    }
-                }
-            } catch (Exception e) {}
-        }
+        LocalDate targetDate = extractDate(nonAccentMsg, LocalDate.now());
         
         if (targetDate != null) date = targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
@@ -194,5 +164,61 @@ public class EntityExtractionService {
         if (from != null) ctx.from = from;
         if (to != null) ctx.to = to;
         if (date != null) ctx.date = date;
+    }
+
+    LocalDate extractDate(String message, LocalDate now) {
+        try {
+            Matcher isoOrSlash = Pattern.compile("(?:ngay\\s+)?(\\d{1,2})[/-](\\d{1,2})(?:[/-](\\d{4}))?").matcher(message);
+            if (isoOrSlash.find()) {
+                int day = Integer.parseInt(isoOrSlash.group(1));
+                int month = Integer.parseInt(isoOrSlash.group(2));
+                int year = isoOrSlash.group(3) == null ? now.getYear() : Integer.parseInt(isoOrSlash.group(3));
+                LocalDate value = LocalDate.of(year, month, day);
+                return isoOrSlash.group(3) == null && value.isBefore(now) ? value.plusYears(1) : value;
+            }
+
+            Matcher words = Pattern.compile("ngay\\s+(\\d{1,2})\\s+thang\\s+(\\d{1,2})(?:\\s+nam\\s+(\\d{4}))?").matcher(message);
+            if (words.find()) {
+                int year = words.group(3) == null ? now.getYear() : Integer.parseInt(words.group(3));
+                LocalDate value = LocalDate.of(year, Integer.parseInt(words.group(2)), Integer.parseInt(words.group(1)));
+                return words.group(3) == null && value.isBefore(now) ? value.plusYears(1) : value;
+            }
+        } catch (java.time.DateTimeException ignored) {
+            return null;
+        }
+
+        if (message.contains("ngay mai") || message.contains("sang mai") || message.contains("toi mai")) return now.plusDays(1);
+        if (message.contains("hom nay") || message.contains("chieu nay") || message.contains("toi nay") || message.contains("di luon")) return now;
+        if (message.contains("ngay mot") || message.contains("ngay kia")) return now.plusDays(2);
+        if (message.contains("cuoi tuan")) return now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+
+        DayOfWeek requestedWeekday = weekdayFromMessage(message);
+        if (requestedWeekday != null) {
+            if (message.contains("tuan sau")) {
+                LocalDate nextMonday = now.plusWeeks(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+                return nextMonday.plusDays(requestedWeekday.getValue() - 1L);
+            }
+            return now.with(TemporalAdjusters.nextOrSame(requestedWeekday));
+        }
+        if (message.contains("tuan sau")) return now.plusWeeks(1);
+
+        try {
+            Matcher dayOnly = Pattern.compile("ngay\\s+(\\d{1,2})(?!\\s*(?:thang|[/-]))").matcher(message);
+            if (dayOnly.find()) {
+                int day = Integer.parseInt(dayOnly.group(1));
+                LocalDate candidate = now.withDayOfMonth(day);
+                return candidate.isBefore(now) ? now.plusMonths(1).withDayOfMonth(day) : candidate;
+            }
+        } catch (java.time.DateTimeException ignored) {
+            return null;
+        }
+        return null;
+    }
+
+    private DayOfWeek weekdayFromMessage(String message) {
+        if (message.contains("chu nhat")) return DayOfWeek.SUNDAY;
+        Matcher matcher = Pattern.compile("thu\\s*([2-7])").matcher(message);
+        if (!matcher.find()) return null;
+        return DayOfWeek.of(Integer.parseInt(matcher.group(1)) - 1);
     }
 }

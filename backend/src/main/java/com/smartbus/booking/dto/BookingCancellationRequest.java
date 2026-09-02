@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class BookingCancellationRequest {
+    private String customerPhone;
     private String reason;
     private String refundMethod;
     private String bankName;

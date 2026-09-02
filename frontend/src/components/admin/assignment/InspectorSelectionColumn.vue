@@ -76,8 +76,8 @@
           </div>
 
           <div class="status-rating-col">
-            <span class="status-chip" :class="inspector.conflict ? 'busy' : 'free'">
-              {{ inspector.conflict ? (inspector.conflictReason || 'ĐANG CHẠY') : 'RẢNH' }}
+            <span class="status-chip" :class="inspector.conflict ? 'busy' : (inspector.needsRelocation ? 'relocate' : 'free')" :title="inspector.needsRelocation ? `Phải chạy rỗng từ ${inspector.lastKnownLocation || 'nơi khác'} đến bến xuất phát` : ''">
+              {{ inspector.conflict ? (inspector.conflictReason || 'ĐANG CHẠY') : (inspector.needsRelocation ? 'CHẠY RỖNG' : 'RẢNH') }}
             </span>
             <div v-if="inspector.rating != null" class="rating-box">
               <span class="star-icon">★</span>
@@ -86,19 +86,15 @@
           </div>
         </div>
 
-        <!-- Middle Grid: 3 Operational Metrics -->
+        <!-- Middle Grid: 2 Operational Metrics -->
         <div class="metrics-grid">
           <div class="metric-item">
             <span class="metric-label">Chuyến trong tháng</span>
             <strong class="metric-val">{{ countValue(inspector.tripsThisMonth) }}</strong>
           </div>
           <div class="metric-item">
-            <span class="metric-label">Trạm gần nhất</span>
-            <strong class="metric-val">{{ inspector.lastStation || 'Chưa cập nhật' }}</strong>
-          </div>
-          <div class="metric-item">
-            <span class="metric-label">Kinh nghiệm</span>
-            <strong class="metric-val">{{ yearValue(inspector.experienceYears) }}</strong>
+            <span class="metric-label">Vị trí hiện tại</span>
+            <strong class="metric-val">{{ inspector.lastKnownLocation || 'Chưa xác định' }}</strong>
           </div>
         </div>
 
@@ -112,6 +108,11 @@
               {{ inspector.conflict ? 'cancel' : 'check_circle' }}
             </span>
             <span>{{ inspector.conflict ? 'BẬN CHUYẾN' : 'ĐỦ ĐIỀU KIỆN' }}</span>
+          </span>
+
+          <span v-if="inspector.needsRelocation && !inspector.conflict" class="relocate-pill" :title="`Phải di chuyển từ ${inspector.lastKnownLocation || 'Nơi khác'}`">
+            <span class="material-symbols-outlined">directions_car</span>
+            <span class="relocate-text">Từ {{ inspector.lastKnownLocation || 'Nơi khác' }}</span>
           </span>
         </div>
       </div>
@@ -434,6 +435,11 @@ const routeRoleLabel = inspector => {
   color: #b91c1c;
 }
 
+.status-chip.relocate {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
 .rating-box {
   display: flex;
   align-items: center;
@@ -454,7 +460,7 @@ const routeRoleLabel = inspector => {
 /* Metrics Grid */
 .metrics-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.3rem;
   margin-top: 0.55rem;
   padding: 0.45rem;
@@ -486,6 +492,10 @@ const routeRoleLabel = inspector => {
 /* Eligibility Row */
 .eligibility-row {
   margin-top: 0.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
 .eligibility-pill {
@@ -496,6 +506,7 @@ const routeRoleLabel = inspector => {
   border-radius: 0.35rem;
   font-size: 0.6rem;
   font-weight: 850;
+  flex-shrink: 0;
 }
 
 .eligibility-pill.eligible {
@@ -512,6 +523,30 @@ const routeRoleLabel = inspector => {
 
 .pill-icon {
   font-size: 0.75rem;
+}
+
+.relocate-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  background: #e0e7ff;
+  color: #4338ca;
+  max-width: 50%;
+}
+
+.relocate-pill .material-symbols-outlined {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.relocate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* List Footer Bar */

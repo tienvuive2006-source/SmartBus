@@ -66,7 +66,7 @@
                   <p class="text-lg font-black" :class="booking.status === 'CANCELLED' ? 'text-slate-400 line-through' : 'text-emerald-600'">
                     {{ booking.totalPrice ? booking.totalPrice.toLocaleString('vi-VN') : '0' }}đ
                   </p>
-                  <p class="text-xs font-bold text-slate-400">Mã vé: #{{ booking.id }}</p>
+                  <p class="text-xs font-bold text-slate-400">Mã vé: {{ booking.ticketCode || `#${booking.id}` }}</p>
                 </div>
               </div>
               

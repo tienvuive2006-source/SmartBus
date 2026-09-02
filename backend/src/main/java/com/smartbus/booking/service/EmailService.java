@@ -40,8 +40,8 @@ public class EmailService {
                 // Rút gọn text để QR code bớt dày đặc -> Máy quét bắt nhanh hơn gấp 10 lần và
                 // kích thước vuông vức đều nhau
                 String qrText = String.format(
-                        "Mã đặt vé: #%d\nKhách: %s\nGhế: %s\nTrạng thái: %s",
-                        booking.getId(),
+                        "Mã đặt vé: %s\nKhách: %s\nGhế: %s\nTrạng thái: %s",
+                        booking.getTicketCode(),
                         booking.getCustomerName(),
                         String.join(", ", booking.getSeatNumbers()),
                         statusForQr);
@@ -59,7 +59,7 @@ public class EmailService {
                 payload.put("sender", Map.of("name", "Smart Bus Booking", "email", "tienvuive2006@gmail.com"));
                 payload.put("to",
                         List.of(Map.of("email", booking.getCustomerEmail(), "name", booking.getCustomerName())));
-                payload.put("subject", "🎫 Xác nhận đặt vé xe thành công - Mã vé #" + booking.getId());
+                payload.put("subject", "🎫 Xác nhận đặt vé xe thành công - Mã vé " + booking.getTicketCode());
                 payload.put("htmlContent", htmlBody);
                 payload.put("attachment", List.of(
                         Map.of(
@@ -176,7 +176,7 @@ public class EmailService {
                 "                <div class='ticket-row'>" +
                 "                    <div class='ticket-cell ticket-label'>Mã đặt vé:</div>" +
                 "                    <div class='ticket-cell ticket-value' style='color: #4f46e5; font-size: 16px;'>#"
-                + booking.getId() + "</div>" +
+                + booking.getTicketCode() + "</div>" +
                 "                </div>" +
                 "                <div class='ticket-row'>" +
                 "                    <div class='ticket-cell ticket-label'>Nhà xe:</div>" +

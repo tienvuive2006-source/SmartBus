@@ -25,7 +25,7 @@
 
       <template v-else-if="options">
         <header class="mb-6 overflow-hidden rounded-3xl bg-[#075955] p-7 text-white shadow-lg">
-          <p class="text-xs font-black uppercase tracking-[0.25em] text-emerald-200">Đổi vé #{{ booking.id }}</p>
+          <p class="text-xs font-black uppercase tracking-[0.25em] text-emerald-200">Đổi vé {{ booking.ticketCode || `#${booking.id}` }}</p>
           <div class="mt-3 flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
               <h1 class="text-3xl font-black">{{ booking.departurePoint }} → {{ booking.arrivalPoint }}</h1>

@@ -63,6 +63,7 @@
             v-if="activeTab === 'users' || activeTab === 'admin'"
             :users="filteredUsers"
             :selected-user-id="selectedUser?.id"
+            :current-user-id="authStore.currentUser?.id"
             @select="selectedUser = $event"
             @history="openHistoryModal"
             @edit="openEditModal"
@@ -116,7 +117,7 @@
           </dl>
           <div class="detail-actions">
             <button type="button" @click="openHistoryModal(selectedUser)"><span class="material-symbols-outlined">receipt_long</span>Lịch sử vé</button>
-            <button type="button" @click="openEditModal(selectedUser)"><span class="material-symbols-outlined">edit</span>Chỉnh sửa</button>
+            <button type="button" @click="openEditModal(selectedUser)"><span class="material-symbols-outlined">account_balance_wallet</span>Điều chỉnh ví</button>
           </div>
         </template>
         <div v-else class="detail-placeholder"><span class="material-symbols-outlined">touch_app</span><strong>Chọn một khách hàng</strong><p>Thông tin mua vé và số dư sẽ hiện tại đây.</p></div>
@@ -143,6 +144,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
+import { useAuthStore } from '@/stores/auth'
 import { createAvatarFallback, handleAvatarError } from '@/utils/avatar'
 import UserTable from '@/components/admin/user/UserTable.vue'
 import StaffTable from '@/components/admin/user/StaffTable.vue'
@@ -155,6 +157,7 @@ import { useRouteDriverApi } from '@/services/routeDriverApi'
 import { useRouteInspectorApi } from '@/services/routeInspectorApi'
 
 const api = useApi()
+const authStore = useAuthStore()
 const routeDriverApi = useRouteDriverApi()
 const routeInspectorApi = useRouteInspectorApi()
 const route = useRoute()
@@ -306,8 +309,16 @@ const submitEdit = async () => {
       const payloadEmail = editForm.value.role === 'DRIVER' ? '' : editForm.value.email
       const registration = await api.post('/auth/register', { fullName: editForm.value.fullName, username: editForm.value.username || null, phone: editForm.value.phone, email: payloadEmail, password: editForm.value.password || '123456' })
       driverId = registration.data?.id
-      if (driverId) await api.put(`/users/${driverId}`, { ...userPayload, id: undefined, email: payloadEmail, password: '' })
-    } else await api.put(`/users/${editForm.value.id}`, userPayload)
+      if (driverId && editForm.value.role === 'USER') {
+        await api.put(`/users/${driverId}/wallet`, { walletBalance: Number(editForm.value.walletBalance || 0) })
+      } else if (driverId) {
+        await api.put(`/users/${driverId}`, { ...userPayload, id: undefined, email: payloadEmail, password: '' })
+      }
+    } else if (editForm.value.role === 'USER') {
+      await api.put(`/users/${editForm.value.id}/wallet`, { walletBalance: Number(editForm.value.walletBalance || 0) })
+    } else {
+      await api.put(`/users/${editForm.value.id}`, userPayload)
+    }
     if (editForm.value.role === 'DRIVER' && driverId) {
       await routeDriverApi.updateDriverRoutes(driverId, { primaryRouteIds, backupRouteIds })
     }
@@ -329,7 +340,11 @@ const confirmDelete = async () => {
   if (!userToDelete.value) return
   isDeleting.value = true
   try { await api.delete(`/users/${userToDelete.value}`); userToDelete.value = null; await fetchUsers() }
-  catch (error) { console.error('Không xóa được người dùng:', error) }
+  catch (error) {
+    console.error('Không xóa được người dùng:', error)
+    const message = error.response?.data?.message || error.response?.data || 'Không thể xóa tài khoản.'
+    window.alert(typeof message === 'string' ? message : 'Không thể xóa tài khoản.')
+  }
   finally { isDeleting.value = false }
 }
 const toggleLock = async user => {

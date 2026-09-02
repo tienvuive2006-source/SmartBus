@@ -77,7 +77,7 @@
               <div v-if="tx.referenceId" class="text-xs text-gray-500 mt-0.5 font-medium">Ref: {{ tx.referenceId }}</div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-600">
-              {{ tx.performedBy || 'Hệ thống' }}
+              {{ tx.performedBy === 'SYSTEM' ? 'Hệ thống tự động' : (tx.performedBy || 'Hệ thống tự động') }}
             </td>
           </tr>
         </tbody>

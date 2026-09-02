@@ -109,6 +109,9 @@ public class User {
     @Column(name = "driver_shift", length = 50)
     private String driverShift;
 
+    @Column(name = "current_station", length = 500)
+    private String currentStation;
+
     @Column(name = "driver_notes", length = 1000)
     private String driverNotes;
 

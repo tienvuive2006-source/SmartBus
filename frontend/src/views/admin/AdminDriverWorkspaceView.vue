@@ -20,6 +20,7 @@
       :weekLabel="weekLabel"
       :loadingSchedule="loadingSchedule"
       :statsTrips="statsTrips"
+      :allTrips="trips"
       :getTripsForDay="getTripsForDay"
       :getLeavesForDay="getLeavesForDay"
       v-model:filterSearch="tripFilterSearch"
@@ -108,6 +109,13 @@ function getMonday(d) {
   return new Date(d.setDate(diff));
 }
 
+function formatLocalDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const weekDays = computed(() => {
   const days = [];
   const start = new Date(currentStartDate.value);
@@ -117,7 +125,7 @@ const weekDays = computed(() => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     days.push({
-      date: d.toISOString().split('T')[0],
+      date: formatLocalDate(d),
       dayName: dayNames[i],
       dateLabel: `${d.getDate()}/${d.getMonth() + 1}`
     });
@@ -172,7 +180,7 @@ onMounted(() => {
 
 // === FILTERING ===
 const processedDriversList = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatLocalDate(new Date());
   
   return drivers.value.map(driver => {
     // 1. Check if on leave
@@ -218,7 +226,7 @@ const filteredDrivers = computed(() => {
 });
 
 const processedInspectors = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatLocalDate(new Date());
   return inspectors.value.map(inspector => {
     const weekDates = weekDays.value.map(d => d.date);
     const hasThisWeek = trips.value.some(t =>

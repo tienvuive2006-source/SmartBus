@@ -30,6 +30,7 @@
         :bus-type-options="busTypeFilterOptions"
         :seat-class-options="seatClassFilterOptions"
         :utility-options="utilityFilterOptions"
+        :price-ceiling="priceMaxDefault"
         @clear-filters="clearFilters"
       />
 
@@ -217,6 +218,12 @@ const companyStats = ref({});
 const loading = ref(true);
 const currentSort = ref(route.query.sort || 'default');
 const selectedTimeSlots = ref([]);
+const priceMaxDefault = computed(() => {
+  if (!allTrips.value.length) return 1200000;
+  const max = Math.max(...allTrips.value.map(t => Number(t.price || 0)));
+  // Làm tròn lên bội số 100.000 gần nhất
+  return Math.ceil(max / 100000) * 100000;
+});
 const priceMax = ref(1200000);
 const selectedBusTypes = ref([]);
 const selectedSeatClasses = ref([]);
@@ -562,6 +569,7 @@ const sortOptions = [
   { id: 'price_desc', name: 'Giá cao nhất' },
   { id: 'time_asc', name: 'Ngày đi sớm nhất' },
   { id: 'time_desc', name: 'Ngày đi muộn nhất' },
+  { id: 'duration_asc', name: 'Thời gian di chuyển ngắn nhất' },
   { id: 'rating_desc', name: 'Đánh giá cao nhất' }
 ];
 
@@ -597,6 +605,18 @@ const tripArrivalTimestamp = (trip) => {
   let arrival = new Date(`${date}T${time}:00`).getTime();
   if (arrival <= departure) arrival += 24 * 60 * 60 * 1000;
   return arrival;
+};
+
+const durationSortValue = (trip) => {
+  const departure = tripDepartureTimestamp(trip);
+  const arrival = tripArrivalTimestamp(trip);
+  if (Number.isFinite(departure) && Number.isFinite(arrival) && arrival >= departure) {
+    return arrival - departure;
+  }
+  const normalizedDuration = removeAccents(String(trip?.duration || '')).toLowerCase();
+  const hours = Number(normalizedDuration.match(/(\d+)\s*(?:gio|h)/)?.[1] || 0);
+  const minutes = Number(normalizedDuration.match(/(\d+)\s*(?:phut|p)/)?.[1] || 0);
+  return hours || minutes ? (hours * 60 + minutes) * 60 * 1000 : Number.MAX_SAFE_INTEGER;
 };
 
 const filteredTrips = computed(() => {
@@ -682,6 +702,7 @@ const filteredTrips = computed(() => {
   else if (currentSort.value === 'price_desc') results.sort((a, b) => b.price - a.price);
   else if (currentSort.value === 'time_asc') results.sort((a, b) => departureSortValue(a).localeCompare(departureSortValue(b)));
   else if (currentSort.value === 'time_desc') results.sort((a, b) => departureSortValue(b).localeCompare(departureSortValue(a)));
+  else if (currentSort.value === 'duration_asc') results.sort((a, b) => durationSortValue(a) - durationSortValue(b));
   else if (currentSort.value === 'rating_desc') results.sort((a, b) => (companyStats.value[b.companyName + '|' + b.busType]?.averageRating || 0) - (companyStats.value[a.companyName + '|' + a.busType]?.averageRating || 0));
 
   return results;
@@ -712,6 +733,8 @@ const fetchTrips = async () => {
     }
 
     allTrips.value = fetchedTrips;
+    // Cập nhật priceMax theo dữ liệu thực tế (chỉ khi người dùng chưa kéo bộ lọc)
+    priceMax.value = priceMaxDefault.value;
     comparedTrips.value = comparedTrips.value.filter((item) => fetchedTrips.some((trip) => String(trip.id) === String(item.id)));
   } catch (err) { 
     console.error("Lỗi fetch trips:", err); 
@@ -788,7 +811,7 @@ const closeReviewsModal = () => {
 const clearFilters = () => {
   currentSort.value = 'default';
   selectedTimeSlots.value = [];
-  priceMax.value = 1200000;
+  priceMax.value = priceMaxDefault.value;
   selectedBusTypes.value = [];
   selectedSeatClasses.value = [];
   selectedUtilities.value = [];

@@ -10,11 +10,14 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Component
 @Order(2)
 @RequiredArgsConstructor
 public class TransactionIntentHandler implements AiIntentHandler {
+    private static final DateTimeFormatter TRIP_DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -30,6 +33,11 @@ public class TransactionIntentHandler implements AiIntentHandler {
                nonAccentMsg.contains("gui ma") ||
                nonAccentMsg.contains("lay ma") ||
                nonAccentMsg.contains("gui lai ma");
+    }
+
+    @Override
+    public boolean usesBookingContext() {
+        return true;
     }
 
     @Override
@@ -61,7 +69,7 @@ public class TransactionIntentHandler implements AiIntentHandler {
         List<com.smartbus.booking.entity.Booking> matchingActiveBookings = new java.util.ArrayList<>();
         
         for (com.smartbus.booking.entity.Booking b : userBookings) {
-            if ("PENDING".equals(b.getStatus()) || "PAID".equals(b.getStatus())) {
+            if (isActiveUpcoming(b)) {
                 boolean matchCity = true;
                 if (ctx.to != null && ctx.from != null) {
                     matchCity = entityService.removeAccents(b.getTrip().getArrivalPoint().toLowerCase()).contains(entityService.removeAccents(ctx.to.toLowerCase())) &&
@@ -76,25 +84,19 @@ public class TransactionIntentHandler implements AiIntentHandler {
             }
         }
         
-        matchingActiveBookings.sort(java.util.Comparator.comparing(b -> b.getTrip().getDepartureDate() + " " + b.getTrip().getDepartureTime()));
+        matchingActiveBookings.sort(java.util.Comparator.comparing(this::departureDateTime));
 
         com.smartbus.booking.entity.Booking targetBooking = null;
         if (!matchingActiveBookings.isEmpty()) {
             targetBooking = matchingActiveBookings.get(0);
-        } else {
-            if (ctx.to != null || ctx.from != null) {
-                for (com.smartbus.booking.entity.Booking b : userBookings) {
-                    boolean matchCity = (ctx.to != null && entityService.removeAccents(b.getTrip().getArrivalPoint().toLowerCase()).contains(entityService.removeAccents(ctx.to.toLowerCase()))) ||
-                                      (ctx.from != null && entityService.removeAccents(b.getTrip().getDeparturePoint().toLowerCase()).contains(entityService.removeAccents(ctx.from.toLowerCase())));
-                    if (matchCity) {
-                        targetBooking = b;
-                        break;
-                    }
-                }
-            }
-            if (targetBooking == null) {
-                targetBooking = userBookings.get(0);
-            }
+        }
+
+        if (targetBooking == null) {
+            response.put("text", ctx.to != null || ctx.from != null
+                    ? "Tôi không tìm thấy vé sắp tới còn hiệu lực phù hợp với tuyến bạn hỏi. Bạn có thể mở **Lịch sử đặt vé** để kiểm tra các vé cũ."
+                    : "Hiện bạn không có vé sắp tới còn hiệu lực. Bạn có thể mở **Lịch sử đặt vé** để xem các chuyến đã qua hoặc đã hủy.");
+            response.put("action", "navigate_history");
+            return response;
         }
         
         String fromCity = targetBooking.getTrip().getDeparturePoint();
@@ -112,7 +114,7 @@ public class TransactionIntentHandler implements AiIntentHandler {
                 for (int i = 0; i < Math.min(3, matchingActiveBookings.size()); i++) {
                     com.smartbus.booking.entity.Booking b = matchingActiveBookings.get(i);
                     sb.append("- Chuyến đi **").append(b.getTrip().getArrivalPoint()).append("** lúc **")
-                      .append(b.getTrip().getDepartureTime()).append(" ngày ").append(b.getTrip().getDepartureDate()).append("**\n");
+                      .append(b.getTrip().getDepartureTime()).append(" ngày ").append(b.getTrip().getDepartureDate()).append("** (Ghế ").append(seatText(b)).append(")\n");
                 }
                 if (matchingActiveBookings.size() > 3) sb.append("- ... và ").append(matchingActiveBookings.size() - 3).append(" vé khác.\n");
                 
@@ -138,7 +140,7 @@ public class TransactionIntentHandler implements AiIntentHandler {
                 sb.append("Bạn đang có **").append(matchingActiveBookings.size()).append(" chuyến xe sắp tới**:\n\n");
                 for (int i = 0; i < Math.min(3, matchingActiveBookings.size()); i++) {
                     com.smartbus.booking.entity.Booking b = matchingActiveBookings.get(i);
-                    sb.append("- Đi **").append(b.getTrip().getArrivalPoint()).append("**: **").append(b.getTrip().getDepartureTime()).append(" ngày ").append(b.getTrip().getDepartureDate()).append("** (Ghế ").append(String.join(", ", b.getSeatNumbers())).append(")\n");
+                    sb.append("- Đi **").append(b.getTrip().getArrivalPoint()).append("**: **").append(b.getTrip().getDepartureTime()).append(" ngày ").append(b.getTrip().getDepartureDate()).append("** (Ghế ").append(seatText(b)).append(")\n");
                 }
                 if (matchingActiveBookings.size() > 3) sb.append("- ... và ").append(matchingActiveBookings.size() - 3).append(" vé khác.\n");
                 sb.append("\nBạn có thể vào Lịch sử giao dịch để xem chi tiết tất cả các vé nhé.");
@@ -148,7 +150,7 @@ public class TransactionIntentHandler implements AiIntentHandler {
                 if ("CANCELLED".equals(targetBooking.getStatus())) {
                     response.put("text", "Vé đi " + toCity + " của bạn đã bị hủy.");
                 } else {
-                    response.put("text", "Chuyến xe đi **" + toCity + "** của bạn khởi hành lúc:\n\n⏰ **" + timeStr + " ngày " + dateStr + "**\n💺 **Ghế:** " + String.join(", ", targetBooking.getSeatNumbers()) + "\n\nBạn nhớ ra điểm đón trước 30 phút nhé!");
+                    response.put("text", "Chuyến xe đi **" + toCity + "** của bạn khởi hành lúc:\n\n⏰ **" + timeStr + " ngày " + dateStr + "**\n💺 **Ghế:** " + seatText(targetBooking) + "\n\nBạn nhớ ra điểm đón trước 30 phút nhé!");
                 }
                 response.put("action", "none");
             }
@@ -156,25 +158,32 @@ public class TransactionIntentHandler implements AiIntentHandler {
         }
         
         if (nonAccentMsg.contains("ma qr") || nonAccentMsg.contains("gui lai ma") || nonAccentMsg.contains("gui ma") || nonAccentMsg.contains("lay ma")) {
-            if ("CANCELLED".equals(targetBooking.getStatus())) {
-                response.put("text", "Vé đi " + toCity + " của bạn đã bị hủy nên mã QR không còn hiệu lực nữa.");
-                response.put("action", "none");
-            } else {
-                String qrData = "Mã đặt vé: #" + targetBooking.getId() + "\nKhách: " + currentUser.getFullName() + "\nGhế: " + String.join(", ", targetBooking.getSeatNumbers()) + "\nTrạng thái: " + (("CASH".equals(targetBooking.getPaymentMethod()) && "PENDING".equals(targetBooking.getStatus())) ? "CHƯA THANH TOÁN (THU TIỀN MẶT)" : "ĐÃ THANH TOÁN");
-                String qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + java.net.URLEncoder.encode(qrData, java.nio.charset.StandardCharsets.UTF_8) + "&color=075955&bgcolor=f8fafc";
-                
-                String prefix = "";
-                if (matchingActiveBookings.size() > 1) {
-                    prefix = "Tôi thấy bạn đang có tới **" + matchingActiveBookings.size() + " vé sắp tới**.\n\nĐây là mã QR cho chuyến xe **gần nhất** của bạn (Chuyến đi **" + toCity + "** ngày **" + dateStr + "**). Nếu bạn cần lấy mã của các vé khác, vui lòng vào **Lịch sử giao dịch** nhé!\n\n";
-                } else {
-                    prefix = "Đây là mã QR lên xe của bạn (Chuyến đi **" + toCity + "** ngày **" + dateStr + "**).\n\nBạn hãy lưu mã này lại hoặc đưa thẳng cho tài xế quét nhé!\n\n";
-                }
-                
-                response.put("text", prefix + "![Mã QR Lên Xe](" + qrUrl + ")");
-                response.put("action", "none");
-            }
+            response.put("text", "Vé gần nhất của bạn là chuyến đi **" + toCity + "** lúc **" + timeStr + " ngày " + dateStr + "**, ghế **" + seatText(targetBooking) + "**.\n\nNhấn nút bên dưới để mở vé và xem mã QR chính thức trong **Lịch sử đặt vé**.");
+            response.put("action", "navigate_history");
             return response;
         }
         return response;
+    }
+
+    private boolean isActiveUpcoming(com.smartbus.booking.entity.Booking booking) {
+        LocalDateTime departure = departureDateTime(booking);
+        return booking != null && booking.getTrip() != null
+                && ("PENDING".equals(booking.getStatus()) || "PAID".equals(booking.getStatus()))
+                && !LocalDateTime.MAX.equals(departure)
+                && !departure.isBefore(LocalDateTime.now());
+    }
+
+    private LocalDateTime departureDateTime(com.smartbus.booking.entity.Booking booking) {
+        try {
+            return LocalDateTime.parse(booking.getTrip().getDepartureDate() + " " + booking.getTrip().getDepartureTime(), TRIP_DATE_TIME);
+        } catch (Exception ignored) {
+            return LocalDateTime.MAX;
+        }
+    }
+
+    private String seatText(com.smartbus.booking.entity.Booking booking) {
+        return booking.getSeatNumbers() == null || booking.getSeatNumbers().isEmpty()
+                ? "Chưa cập nhật"
+                : String.join(", ", booking.getSeatNumbers());
     }
 }

@@ -152,6 +152,7 @@
 import { ref, onMounted } from 'vue';
 import { useApi } from '@/composables/useApi';
 
+const emit = defineEmits(['summary']);
 const api = useApi();
 
 const vouchers = ref([]);
@@ -173,6 +174,12 @@ const fetchVouchers = async () => {
   try {
     const response = await api.get('/vouchers/admin');
     vouchers.value = response.data;
+    emit('summary', {
+      total: vouchers.value.length,
+      active: vouchers.value.filter(voucher => voucher.isActive).length,
+      expiring: 0,
+      usage: vouchers.value.reduce((total, voucher) => total + Number(voucher.usageCount || 0), 0)
+    });
   } catch (error) {
     console.error(error);
   } finally {
@@ -227,8 +234,31 @@ const deleteVoucher = async (id) => {
   }
 };
 
+const exportData = () => {
+  const rows = [
+    ['Mã voucher', 'Số tiền giảm', 'Điểm đổi', 'Lượt dùng', 'Trạng thái'],
+    ...vouchers.value.map(voucher => [
+      voucher.code,
+      voucher.discountAmount,
+      voucher.pointsCost,
+      voucher.usageCount || 0,
+      voucher.isActive ? 'Kích hoạt' : 'Đã khóa'
+    ])
+  ];
+  const csv = `\uFEFF${rows.map(row => row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n')}`;
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `voucher-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 defineExpose({
-  openCreateModal
+  openCreateModal,
+  startCreate: openCreateModal,
+  refresh: fetchVouchers,
+  exportData
 });
 
 onMounted(() => {
